@@ -188,7 +188,8 @@ def manage_collections():
     category_ids = data.get('category_ids', [])
     col = Collection(
         name=name,
-        shop_id=shop_id
+        shop_id=shop_id,
+        separate_categories_mobile=bool(data.get('separate_categories_mobile', False))
     )
     col.category_ids = category_ids
     db.session.add(col)
@@ -217,6 +218,8 @@ def modify_collection(col_id):
         col.name = data['name']
     if 'category_ids' in data:
         col.category_ids = data['category_ids']
+    if 'separate_categories_mobile' in data:
+        col.separate_categories_mobile = bool(data['separate_categories_mobile'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated collection '{col.name}'")

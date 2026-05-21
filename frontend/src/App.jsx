@@ -348,7 +348,7 @@ function NobaraaHero({ sareeModels = [] }) {
   );
 }
 
-function FeaturesBar() {
+function FeaturesBar({ isMobile }) {
   const perks = [
     {
       icon: <Award size={28} style={{ color: '#7a4ea5' }} />,
@@ -375,10 +375,10 @@ function FeaturesBar() {
   return (
     <section style={{
       background: 'linear-gradient(to right, #ecdffa, #f5edff)',
-      padding: '50px 60px',
-      borderRadius: '24px',
-      margin: '40px auto 60px',
-      maxWidth: 'calc(100% - 80px)',
+      padding: isMobile ? '30px 20px' : '50px 60px',
+      borderRadius: isMobile ? '16px' : '24px',
+      margin: isMobile ? '20px auto 30px' : '40px auto 60px',
+      maxWidth: isMobile ? 'calc(100% - 24px)' : 'calc(100% - 80px)',
       position: 'relative',
       overflow: 'hidden',
       boxShadow: '0 8px 30px rgba(122, 78, 165, 0.05)'
@@ -388,9 +388,9 @@ function FeaturesBar() {
         src="/nobaraa_flowers.png" 
         style={{ 
           position: 'absolute', 
-          bottom: '-30px', 
-          left: '-30px', 
-          width: '180px', 
+          bottom: isMobile ? '-20px' : '-30px', 
+          left: isMobile ? '-20px' : '-30px', 
+          width: isMobile ? '100px' : '180px', 
           height: 'auto', 
           opacity: 0.6, 
           transform: 'rotate(15deg)', 
@@ -402,9 +402,9 @@ function FeaturesBar() {
         src="/nobaraa_flowers.png" 
         style={{ 
           position: 'absolute', 
-          top: '-30px', 
-          right: '-30px', 
-          width: '180px', 
+          top: isMobile ? '-20px' : '-30px', 
+          right: isMobile ? '-20px' : '-30px', 
+          width: isMobile ? '100px' : '180px', 
           height: 'auto', 
           opacity: 0.6, 
           transform: 'rotate(-105deg) scaleX(-1)', 
@@ -413,19 +413,19 @@ function FeaturesBar() {
         alt="" 
       />
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '40px', zIndex: 2, position: 'relative' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? '24px' : '40px', zIndex: 2, position: 'relative' }}>
         
         {/* Left Side: Pitch */}
         <div style={{ flex: '1 1 300px', maxWidth: '380px', textAlign: 'left' }}>
           <h2 style={{ 
             fontFamily: "'Playfair Display', serif", 
-            fontSize: '2.5rem', 
+            fontSize: isMobile ? '1.8rem' : '2.5rem', 
             fontWeight: 700, 
             color: '#2b0b57', 
             lineHeight: '1.2',
             margin: '0 0 16px 0'
           }}>
-            Why Choose <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'block', marginTop: '2px', textTransform: 'none' }}>Nobaraa Fashion? ♡</span>
+            Why Choose <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: isMobile ? '2.4rem' : '3.2rem', display: 'block', marginTop: '2px', textTransform: 'none' }}>Nobaraa Fashion? ♡</span>
           </h2>
           <p style={{ 
             fontFamily: "'Jost', sans-serif", 
@@ -525,6 +525,14 @@ function FeaturesBar() {
 }
 
 export default function App() {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Session & Auth states
   const [user, setUser] = useState(null);
   const [token, setToken] = useState("");
@@ -550,6 +558,7 @@ export default function App() {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [priceFilter, setPriceFilter] = useState(500000); // Slider
+  const [searchHover, setSearchHover] = useState(false);
   
   // UI Details & Overlay states
   const [detailProduct, setDetailProduct] = useState(null);
@@ -663,7 +672,7 @@ export default function App() {
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
-  const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [] });
+  const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false });
   const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
   const [messagingForm, setMessagingForm] = useState({ platform: "SMS", recipient: "All Customers", message: "" });
@@ -1464,7 +1473,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Collection Saved", `Collection '${collectionForm.name}' saved successfully.`, "success");
-        setCollectionForm({ id: null, name: "", category_ids: [] });
+        setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false });
         loadAdminCollections();
       } else {
         const err = await res.json();
@@ -2405,21 +2414,16 @@ export default function App() {
 
         {/* Center: Navigation Links */}
         <div className="desktop-nav-links" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-          {['Home', 'Shop', 'New Arrivals', 'Categories', 'About Us', 'Contact'].map((item) => (
+          {['Home', 'Shop', 'About Us', 'Contact'].map((item) => (
             <span 
               key={item} 
               onClick={() => {
                 setCurrentView("opac");
                 setActiveCategoryPage(null);
                 setSelectedCategory("");
-                if (item === 'Shop' || item === 'Categories' || item === 'New Arrivals') {
+                if (item === 'Shop') {
                   const section = document.getElementById("catalog-section");
-                  if (section) {
-                    section.scrollIntoView({ behavior: 'smooth' });
-                    if (item === 'Categories') {
-                      document.getElementById("category-grid-title")?.scrollIntoView({ behavior: 'smooth' });
-                    }
-                  }
+                  if (section) section.scrollIntoView({ behavior: 'smooth' });
                 } else if (item === 'Contact' || item === 'About Us') {
                   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 }
@@ -2459,21 +2463,24 @@ export default function App() {
         {/* Right Side: Interactive Icons Row */}
         <div className="desktop-nav-icons" style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#222222' }}>
           {/* Search Icon */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="Search Catalog">
-            <Search 
-              size={22} 
-              onClick={() => {
-                const catalog = document.getElementById("catalog-section");
-                if (catalog) {
-                  catalog.scrollIntoView({ behavior: 'smooth' });
-                  setTimeout(() => {
-                    document.getElementById("search-input")?.focus();
-                  }, 500);
-                }
-              }}
-              style={{ transition: 'color 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#7a4ea5'}
-              onMouseLeave={e => e.currentTarget.style.color = '#222222'}
+          <div
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+            title="Search Catalog"
+            onClick={() => {
+              const catalog = document.getElementById("catalog-section");
+              if (catalog) {
+                catalog.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => {
+                  document.getElementById("search-input")?.focus();
+                }, 500);
+              }
+            }}
+            onMouseEnter={() => setSearchHover(true)}
+            onMouseLeave={() => setSearchHover(false)}
+          >
+            <Search
+              size={22}
+              style={{ transition: 'color 0.2s', color: searchHover ? '#7a4ea5' : '#222222' }}
             />
           </div>
 
@@ -2761,7 +2768,7 @@ export default function App() {
 
             {/* Links Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', flexGrow: 1 }}>
-              {['Home', 'Shop', 'New Arrivals', 'Categories', 'About Us', 'Contact'].map((item) => (
+              {['Home', 'Shop', 'About Us', 'Contact'].map((item) => (
                 <span 
                   key={item} 
                   onClick={() => {
@@ -2769,7 +2776,7 @@ export default function App() {
                     setCurrentView("opac");
                     setActiveCategoryPage(null);
                     setSelectedCategory("");
-                    if (item === 'Shop' || item === 'Categories' || item === 'New Arrivals') {
+                    if (item === 'Shop') {
                       setTimeout(() => {
                         const section = document.getElementById("catalog-section");
                         if (section) section.scrollIntoView({ behavior: 'smooth' });
@@ -2823,10 +2830,10 @@ export default function App() {
       {currentView === 'checkout' && (
         <div style={{ minHeight: '100vh', background: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
           {/* Minimalist Header for Focus */}
-          <header style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <header style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: isMobile ? '15px 16px' : '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('opac')}>
               <NobaraaLogo size={40} color="#2b0b57" />
-              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.4rem', color: '#2b0b57' }}>Nobaraa Checkout</span>
+              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: isMobile ? '1.25rem' : '1.4rem', color: '#2b0b57' }}>Nobaraa Checkout</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666' }}>
               <Lock size={18} />
@@ -2834,7 +2841,7 @@ export default function App() {
             </div>
           </header>
 
-          <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '40px 20px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px', alignItems: 'start', flex: 1 }}>
+          <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 20px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: isMobile ? '24px' : '32px', alignItems: 'start', flex: 1 }}>
             
             {/* Left Column: Checkout Steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -3029,7 +3036,7 @@ export default function App() {
 
       {/* RENDER VIEW: PRODUCT DETAIL (FLIPKART STYLE) */}
       {currentView === 'product_detail' && activeProduct && (
-        <main className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '20px 40px', background: '#ffffff' }}>
+        <main className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '20px 40px', background: '#ffffff' }}>
           {/* Breadcrumb */}
           <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '24px', display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
@@ -3039,10 +3046,10 @@ export default function App() {
             <span style={{ color: '#222' }}>{activeProduct.name}</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 450px) 1fr', gap: '40px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(400px, 450px) 1fr', gap: isMobile ? '24px' : '40px', alignItems: 'start' }}>
             {/* Left Column: Images & Actions */}
-            <div style={{ position: 'sticky', top: '100px' }}>
-              <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: '450px', overflow: 'hidden' }}>
+            <div style={{ position: isMobile ? 'static' : 'sticky', top: '100px' }}>
+              <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: isMobile ? '300px' : '450px', overflow: 'hidden' }}>
                 <img 
                   src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
                   alt={activeProduct.name}
@@ -3310,13 +3317,13 @@ export default function App() {
               <NobaraaHero sareeModels={currentSareeModels} />
             </div>
           )}
-          <main className="main-content" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: '0 40px' }}>
+          <main className="main-content" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '0' : '0 40px' }}>
           
           {activeCategoryPage ? (
-            <div className="animate-fade-in" style={{ width: '100%', padding: '20px 0' }}>
+            <div className="animate-fade-in" style={{ width: '100%', padding: isMobile ? '10px 0' : '20px 0' }}>
               
               {/* Category Page Breadcrumb / Navigation bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '30px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '20px' : '30px', padding: isMobile ? '0 12px' : '0' }}>
                 <button 
                   onClick={() => setActiveCategoryPage(null)} 
                   className="btn-secondary"
@@ -3345,7 +3352,7 @@ export default function App() {
               {/* Premium Luxury Jumbotron Cover for Category */}
               <div style={{ 
                 position: 'relative', 
-                height: '350px', 
+                height: isMobile ? '200px' : '350px', 
                 background: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
@@ -3354,13 +3361,13 @@ export default function App() {
                 justifyContent: 'center',
                 textAlign: 'center',
                 color: 'white',
-                padding: '40px',
-                marginBottom: '40px'
+                padding: isMobile ? '20px 16px' : '40px',
+                marginBottom: isMobile ? '20px' : '40px'
               }}>
                 <div>
                   <h1 style={{ 
                     fontFamily: 'var(--font-serif)', 
-                    fontSize: '3rem', 
+                    fontSize: isMobile ? '1.8rem' : '3rem', 
                     fontWeight: 700, 
                     marginBottom: '12px',
                     letterSpacing: '2px',
@@ -3369,7 +3376,7 @@ export default function App() {
                     {activeCategoryPage.name}
                   </h1>
                   <p style={{ 
-                    fontSize: '1.1rem', 
+                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
                     maxWidth: '650px', 
                     margin: '0 auto',
                     opacity: 0.9,
@@ -3382,13 +3389,13 @@ export default function App() {
               </div>
 
               {/* Dedicated Category Product Catalog Grid */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', padding: isMobile ? '0 12px' : '0' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>
                   Curated Catalog ({products.filter(p => p.category_id === activeCategoryPage.id).length} Items)
                 </h3>
               </div>
 
-              <div className="product-grid">
+              <div className="category-product-grid">
                 {products.filter(p => p.category_id === activeCategoryPage.id).length > 0 ? (
                   products.filter(p => p.category_id === activeCategoryPage.id).map(p => (
                     <div key={p.id} className="product-card" onClick={() => handleProductSelection(p.id)}
@@ -3534,11 +3541,12 @@ export default function App() {
                   const displayedProducts = isCategoryFromThisCollectionSelected 
                     ? colProducts.filter(p => p.category_id === parseInt(selectedCategory))
                     : colProducts;
+                  const showSeparateCategoriesMobile = col.separate_categories_mobile && isMobile;
 
                   if (colCategories.length === 0) return null;
 
                   return (
-                    <div key={col.id} style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0' }} className="animate-fade-in">
+                    <div key={col.id} style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
                       
                       {/* Leafy Corner branches */}
                       <img 
@@ -3546,8 +3554,8 @@ export default function App() {
                         style={{ 
                           position: 'absolute', 
                           top: '10px', 
-                          left: '-40px', 
-                          width: '190px', 
+                          left: isMobile ? '-12px' : '-40px', 
+                          width: isMobile ? '120px' : '190px', 
                           height: 'auto', 
                           opacity: 0.6, 
                           transform: 'rotate(-45deg)', 
@@ -3560,8 +3568,8 @@ export default function App() {
                         style={{ 
                           position: 'absolute', 
                           top: '10px', 
-                          right: '-40px', 
-                          width: '190px', 
+                          right: isMobile ? '-12px' : '-40px', 
+                          width: isMobile ? '120px' : '190px', 
                           height: 'auto', 
                           opacity: 0.6, 
                           transform: 'rotate(45deg) scaleX(-1)', 
@@ -3592,248 +3600,386 @@ export default function App() {
                         Find everything you love, all in one place.
                       </p>
 
-                      {/* Category Grid Section styled like mockup card list */}
-                      {!(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
-                        <div className="nobaraa-category-grid" style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-                          justifyContent: 'center',
-                          gap: '24px',
-                          width: '100%',
-                          margin: '0 auto 50px'
-                        }}>
-                          {colCategories.map(c => {
-                            const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
-                            const coverImg = c.image_url || defaultImg;
-                            return (
-                              <div 
-                                key={c.id}
-                                className="nobaraa-category-card"
-                                onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                style={{ 
-                                  position: 'relative', 
-                                  background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
-                                  borderRadius: '20px',
-                                  padding: '16px 16px 24px',
-                                  cursor: 'pointer',
-                                  boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
-                                  transition: 'all 0.3s ease',
-                                  border: '1px solid rgba(122, 78, 165, 0.05)',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  maxWidth: '290px',
-                                  width: '100%',
-                                  margin: '0 auto'
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.transform = 'translateY(-6px)';
-                                  e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.transform = 'translateY(0)';
-                                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
-                                }}
-                              >
-                                {/* Inner image container */}
-                                <div className="nobaraa-category-image-container" style={{
-                                  width: '100%',
-                                  height: '350px',
-                                  borderRadius: '16px',
-                                  overflow: 'hidden',
-                                  position: 'relative'
-                                }}>
-                                  <img 
-                                    src={coverImg} 
-                                    alt={c.name}
-                                    style={{ 
-                                      width: '100%', 
-                                      height: '100%', 
-                                      objectFit: 'cover',
-                                      transition: 'transform 0.5s ease'
-                                    }}
-                                  />
-                                  
-                                  {/* White Circle Overlapping Icon Button */}
-                                  <div style={{
-                                    position: 'absolute',
-                                    bottom: '0',
-                                    left: '50%',
-                                    transform: 'translate(-50%, 50%)',
-                                    width: '44px',
-                                    height: '44px',
-                                    borderRadius: '50%',
-                                    background: '#ffffff',
-                                    boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    zIndex: 5
-                                  }}>
-                                    {getCategoryIcon(c.name)}
+                      {showSeparateCategoriesMobile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', padding: '0 8px' }}>
+                          {colCategories
+                            .filter(c => !selectedCategory || c.id === parseInt(selectedCategory))
+                            .map(c => {
+                              const catProducts = products.filter(p => p.category_id === c.id);
+                              return (
+                                <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                  {/* Category Banner */}
+                                  <div 
+                                    style={{
+                                      position: 'relative',
+                                      height: '110px',
+                                      borderRadius: '16px',
+                                      overflow: 'hidden',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      padding: '20px',
+                                      boxShadow: '0 4px 12px rgba(122, 78, 165, 0.08)',
+                                      background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                                      cursor: 'pointer'
+                                    }} 
+                                    onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                  >
+                                    {c.image_url && (
+                                      <img 
+                                        src={c.image_url} 
+                                        alt={c.name} 
+                                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45, position: 'absolute', top: 0, left: 0 }}
+                                      />
+                                    )}
+                                    <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
+                                      <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
+                                      {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
+                                      <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
+                                    </div>
+                                  </div>
+
+                                  {/* Category Products */}
+                                  <div className="product-grid animate-fade-in">
+                                    {catProducts.length > 0 ? (
+                                      catProducts.map((p, idx) => (
+                                        <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                                          <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                                          style={{ 
+                                            background: '#ffffff', 
+                                            borderRadius: '20px', 
+                                            overflow: 'hidden', 
+                                            boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                            border: '1px solid #f0e6fc',
+                                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            cursor: 'pointer',
+                                            height: '100%'
+                                          }}
+                                          >
+                                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '200px', overflow: 'hidden' }}>
+                                              <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                              {p.images[1] && (
+                                                <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                                              )}
+                                              {p.original_price > p.price && (
+                                                <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                                  {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                                </div>
+                                              )}
+                                              <button 
+                                                onClick={e => {
+                                                  e.stopPropagation();
+                                                  handleAddToWishlist(p.id);
+                                                }} 
+                                                style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                              >
+                                                <Heart size={18} />
+                                              </button>
+                                            </div>
+                                            
+                                            <div className="product-info" style={{ padding: '16px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                              <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                              <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+                                              
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                                <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                                  {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                                </span>
+                                                <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)})</span>
+                                              </div>
+
+                                              <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                                <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.2rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                                {p.original_price > p.price && (
+                                                  <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                                )}
+                                              </div>
+
+                                              <button 
+                                                onClick={e => {
+                                                  e.stopPropagation();
+                                                  handleAddToCart(p.id);
+                                                }}
+                                                style={{ 
+                                                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                                  border: 'none',
+                                                  borderRadius: '30px',
+                                                  padding: '10px',
+                                                  justifyContent: 'center', 
+                                                  width: '100%',
+                                                  fontFamily: "'Jost', sans-serif",
+                                                  fontWeight: 700,
+                                                  letterSpacing: '1px',
+                                                  boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '8px',
+                                                  color: 'white',
+                                                  cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                                  opacity: p.stock > 0 ? 1 : 0.6
+                                                }}
+                                                disabled={p.stock <= 0}
+                                              >
+                                                <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div style={{ padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No products in this category yet.</div>
+                                    )}
                                   </div>
                                 </div>
-
-                                {/* Label and Link details below the overlap */}
-                                <div style={{
-                                  paddingTop: '28px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}>
-                                  <span style={{ 
-                                    fontFamily: "'Playfair Display', serif", 
-                                    fontWeight: 700, 
-                                    fontSize: '1.05rem', 
-                                    color: '#2b0b57',
-                                    textAlign: 'center',
-                                    display: 'block'
-                                  }}>
-                                    {c.name}
-                                  </span>
-                                  <span style={{ 
-                                    fontFamily: "'Jost', sans-serif", 
-                                    fontWeight: 800, 
-                                    fontSize: '0.72rem', 
-                                    color: '#7a4ea5', 
-                                    letterSpacing: '1px', 
-                                    marginTop: '8px', 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    gap: '4px', 
-                                    textTransform: 'uppercase' 
-                                  }}>
-                                    Shop Now <ChevronRight size={12} />
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
-                      )}
-
-                      {/* Saree products in this collection */}
-                      <div className="product-grid animate-fade-in">
-                        {colProducts.length > 0 ? (
-                          colProducts.map((p, idx) => (
-                            <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
-                              <div className="product-card" onClick={() => handleProductSelection(p.id)}
-                              style={{ 
-                                background: '#ffffff', 
-                                borderRadius: '20px', 
-                                overflow: 'hidden', 
-                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
-                                border: '1px solid #f0e6fc',
-                                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                cursor: 'pointer',
-                                height: '100%'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-6px)';
-                                e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
-                              }}
-                              >
-                                <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
-                                  <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
-                                  {p.images[1] && (
-                                    <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
-                                  )}
-                                {p.original_price > p.price && (
-                                  <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
-                                    {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
-                                  </div>
-                                )}
-                                <button 
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleAddToWishlist(p.id);
-                                  }} 
-                                  style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
-                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                                >
-                                  <Heart size={18} />
-                                </button>
-                              </div>
-                              
-                              <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
-                                <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
-                                
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                                  <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                    {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
-                                  </span>
-                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
-                                </div>
-
-                                <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
-                                
-                                <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
-                                  <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
-                                  {p.original_price > p.price && (
-                                    <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
-                                  )}
-                                </div>
-                                
-                                <button 
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handleAddToCart(p.id);
-                                  }} 
-                                  style={{ 
-                                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
-                                    border: 'none',
-                                    borderRadius: '30px',
-                                    padding: '12px',
-                                    justifyContent: 'center', 
-                                    width: '100%',
-                                    fontFamily: "'Jost', sans-serif",
-                                    fontWeight: 700,
-                                    letterSpacing: '1px',
-                                    boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
-                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    color: 'white',
-                                    cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
-                                    opacity: p.stock > 0 ? 1 : 0.6
-                                  }}
-                                  onMouseEnter={e => {
-                                    if(p.stock > 0) {
-                                      e.currentTarget.style.transform = 'translateY(-2px)';
-                                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
-                                    }
-                                  }}
-                                  onMouseLeave={e => {
-                                    if(p.stock > 0) {
+                      ) : (
+                        <>
+                          {!(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
+                            <div className="nobaraa-category-grid" style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                              justifyContent: 'center',
+                              gap: '24px',
+                              width: '100%',
+                              margin: '0 auto 50px'
+                            }}>
+                              {colCategories.map(c => {
+                                const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
+                                const coverImg = c.image_url || defaultImg;
+                                return (
+                                  <div 
+                                    key={c.id}
+                                    className="nobaraa-category-card"
+                                    onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                    style={{ 
+                                      position: 'relative', 
+                                      background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                                      borderRadius: '20px',
+                                      padding: '16px 16px 24px',
+                                      cursor: 'pointer',
+                                      boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
+                                      transition: 'all 0.3s ease',
+                                      border: '1px solid rgba(122, 78, 165, 0.05)',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      maxWidth: '290px',
+                                      width: '100%',
+                                      margin: '0 auto'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-6px)';
+                                      e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                    }}
+                                    onMouseLeave={(e) => {
                                       e.currentTarget.style.transform = 'translateY(0)';
-                                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
-                                    }
-                                  }}
-                                  disabled={p.stock <= 0}
-                                >
-                                  <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                        ) : (
-                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
-                            <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
-                            <p>No products match your current filters in this collection.</p>
-                          </div>
-                        )}
-                      </div>
+                                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                                    }}
+                                  >
+                                    {/* Inner image container */}
+                                    <div className="nobaraa-category-image-container" style={{
+                                      width: '100%',
+                                      height: '350px',
+                                      borderRadius: '16px',
+                                      overflow: 'hidden',
+                                      position: 'relative'
+                                    }}>
+                                      <img 
+                                        src={coverImg} 
+                                        alt={c.name}
+                                        style={{ 
+                                          width: '100%', 
+                                          height: '100%', 
+                                          objectFit: 'cover',
+                                          transition: 'transform 0.5s ease'
+                                        }}
+                                      />
+                                      
+                                      {/* White Circle Overlapping Icon Button */}
+                                      <div style={{
+                                        position: 'absolute',
+                                        bottom: '0',
+                                        left: '50%',
+                                        transform: 'translate(-50%, 50%)',
+                                        width: '44px',
+                                        height: '44px',
+                                        borderRadius: '50%',
+                                        background: '#ffffff',
+                                        boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        zIndex: 5
+                                      }}>
+                                        {getCategoryIcon(c.name)}
+                                      </div>
+                                    </div>
 
+                                    {/* Label and Link details below the overlap */}
+                                    <div style={{
+                                      paddingTop: '28px',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}>
+                                      <span style={{ 
+                                        fontFamily: "'Playfair Display', serif", 
+                                        fontWeight: 700, 
+                                        fontSize: '1.05rem', 
+                                        color: '#2b0b57',
+                                        textAlign: 'center',
+                                        display: 'block'
+                                      }}>
+                                        {c.name}
+                                      </span>
+                                      <span style={{ 
+                                        fontFamily: "'Jost', sans-serif", 
+                                        fontWeight: 800, 
+                                        fontSize: '0.72rem', 
+                                        color: '#7a4ea5', 
+                                        letterSpacing: '1px', 
+                                        marginTop: '8px', 
+                                        display: 'inline-flex', 
+                                        alignItems: 'center', 
+                                        gap: '4px', 
+                                        textTransform: 'uppercase' 
+                                      }}>
+                                        Shop Now <ChevronRight size={12} />
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Saree products in this collection */}
+                          <div className="product-grid animate-fade-in">
+                            {displayedProducts.length > 0 ? (
+                              displayedProducts.map((p, idx) => (
+                                <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                                  <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                                  style={{ 
+                                    background: '#ffffff', 
+                                    borderRadius: '20px', 
+                                    overflow: 'hidden', 
+                                    boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                    border: '1px solid #f0e6fc',
+                                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    cursor: 'pointer',
+                                    height: '100%'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-6px)';
+                                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                                  }}
+                                  >
+                                    <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                                      <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                      {p.images[1] && (
+                                        <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                                      )}
+                                      {p.original_price > p.price && (
+                                        <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                          {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                        </div>
+                                      )}
+                                      <button 
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          handleAddToWishlist(p.id);
+                                        }} 
+                                        style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                      >
+                                        <Heart size={18} />
+                                      </button>
+                                    </div>
+                                    
+                                    <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                      <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                      <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+                                      
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                        <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                          {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                        </span>
+                                        <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                      </div>
+
+                                      <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+                                      
+                                      <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                        <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                        {p.original_price > p.price && (
+                                          <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                        )}
+                                      </div>
+                                      
+                                      <button 
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          handleAddToCart(p.id);
+                                        }} 
+                                        style={{ 
+                                          background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                          border: 'none',
+                                          borderRadius: '30px',
+                                          padding: '12px',
+                                          justifyContent: 'center', 
+                                          width: '100%',
+                                          fontFamily: "'Jost', sans-serif",
+                                          fontWeight: 700,
+                                          letterSpacing: '1px',
+                                          boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '8px',
+                                          color: 'white',
+                                          cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                          opacity: p.stock > 0 ? 1 : 0.6
+                                        }}
+                                        onMouseEnter={e => {
+                                          if(p.stock > 0) {
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                                          }
+                                        }}
+                                        onMouseLeave={e => {
+                                          if(p.stock > 0) {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                                          }
+                                        }}
+                                        disabled={p.stock <= 0}
+                                      >
+                                        <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                                <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                                <p>No products match your current filters in this collection.</p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })
@@ -3841,7 +3987,7 @@ export default function App() {
                 <>
                   {/* Shop by Categories Section */}
                   {categories.length > 0 && (
-                    <div style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0' }} className="animate-fade-in">
+                    <div style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
                       
                       {/* Leafy Corner branches */}
                       <img 
@@ -3849,8 +3995,8 @@ export default function App() {
                         style={{ 
                           position: 'absolute', 
                           top: '10px', 
-                          left: '-40px', 
-                          width: '190px', 
+                          left: isMobile ? '-12px' : '-40px', 
+                          width: isMobile ? '120px' : '190px', 
                           height: 'auto', 
                           opacity: 0.6, 
                           transform: 'rotate(-45deg)', 
@@ -3863,8 +4009,8 @@ export default function App() {
                         style={{ 
                           position: 'absolute', 
                           top: '10px', 
-                          right: '-40px', 
-                          width: '190px', 
+                          right: isMobile ? '-12px' : '-40px', 
+                          width: isMobile ? '120px' : '190px', 
                           height: 'auto', 
                           opacity: 0.6, 
                           transform: 'rotate(45deg) scaleX(-1)', 
@@ -4218,7 +4364,7 @@ export default function App() {
         </main>
 
         {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
-        {currentView === 'opac' && !activeCategoryPage && <FeaturesBar />}
+        {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} />}
 
         {/* PREMIUM DEEP LUXURY NOBARAA FOOTER */}
         <footer style={{ background: '#130525', padding: '80px 80px 40px', borderTop: 'none', fontFamily: "'Jost', sans-serif", color: '#e0d1f5', position: 'relative', marginTop: '60px' }}>
@@ -5314,6 +5460,19 @@ export default function App() {
                     </div>
                   </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="separate_categories_mobile"
+                      checked={!!collectionForm.separate_categories_mobile}
+                      onChange={e => setCollectionForm(prev => ({ ...prev, separate_categories_mobile: e.target.checked }))}
+                      style={{ width: 'auto', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="separate_categories_mobile" style={{ fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                      Separate category listing in mobile view
+                    </label>
+                  </div>
+
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                     Save Collection <Check size={16} />
                   </button>
@@ -5322,7 +5481,7 @@ export default function App() {
                       type="button" 
                       className="btn-secondary" 
                       style={{ justifyContent: 'center' }}
-                      onClick={() => setCollectionForm({ id: null, name: "", category_ids: [] })}
+                      onClick={() => setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false })}
                     >
                       Cancel Edit
                     </button>
