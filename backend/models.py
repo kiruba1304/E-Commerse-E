@@ -487,6 +487,7 @@ class Collection(db.Model):
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     category_ids_json = db.Column(db.Text, nullable=True) # JSON array of category IDs
     separate_categories_mobile = db.Column(db.Boolean, default=False)
+    show_category_banner = db.Column(db.Boolean, default=True)
 
     @property
     def category_ids(self):
@@ -507,5 +508,6 @@ class Collection(db.Model):
             "name": self.name,
             "shop_id": self.shop_id,
             "category_ids": self.category_ids,
-            "separate_categories_mobile": self.separate_categories_mobile or False
+            "separate_categories_mobile": self.separate_categories_mobile or False,
+            "show_category_banner": self.show_category_banner if self.show_category_banner is not None else True
         }

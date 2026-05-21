@@ -189,7 +189,8 @@ def manage_collections():
     col = Collection(
         name=name,
         shop_id=shop_id,
-        separate_categories_mobile=bool(data.get('separate_categories_mobile', False))
+        separate_categories_mobile=bool(data.get('separate_categories_mobile', False)),
+        show_category_banner=bool(data.get('show_category_banner', True))
     )
     col.category_ids = category_ids
     db.session.add(col)
@@ -220,6 +221,8 @@ def modify_collection(col_id):
         col.category_ids = data['category_ids']
     if 'separate_categories_mobile' in data:
         col.separate_categories_mobile = bool(data['separate_categories_mobile'])
+    if 'show_category_banner' in data:
+        col.show_category_banner = bool(data['show_category_banner'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated collection '{col.name}'")

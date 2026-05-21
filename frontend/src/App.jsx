@@ -672,7 +672,7 @@ export default function App() {
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
-  const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false });
+  const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
   const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
   const [messagingForm, setMessagingForm] = useState({ platform: "SMS", recipient: "All Customers", message: "" });
@@ -813,7 +813,7 @@ export default function App() {
     return () => {
       elements.forEach(el => observer.unobserve(el));
     };
-  }, [products, currentView, loadingProducts]);
+  }, [products, currentView, loadingProducts, activeCategoryPage]);
 
   // FETCH ROUTINES
   const fetchShops = async () => {
@@ -1473,8 +1473,9 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Collection Saved", `Collection '${collectionForm.name}' saved successfully.`, "success");
-        setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false });
+        setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
         loadAdminCollections();
+        fetchCollections();
       } else {
         const err = await res.json();
         addToast("Collection Error", err.error, "danger");
@@ -1491,6 +1492,7 @@ export default function App() {
       if (res.ok) {
         addToast("Deleted", "Collection deleted successfully.", "info");
         loadAdminCollections();
+        fetchCollections();
       }
     } catch (e) {}
   };
@@ -2686,23 +2688,25 @@ export default function App() {
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             />
-            <span style={{
-              position: 'absolute',
-              top: '-8px',
-              right: '-8px',
-              background: '#7a4ea5',
-              color: '#ffffff',
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              borderRadius: '50%',
-              width: '16px',
-              height: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
-            </span>
+            {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '-8px',
+                right: '-8px',
+                background: '#7a4ea5',
+                color: '#ffffff',
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                borderRadius: '50%',
+                width: '16px',
+                height: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
           </div>
 
           {/* Logout Button (if logged in) */}
@@ -2816,9 +2820,11 @@ export default function App() {
               
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowCartDrawer(true); }}>
                 <ShoppingBag size={26} color="#222222" />
-                <span style={{ position: 'absolute', top: -6, right: -8, background: '#7a4ea5', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                  {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
-                </span>
+                {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+                  <span style={{ position: 'absolute', top: -6, right: -8, background: '#7a4ea5', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -3609,34 +3615,71 @@ export default function App() {
                               return (
                                 <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                   {/* Category Banner */}
-                                  <div 
-                                    style={{
-                                      position: 'relative',
-                                      height: '110px',
-                                      borderRadius: '16px',
-                                      overflow: 'hidden',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      padding: '20px',
-                                      boxShadow: '0 4px 12px rgba(122, 78, 165, 0.08)',
-                                      background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
-                                      cursor: 'pointer'
-                                    }} 
-                                    onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                  >
-                                    {c.image_url && (
-                                      <img 
-                                        src={c.image_url} 
-                                        alt={c.name} 
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45, position: 'absolute', top: 0, left: 0 }}
-                                      />
-                                    )}
-                                    <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
-                                      <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
-                                      {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
-                                      <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
+                                  {col.show_category_banner !== false && col.show_category_banner !== 0 ? (
+                                    <div 
+                                      style={{
+                                        position: 'relative',
+                                        height: '110px',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        padding: '20px',
+                                        boxShadow: '0 4px 12px rgba(122, 78, 165, 0.08)',
+                                        background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                                        cursor: 'pointer'
+                                      }} 
+                                      onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                    >
+                                      {c.image_url && (
+                                        <img 
+                                          src={c.image_url} 
+                                          alt={c.name} 
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45, position: 'absolute', top: 0, left: 0 }}
+                                        />
+                                      )}
+                                      <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
+                                        <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
+                                        {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
+                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
+                                      </div>
                                     </div>
-                                  </div>
+                                  ) : (
+                                    <div 
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '4px 6px',
+                                        borderBottom: '1px solid rgba(122, 78, 165, 0.1)',
+                                        marginBottom: '6px',
+                                        cursor: 'pointer'
+                                      }}
+                                      onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                    >
+                                      <h5 style={{ 
+                                        fontFamily: "'Playfair Display', serif", 
+                                        fontSize: '1.15rem', 
+                                        fontWeight: 700, 
+                                        color: '#2b0b57', 
+                                        margin: 0, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.5px' 
+                                      }}>
+                                        {c.name}
+                                      </h5>
+                                      <span style={{ 
+                                        fontSize: '0.75rem', 
+                                        color: '#7a4ea5', 
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px'
+                                      }}>
+                                        View All <ChevronRight size={12} />
+                                      </span>
+                                    </div>
+                                  )}
 
                                   {/* Category Products */}
                                   <div className="product-grid animate-fade-in">
@@ -3738,7 +3781,7 @@ export default function App() {
                         </div>
                       ) : (
                         <>
-                          {!(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
+                          {col.show_category_banner !== false && col.show_category_banner !== 0 && !(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
                             <div className="nobaraa-category-grid" style={{ 
                               display: 'grid', 
                               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
@@ -5473,6 +5516,19 @@ export default function App() {
                     </label>
                   </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="show_category_banner"
+                      checked={collectionForm.show_category_banner !== false && collectionForm.show_category_banner !== 0}
+                      onChange={e => setCollectionForm(prev => ({ ...prev, show_category_banner: e.target.checked }))}
+                      style={{ width: 'auto', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="show_category_banner" style={{ fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                      Show Category Banner
+                    </label>
+                  </div>
+
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                     Save Collection <Check size={16} />
                   </button>
@@ -5481,7 +5537,7 @@ export default function App() {
                       type="button" 
                       className="btn-secondary" 
                       style={{ justifyContent: 'center' }}
-                      onClick={() => setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false })}
+                      onClick={() => setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true })}
                     >
                       Cancel Edit
                     </button>
