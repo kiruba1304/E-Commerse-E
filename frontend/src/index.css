@@ -556,7 +556,7 @@ textarea:focus {
   height: 100vh;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(2px);
-  z-index: 1000;
+  z-index: 10500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1916,3 +1916,109 @@ tr:hover td {
     padding: 10px 8px 20px !important;
   }
 }
+
+/* Product Detail Modal responsiveness */
+.product-detail-modal-body {
+  background: #ffffff;
+  width: 90% !important;
+  max-width: 800px !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)) !important;
+  overflow: hidden !important;
+  border: 1px solid #eeeeee !important;
+  max-height: 90vh !important;
+}
+
+.product-detail-modal-left {
+  background: #fafafa;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-right: 1px solid #eeeeee;
+}
+
+.product-detail-modal-right {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+@media (max-width: 768px) {
+  .product-detail-modal-body {
+    grid-template-columns: 1fr !important;
+    max-height: 80vh !important; /* Leave room for mobile bottom nav and top space */
+    overflow-y: auto !important;
+    width: 92% !important;
+  }
+
+  .product-detail-modal-left {
+    padding: 16px;
+    border-right: none;
+    border-bottom: 1px solid #eeeeee;
+  }
+
+  .product-detail-modal-right {
+    padding: 20px 16px;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+/* Admin forms custom responsive styles */
+.admin-config-form {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.admin-model-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 1.5fr 2fr 100px;
+  gap: 16px;
+  align-items: center;
+  background: rgba(122, 78, 165, 0.02);
+  border: 1px solid rgba(122, 78, 165, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-header {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-config-form {
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+
+  .admin-grid-2col {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .admin-model-item {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 12px !important;
+  }
+}

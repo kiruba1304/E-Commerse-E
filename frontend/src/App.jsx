@@ -2272,13 +2272,13 @@ export default function App() {
       {/* DETAIL PRODUCT OVERLAY POPUP */}
       {detailProduct && (
         <div className="ad-modal-backdrop" onClick={() => setDetailProduct(null)}>
-          <div className="ad-modal-body glass-panel" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', width: '90%', maxWidth: '800px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', overflow: 'hidden', border: '1px solid #eeeeee' }}>
+          <div className="ad-modal-body glass-panel product-detail-modal-body" onClick={e => e.stopPropagation()}>
             <button className="ad-modal-close" onClick={() => setDetailProduct(null)}>
               <X size={18} />
             </button>
             
             {/* Left side: Images */}
-            <div style={{ background: '#fafafa', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRight: '1px solid #eeeeee' }}>
+            <div className="product-detail-modal-left">
               <img 
                 src={detailProduct.images[activeDetailImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
                 alt={detailProduct.name}
@@ -2313,7 +2313,7 @@ export default function App() {
             </div>
             
             {/* Right side: Information */}
-            <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '600px' }}>
+            <div className="product-detail-modal-right">
               <span className="badge badge-info" style={{ width: 'fit-content' }}>{detailProduct.category_name}</span>
               <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222' }}>{detailProduct.name}</h3>
               
@@ -5025,7 +5025,7 @@ export default function App() {
       {currentView === 'admin_dashboard' && role === 'admin' && (
         <div className="dashboard-grid">
           <aside className="sidebar">
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+            <div className="sidebar-header" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
               <Settings style={{ color: 'var(--accent-secondary)' }} />
               <div>
                 <h5 style={{ fontWeight: 800 }}>Store Admin</h5>
@@ -5081,10 +5081,10 @@ export default function App() {
             
             {/* Shop Config panel */}
             {activePanel === 'shop_config' && adminShop && (
-              <form onSubmit={handleUpdateAdminShop} className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form onSubmit={handleUpdateAdminShop} className="glass-panel animate-fade-in admin-config-form">
                 <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>Shop Branding & API Configurations</h2>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shop Name Title</label>
                     <input 
@@ -5123,7 +5123,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email</label>
                     <input 
@@ -5153,7 +5153,7 @@ export default function App() {
 
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>API Gateway Credentials</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div className="admin-grid-2col">
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Razorpay Key ID</label>
                       <input 
@@ -5175,7 +5175,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fast2SMS platform API Key</label>
                     <input 
@@ -5208,16 +5208,7 @@ export default function App() {
                     ]).map((model, index, arr) => (
                       <div 
                         key={model.id || index} 
-                        style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: '80px 1fr 1.5fr 2fr 100px', 
-                          gap: '16px', 
-                          alignItems: 'center', 
-                          background: 'rgba(122, 78, 165, 0.02)',
-                          border: '1px solid rgba(122, 78, 165, 0.08)',
-                          borderRadius: '12px',
-                          padding: '16px'
-                        }}
+                        className="admin-model-item"
                       >
                         {/* Image Preview */}
                         <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
