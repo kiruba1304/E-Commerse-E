@@ -1,0 +1,7029 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
+  Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
+  Award, FileText, ChevronRight, Menu, ArrowLeft, Send, Sparkles, 
+  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag
+} from 'lucide-react';
+
+const API_BASE = "/api";
+
+const NobaraaLogo = ({ size = 60, color = "#7a4ea5" }) => (
+  <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="44" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
+    <circle cx="50" cy="50" r="40" stroke={color} strokeWidth="1" />
+    <path 
+      d="M38 32 C38 32 30 48 34 58 C38 68 44 68 44 58 C44 48 54 38 62 48 C70 58 64 68 64 68 M34 50 C44 50 48 40 56 34 C64 28 68 38 62 48 C56 58 50 68 44 68 C38 68 34 58 38 48 C42 38 50 32 58 32"
+      stroke={color} 
+      strokeWidth="4.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+    />
+    <path d="M78 22 C80 20 84 22 84 25 C84 28 80 30 78 28 Z" fill={color} />
+    <path d="M84 25 C86 23 90 25 90 28 C90 31 86 33 84 31 Z" fill={color} />
+    <circle cx="80" cy="26" r="2" fill="#d0bdf4" />
+    <path d="M70 20 C73 17 76 18 78 22" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M76 28 C80 32 82 36 80 40" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M80 40 C82 38 84 38 85 40" fill={color} />
+    <path d="M22 78 C20 80 16 78 16 75 C16 72 20 70 22 72 Z" fill={color} />
+    <path d="M16 75 C14 77 10 75 10 72 C10 69 14 67 16 69 Z" fill={color} />
+    <circle cx="20" cy="74" r="2" fill="#d0bdf4" />
+    <path d="M30 80 C27 83 24 82 22 78" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M24 72 C20 68 18 64 20 60" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M20 60 C18 62 16 62 15 60" fill={color} />
+  </svg>
+);
+
+const getCategoryIcon = (name) => {
+  const lower = name.toLowerCase();
+  if (lower.includes('cotton') || lower.includes('chiffon') || lower.includes('apparel') || lower.includes('clothing')) {
+    return <Sparkles size={20} style={{ color: '#7a4ea5' }} />;
+  }
+  if (lower.includes('silk') || lower.includes('tissue') || lower.includes('banarasi')) {
+    return <Award size={20} style={{ color: '#7a4ea5' }} />;
+  }
+  if (lower.includes('handbag') || lower.includes('bag')) {
+    return <ShoppingBag size={20} style={{ color: '#7a4ea5' }} />;
+  }
+  if (lower.includes('footwear') || lower.includes('shoe')) {
+    return <ShoppingBag size={20} style={{ color: '#7a4ea5' }} />;
+  }
+  return <Award size={20} style={{ color: '#7a4ea5' }} />;
+};
+
+const renderCollectionTitle = (name) => {
+  const parts = name.split('&');
+  if (parts.length > 1) {
+    return (
+      <h2 style={{ 
+        fontFamily: "'Playfair Display', serif", 
+        fontSize: '2.5rem', 
+        fontWeight: 700, 
+        color: '#2b0b57', 
+        textAlign: 'center', 
+        margin: '0 auto 10px',
+        lineHeight: 1.2
+      }}>
+        {parts[0]} & <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'inline-block', transform: 'translateY(5px)', textTransform: 'none' }}>{parts.slice(1).join('&')}</span>
+      </h2>
+    );
+  }
+  
+  const words = name.split(' ');
+  if (words.length > 1) {
+    const lastWord = words[words.length - 1];
+    const rest = words.slice(0, -1).join(' ');
+    return (
+      <h2 style={{ 
+        fontFamily: "'Playfair Display', serif", 
+        fontSize: '2.5rem', 
+        fontWeight: 700, 
+        color: '#2b0b57', 
+        textAlign: 'center', 
+        margin: '0 auto 10px',
+        lineHeight: 1.2
+      }}>
+        {rest} <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'inline-block', transform: 'translateY(5px)', textTransform: 'none' }}>{lastWord}</span>
+      </h2>
+    );
+  }
+  
+  return (
+    <h2 style={{ 
+      fontFamily: "'Playfair Display', serif", 
+      fontSize: '2.5rem', 
+      fontWeight: 700, 
+      color: '#2b0b57', 
+      textAlign: 'center', 
+      margin: '0 auto 10px',
+      lineHeight: 1.2
+    }}>
+      {name}
+    </h2>
+  );
+};
+
+
+function NobaraaHero({ sareeModels = [] }) {
+  const [coords, setCoords] = React.useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = React.useState(false);
+  const [activeModel, setActiveModel] = React.useState(0);
+
+  const defaultSareeModels = [
+    {
+      id: 1,
+      image: "/nobaraa_saree_model_1.png?v=2",
+      name: "Royal Purple Saree",
+      description: "Intricate gold zari borders woven on rich premium silk."
+    },
+    {
+      id: 2,
+      image: "/nobaraa_saree_model_2.png?v=2",
+      name: "Cream & Gold Banarasi",
+      description: "Timeless luxury heritage weave from Varanasi."
+    },
+    {
+      id: 3,
+      image: "/nobaraa_saree_model_3.png?v=2",
+      name: "Kanjeevaram Magenta",
+      description: "Vibrant royal pink and gold Kanjeevaram silk."
+    }
+  ];
+
+  const modelsToUse = sareeModels && sareeModels.length > 0 ? sareeModels : defaultSareeModels;
+
+  React.useEffect(() => {
+    if (activeModel >= modelsToUse.length) {
+      setActiveModel(0);
+    }
+  }, [modelsToUse]);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveModel((prev) => (prev + 1) % Math.max(1, modelsToUse.length));
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [activeModel, modelsToUse]);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setCoords({ x, y });
+  };
+
+  const handleMouseEnter = () => setIsHovered(true);
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setCoords({ x: 0, y: 0 });
+  };
+
+  const transformStyle = isHovered 
+    ? { transform: `rotateX(${12 - coords.y * 15}deg) rotateY(${coords.x * 20}deg) translateZ(0px)` }
+    : { animation: 'auto-float-rotate 8s ease-in-out infinite alternate' };
+
+  return (
+    <section className="nobaraa-hero-section">
+      <img src="/nobaraa_flowers.png" alt="" className="nobaraa-flowers-bottom-left" />
+      <img src="/nobaraa_flowers.png" alt="" className="nobaraa-flowers-top-right" />
+
+      <div style={{ position: 'absolute', right: '15%', top: '20%', pointerEvents: 'none', zIndex: 6 }}>
+        <Sparkles size={24} color="#7a4ea5" style={{ fill: '#d0bdf4', filter: 'drop-shadow(0 0 8px rgba(122,78,165,0.6))', animation: 'twinkle 4s ease-in-out infinite' }} />
+      </div>
+      <div style={{ position: 'absolute', right: '35%', bottom: '25%', pointerEvents: 'none', zIndex: 6 }}>
+        <Sparkles size={16} color="#7a4ea5" style={{ fill: '#d0bdf4', filter: 'drop-shadow(0 0 6px rgba(122,78,165,0.4))', animation: 'twinkle 5s ease-in-out infinite 1s' }} />
+      </div>
+      <div style={{ position: 'absolute', right: '12%', bottom: '15%', pointerEvents: 'none', zIndex: 6 }}>
+        <Sparkles size={20} color="#7a4ea5" style={{ fill: '#d0bdf4', filter: 'drop-shadow(0 0 6px rgba(122,78,165,0.4))', animation: 'twinkle 6s ease-in-out infinite 2s' }} />
+      </div>
+
+      <div className="nobaraa-hero-content">
+        <h1 className="nobaraa-hero-title">
+          Style That<br />
+          <span className="nobaraa-hero-script">
+            Defines You
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#7a4ea5" stroke="#7a4ea5" strokeWidth="1" style={{ display: 'inline-block', marginLeft: '12px', transform: 'rotate(-10deg)', verticalAlign: 'middle' }}>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+          </span>
+        </h1>
+        <p className="nobaraa-hero-subtitle">
+          Discover the latest trends, timeless elegance and fashion made for you.
+        </p>
+        <button 
+          onClick={() => {
+            document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
+          }} 
+          className="nobaraa-hero-btn"
+        >
+          SHOP NOW
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      {/* Center Logo Emblem */}
+      <div className="nobaraa-hero-center-logo">
+        <img 
+          src="/nobaraa_logo_emblem.png" 
+          alt="Nobaraa Fashion Logo" 
+          style={{ 
+            width: '250px', 
+            height: '250px', 
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 8px 24px rgba(122, 78, 165, 0.12))',
+            animation: 'auto-float-rotate-logo 6s ease-in-out infinite alternate'
+          }} 
+        />
+      </div>
+
+      <div className="nobaraa-hero-scene-container">
+        <div 
+          className="nobaraa-podium-scene"
+          style={transformStyle}
+          onMouseMove={handleMouseMove}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {/* Background Rotating Ring Logo */}
+          <div style={{
+            position: 'absolute',
+            zIndex: 1,
+            pointerEvents: 'none',
+            opacity: 0.09,
+            animation: 'spin 35s linear infinite',
+            width: '380px',
+            height: '380px',
+            bottom: '40px',
+            left: 'calc(50% - 190px)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <img 
+              src="/nobaraa_logo_emblem.png" 
+              alt="" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            />
+          </div>
+
+          <div className="nobaraa-podium-shadow"></div>
+          <div className="nobaraa-podium-base">
+            <div className="nobaraa-podium-top"></div>
+          </div>
+
+          {/* Saree Wear Models (fashion animated) */}
+          <div className="nobaraa-model-container">
+            {modelsToUse.map((model, idx) => (
+              <img 
+                key={model.id || idx}
+                src={model.image} 
+                alt={model.name}
+                className={`nobaraa-model-image ${activeModel === idx ? 'active' : 'inactive'}`}
+              />
+            ))}
+          </div>
+
+          {/* Dynamic Details Floating Card */}
+          <div className="nobaraa-floating-card" style={{
+            position: 'absolute',
+            bottom: '65px',
+            left: '110px',
+            width: '140px',
+            minHeight: '85px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            border: '1px solid rgba(122, 78, 165, 0.15)',
+            boxShadow: '0 8px 24px rgba(122,78,165,0.12)',
+            borderRadius: '8px',
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transform: 'rotateY(-25deg) rotateX(15deg) translateZ(105px) rotateZ(-6deg)',
+            transformStyle: 'preserve-3d',
+            transition: 'all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)',
+            cursor: 'pointer',
+            zIndex: 8,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'rotateY(-15deg) rotateX(10deg) translateZ(145px) rotateZ(-2deg)';
+            e.currentTarget.style.boxShadow = '0 16px 36px rgba(122, 78, 165, 0.28)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'rotateY(-25deg) rotateX(15deg) translateZ(105px) rotateZ(-6deg)';
+            e.currentTarget.style.boxShadow = '0 8px 24px rgba(122,78,165,0.12)';
+          }}
+          >
+            <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.5rem', color: '#7a4ea5', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+              Collection
+            </span>
+            <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '0.85rem', fontWeight: 700, color: '#222222', marginTop: '2px', textAlign: 'center' }}>
+              {modelsToUse[activeModel]?.name || ""}
+            </span>
+            <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.55rem', color: '#666666', marginTop: '4px', textAlign: 'center', lineHeight: 1.2 }}>
+              {modelsToUse[activeModel]?.description || ""}
+            </span>
+          </div>
+
+          {/* Sleek Model Switcher Dots Control */}
+          <div style={{
+            position: 'absolute',
+            bottom: '-12px',
+            display: 'flex',
+            gap: '10px',
+            zIndex: 10,
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(8px)',
+            padding: '6px 14px',
+            borderRadius: '20px',
+            border: '1px solid rgba(122, 78, 165, 0.15)',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+            transform: 'translateZ(10px)'
+          }}>
+            {modelsToUse.map((model, idx) => (
+              <button
+                key={model.id || idx}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveModel(idx);
+                }}
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: activeModel === idx ? '#7a4ea5' : '#d0bdf4',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+                title={model.name}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FeaturesBar() {
+  const perks = [
+    {
+      icon: <Award size={28} style={{ color: '#7a4ea5' }} />,
+      title: "Premium Quality",
+      subtitle: "Carefully selected products for the best quality and style."
+    },
+    {
+      icon: <Truck size={28} style={{ color: '#7a4ea5' }} />,
+      title: "Fast & Free Shipping",
+      subtitle: "Free shipping on all orders over $50. Delivered fast."
+    },
+    {
+      icon: <RotateCcw size={28} style={{ color: '#7a4ea5' }} />,
+      title: "Easy Returns",
+      subtitle: "Hassle-free returns within 30 days. Shop with confidence."
+    },
+    {
+      icon: <Headphones size={28} style={{ color: '#7a4ea5' }} />,
+      title: "24/7 Support",
+      subtitle: "We're here for you anytime, anywhere. Always happy to help!"
+    }
+  ];
+
+  return (
+    <section style={{
+      background: 'linear-gradient(to right, #ecdffa, #f5edff)',
+      padding: '50px 60px',
+      borderRadius: '24px',
+      margin: '40px auto 60px',
+      maxWidth: 'calc(100% - 80px)',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 8px 30px rgba(122, 78, 165, 0.05)'
+    }}>
+      {/* Corner Flowers */}
+      <img 
+        src="/nobaraa_flowers.png" 
+        style={{ 
+          position: 'absolute', 
+          bottom: '-30px', 
+          left: '-30px', 
+          width: '180px', 
+          height: 'auto', 
+          opacity: 0.6, 
+          transform: 'rotate(15deg)', 
+          pointerEvents: 'none' 
+        }} 
+        alt="" 
+      />
+      <img 
+        src="/nobaraa_flowers.png" 
+        style={{ 
+          position: 'absolute', 
+          top: '-30px', 
+          right: '-30px', 
+          width: '180px', 
+          height: 'auto', 
+          opacity: 0.6, 
+          transform: 'rotate(-105deg) scaleX(-1)', 
+          pointerEvents: 'none' 
+        }} 
+        alt="" 
+      />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '40px', zIndex: 2, position: 'relative' }}>
+        
+        {/* Left Side: Pitch */}
+        <div style={{ flex: '1 1 300px', maxWidth: '380px', textAlign: 'left' }}>
+          <h2 style={{ 
+            fontFamily: "'Playfair Display', serif", 
+            fontSize: '2.5rem', 
+            fontWeight: 700, 
+            color: '#2b0b57', 
+            lineHeight: '1.2',
+            margin: '0 0 16px 0'
+          }}>
+            Why Choose <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'block', marginTop: '2px', textTransform: 'none' }}>Nobaraa Fashion? ♡</span>
+          </h2>
+          <p style={{ 
+            fontFamily: "'Jost', sans-serif", 
+            color: '#555555', 
+            fontSize: '0.95rem', 
+            lineHeight: 1.6, 
+            marginBottom: '24px' 
+          }}>
+            We bring you the best in fashion with quality you can trust and service you'll love.
+          </p>
+          <button 
+            onClick={() => {
+              const catalog = document.getElementById('catalog-section');
+              if (catalog) catalog.scrollIntoView({ behavior: 'smooth' });
+            }}
+            style={{
+              background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+              color: 'white',
+              border: 'none',
+              padding: '12px 28px',
+              borderRadius: '30px',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              letterSpacing: '1.5px',
+              cursor: 'pointer',
+              boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+              transition: 'transform 0.2s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            LEARN MORE <ChevronRight size={14} />
+          </button>
+        </div>
+
+        {/* Right Side: Features Grid */}
+        <div style={{ 
+          flex: '2 2 500px', 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: '24px' 
+        }}>
+          {perks.map((perk, index) => (
+            <div key={index} style={{
+              background: 'transparent',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: '16px'
+            }}>
+              {/* White Circular Icon Background */}
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 6px 15px rgba(122, 78, 165, 0.1)',
+                marginBottom: '16px',
+                transition: 'transform 0.3s ease'
+              }}
+              className="feature-circle-icon"
+              >
+                {perk.icon}
+              </div>
+              <h4 style={{ 
+                fontFamily: "'Playfair Display', serif", 
+                fontWeight: 700, 
+                fontSize: '1.15rem', 
+                color: '#2b0b57', 
+                margin: '0 0 8px 0' 
+              }}>
+                {perk.title}
+              </h4>
+              <p style={{ 
+                fontFamily: "'Jost', sans-serif", 
+                fontSize: '0.82rem', 
+                color: '#666666', 
+                margin: 0, 
+                lineHeight: 1.4 
+              }}>
+                {perk.subtitle}
+              </p>
+            </div>
+          ))}
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
+export default function App() {
+  // Session & Auth states
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState("");
+  const [role, setRole] = useState("guest"); // guest, user, admin, super_admin
+  
+  // Navigation states
+  const [currentView, setCurrentView] = useState("opac"); // opac, user_dashboard, admin_dashboard, super_admin_dashboard
+  const [activePanel, setActivePanel] = useState(""); // active sub-panel in dashboards
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "" });
+  
+  // Shared functional states
+  const [shops, setShops] = useState([]);
+  const [activeShopId, setActiveShopId] = useState(""); // Filter OPAC/User by Shop
+  const [categories, setCategories] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [activeCategoryPage, setActiveCategoryPage] = useState(null);
+  const [showCartDrawer, setShowCartDrawer] = useState(false);
+  const [showWishlistDrawer, setShowWishlistDrawer] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [priceFilter, setPriceFilter] = useState(500000); // Slider
+  
+  // UI Details & Overlay states
+  const [detailProduct, setDetailProduct] = useState(null);
+  const [activeDetailImageIndex, setActiveDetailImageIndex] = useState(0);
+  const [activeProduct, setActiveProduct] = useState(null);
+  const [activeProductImageIndex, setActiveProductImageIndex] = useState(0);
+  const [popupAd, setPopupAd] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginRoleTab, setLoginRoleTab] = useState("user"); // user, admin, super_admin
+  const [showRegister, setShowRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [ribbonImageIndexes, setRibbonImageIndexes] = useState([0, 2, 4, 6, 8]);
+
+  const opacBanners = [
+    {
+      id: 1,
+      image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80",
+      title: "THE HEIRLOOM HERITAGE",
+      subtitle: "Meticulous Handloom Artistry, Exquisite Silk Weaves & Royal Zari Borders.",
+      actionText: "Explore Pure Silks"
+    },
+    {
+      id: 2,
+      image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1200&auto=format&fit=crop&q=80",
+      title: "FESTIVE SOIRÉE DRESSES",
+      subtitle: "Drape Yourself in Timeless Grace with Contemporary Designer Georgettes.",
+      actionText: "Shop Georgettes"
+    },
+    {
+      id: 3,
+      image: "https://images.unsplash.com/photo-1608748010899-18f300247112?w=1200&auto=format&fit=crop&q=80",
+      title: "NOBARAA PRIVILEGE FEST",
+      subtitle: "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
+      actionText: "View Wallet"
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide(prev => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRibbonImageIndexes(prev => {
+        const next = [...prev];
+        const ribbonIdxToChange = Math.floor(Math.random() * 5);
+        let newImgIdx = Math.floor(Math.random() * 10);
+        while (newImgIdx === prev[ribbonIdxToChange]) {
+          newImgIdx = Math.floor(Math.random() * 10);
+        }
+        next[ribbonIdxToChange] = newImgIdx;
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Form states
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [registerForm, setRegisterForm] = useState({ username: "", email: "", password: "", name: "", contact_phone: "" });
+
+  // User Workspace states
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem("guestCart");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [wishlist, setWishlist] = useState(() => {
+    try {
+      const saved = localStorage.getItem("guestWishlist");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [myOrders, setMyOrders] = useState([]);
+  const [userDashboardData, setUserDashboardData] = useState(null);
+  const [userHelpTickets, setUserHelpTickets] = useState([]);
+  const [userNotifications, setUserNotifications] = useState([]);
+  const [checkoutData, setCheckoutData] = useState({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false });
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+  const [newTicket, setNewTicket] = useState({ shop_id: "", subject: "", message: "" });
+
+  // Admin Workspace states
+  const [adminShop, setAdminShop] = useState(null);
+  const [adminProducts, setAdminProducts] = useState([]);
+  const [adminCategories, setAdminCategories] = useState([]);
+  const [adminCollections, setAdminCollections] = useState([]);
+  const [adminOrders, setAdminOrders] = useState([]);
+  const [adminCustomers, setAdminCustomers] = useState([]);
+  const [adminInventory, setAdminInventory] = useState(null);
+  const [adminRevenue, setAdminRevenue] = useState(null);
+  const [adminPopupAds, setAdminPopupAds] = useState([]);
+  const [adminCoupons, setAdminCoupons] = useState([]);
+  const [adminHelpTickets, setAdminHelpTickets] = useState([]);
+  const [adminLogs, setAdminLogs] = useState([]);
+  const [adminSmsLogs, setAdminSmsLogs] = useState([]);
+  const [gstReport, setGstReport] = useState(null);
+  
+  // Admin edits/creations
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
+  const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
+  const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [] });
+  const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
+  const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
+  const [messagingForm, setMessagingForm] = useState({ platform: "SMS", recipient: "All Customers", message: "" });
+  const [ticketReplyForm, setTicketReplyForm] = useState({ ticket_id: "", reply: "" });
+
+  // Super Admin Workspace states
+  const [superShops, setSuperShops] = useState([]);
+  const [superAdmins, setSuperAdmins] = useState([]);
+  const [superLogs, setSuperLogs] = useState([]);
+  const [superOrders, setSuperOrders] = useState([]);
+  
+  // Super Admin forms
+  const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10 });
+  const [newAdminForm, setNewAdminForm] = useState({ username: "", password: "", email: "", name: "", shop_id: "" });
+
+  // Add a Toast Notification helper
+  const addToast = (title, message, type = "info") => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4500);
+  };
+
+  const handleUploadFile = async (file, onUploadComplete) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Upload failed');
+      }
+      const data = await res.json();
+      onUploadComplete(data.url);
+      addToast("Upload Successful", "The image was uploaded to the local server.", "success");
+    } catch (err) {
+      console.error(err);
+      addToast("Upload Failed", err.message || "Failed to upload image.", "danger");
+    }
+  };
+
+  const handleProductSelection = (productId) => {
+    fetch(`${API_BASE}/opac/products/${productId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (role === 'user') {
+          setActiveProduct(data);
+          setActiveProductImageIndex(0);
+          setCurrentView('product_detail');
+          window.scrollTo(0, 0);
+        } else {
+          setDetailProduct(data);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch product detail:", err);
+        addToast("Error", "Could not load product details.", "danger");
+      });
+  };
+
+  // Auth Headers helper
+  const getHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    };
+  };
+
+  // INITIAL LOADS (OPAC)
+  useEffect(() => {
+    // Check LocalStorage on boot
+    const cachedToken = localStorage.getItem('token');
+    const cachedUser = localStorage.getItem('user');
+    const cachedRole = localStorage.getItem('role');
+
+    if (cachedToken && cachedUser && cachedRole) {
+      setToken(cachedToken);
+      setUser(JSON.parse(cachedUser));
+      setRole(cachedRole);
+      
+      // Auto Route depending on role
+      if (cachedRole === 'user') {
+        setCurrentView("opac");
+        setActivePanel("dashboard");
+      } else if (cachedRole === 'admin') {
+        setCurrentView("admin_dashboard");
+        setActivePanel("shop_config");
+      } else if (cachedRole === 'super_admin') {
+        setCurrentView("super_admin_dashboard");
+        setActivePanel("shop_creation");
+      }
+    }
+    
+    fetchShops();
+  }, [token]);
+
+  // Load products when activeShopId, searchQuery, category, price changes
+  useEffect(() => {
+    fetchOPACProducts();
+  }, [activeShopId, selectedCategory, searchQuery, priceFilter]);
+
+  // Load OPAC Popup ad when activeShopId changes
+  useEffect(() => {
+    if (activeShopId) {
+      fetchOPACPopupAd();
+    } else {
+      setPopupAd(null);
+    }
+  }, [activeShopId, role]);
+
+  // Reset active image index when detail product modal opens/changes
+  useEffect(() => {
+    setActiveDetailImageIndex(0);
+  }, [detailProduct]);
+
+  // Scroll reveal observer for staggered scroll transitions
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("revealed");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      rootMargin: "0px 0px -50px 0px",
+      threshold: 0.05
+    });
+
+    const elements = document.querySelectorAll(".scroll-reveal");
+    elements.forEach(el => observer.observe(el));
+
+    return () => {
+      elements.forEach(el => observer.unobserve(el));
+    };
+  }, [products, currentView, loadingProducts]);
+
+  // FETCH ROUTINES
+  const fetchShops = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/opac/shops`);
+      const data = await res.json();
+      if (res.ok) {
+        setShops(data);
+        if (data.length > 0 && !activeShopId) {
+          // Default to first shop
+          setActiveShopId(data[0].id);
+        }
+      }
+    } catch (e) {
+      addToast("Connection Error", "Could not reach backend API.", "danger");
+    }
+  };
+
+  const fetchOPACProducts = async () => {
+    try {
+      setLoadingProducts(true);
+      let url = `${API_BASE}/opac/products?max_price=${priceFilter}`;
+      if (activeShopId) url += `&shop_id=${activeShopId}`;
+      if (selectedCategory) url += `&category_id=${selectedCategory}`;
+      if (searchQuery) url += `&search=${searchQuery}`;
+
+      // 400ms delay for smooth loading transitions
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      const res = await fetch(url);
+      const data = await res.json();
+      if (res.ok) {
+        setProducts(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
+
+  const fetchOPACPopupAd = async () => {
+    try {
+      const type = role === 'guest' ? 'before' : 'after';
+      const res = await fetch(`${API_BASE}/opac/popup-ads?shop_id=${activeShopId}&display_type=${type}`);
+      const data = await res.json();
+      if (res.ok && data.length > 0) {
+        // Show first active popup ad
+        setPopupAd(data[0]);
+      } else {
+        setPopupAd(null);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Fetch shop-specific categories and collections
+  useEffect(() => {
+    if (activeShopId) {
+      fetchCategories();
+      fetchCollections();
+    }
+  }, [activeShopId]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/opac/categories?shop_id=${activeShopId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setCategories(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchCollections = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/opac/collections?shop_id=${activeShopId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setCollections(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // USER ACTION HANDLERS
+  const handleUserLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const endpoints = ["/user/login", "/admin/login", "/super-admin/login"];
+      let successData = null;
+      let lastError = "Invalid credentials.";
+
+      for (let endpoint of endpoints) {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(loginForm)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          successData = data;
+          break;
+        } else {
+          if (data.error) lastError = data.error;
+        }
+      }
+
+      if (successData) {
+        const data = successData;
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', data.user.role);
+
+        setToken(data.token);
+        setUser(data.user);
+        setRole(data.user.role);
+        setShowLoginModal(false);
+        setLoginForm({ username: "", password: "" });
+        addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
+        
+        // Navigation redirect
+        if (data.user.role === 'user') {
+          setCurrentView("opac");
+          setActivePanel("dashboard");
+        } else if (data.user.role === 'admin') {
+          setCurrentView("admin_dashboard");
+          setActivePanel("shop_config");
+        } else if (data.user.role === 'super_admin') {
+          setCurrentView("super_admin_dashboard");
+          setActivePanel("shop_creation");
+        }
+      } else {
+        addToast("Authentication Failed", lastError, "danger");
+      }
+    } catch (err) {
+      addToast("Server Error", "Could not complete login request.", "danger");
+    }
+  };
+
+  const handleUserRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/user/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registerForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('role', 'user');
+
+        setToken(data.token);
+        setUser(data.user);
+        setRole('user');
+        setShowLoginModal(false);
+        setShowRegister(false);
+        setRegisterForm({ username: "", email: "", password: "", name: "", contact_phone: "" });
+        addToast("Registration Success", "Account created successfully! Enjoy your 50 free SuperCoins.", "success");
+        
+        setCurrentView("opac");
+        setActivePanel("dashboard");
+      } else {
+        addToast("Registration Failed", data.error || "Validation failed.", "danger");
+      }
+    } catch (err) {
+      addToast("Server Error", "Could not complete registration.", "danger");
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      let endpoint = "/user/logout";
+      if (role === 'admin') endpoint = "/admin/logout";
+      if (role === 'super_admin') endpoint = "/super-admin/logout";
+
+      await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+    } catch (e) {}
+
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('role');
+
+    setToken("");
+    setUser(null);
+    setRole("guest");
+    setCurrentView("opac");
+
+    // Restore guest cart and wishlist
+    try {
+      const savedCart = localStorage.getItem("guestCart");
+      setCart(savedCart ? JSON.parse(savedCart) : []);
+      const savedWishlist = localStorage.getItem("guestWishlist");
+      setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
+    } catch (e) {
+      setCart([]);
+      setWishlist([]);
+    }
+
+    addToast("Session Closed", "You have logged out successfully.", "info");
+  };
+
+  // LOGGED IN USER SPECIFIC ROUTINES
+  useEffect(() => {
+    if (role === 'user') {
+      if (currentView === 'user_dashboard') {
+        if (activePanel === 'dashboard') loadUserDashboard();
+        if (activePanel === 'cart') loadUserCart();
+        if (activePanel === 'wishlist') loadUserWishlist();
+        if (activePanel === 'orders') loadUserOrders();
+        if (activePanel === 'help_center') loadUserHelpTickets();
+        if (activePanel === 'notifications') loadUserNotifications();
+        if (activePanel === 'settings') {
+          setProfileForm({
+            name: user?.name || "",
+            email: user?.email || "",
+            contact_phone: user?.contact_phone || "",
+            password: ""
+          });
+        }
+      } else {
+        loadUserDashboard();
+        loadUserCart();
+        loadUserWishlist();
+      }
+    }
+  }, [role, currentView, activePanel, user]);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/user/profile`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(profileForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Profile Updated", "Your account settings have been saved successfully.", "success");
+        setUser(data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } else {
+        addToast("Update Failed", data.error || "Could not update profile.", "danger");
+      }
+    } catch (err) {
+      addToast("Server Error", "Could not complete profile update request.", "danger");
+    }
+  };
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    if (!showProfileDropdown) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.desktop-nav-icons')) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [showProfileDropdown]);
+
+  const loadUserDashboard = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/dashboard`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setUserDashboardData(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserCart = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/cart`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setCart(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserWishlist = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/wishlist`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setWishlist(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserOrders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/orders`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setMyOrders(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserHelpTickets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/help-tickets`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setUserHelpTickets(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserNotifications = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/notifications`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setUserNotifications(data);
+      }
+    } catch (e) {}
+  };
+
+  const handleAddToCart = async (productId, qty = 1) => {
+    if (role !== 'user') {
+      const prod = products.find(p => p.id === productId);
+      if (!prod) return;
+      
+      setCart(prev => {
+        const existing = prev.find(item => item.product_id === productId);
+        let newCart;
+        if (existing) {
+          const newQty = qty === 1 ? existing.quantity + 1 : qty;
+          if (newQty > prod.stock) {
+            addToast("Stock Limit", `Only ${prod.stock} units available.`, "warning");
+            return prev;
+          }
+          newCart = prev.map(item => 
+            item.product_id === productId 
+              ? { ...item, quantity: newQty }
+              : item
+          );
+        } else {
+          if (qty > prod.stock) {
+            addToast("Stock Limit", `Only ${prod.stock} units available.`, "warning");
+            return prev;
+          }
+          newCart = [...prev, {
+            id: "guest_" + productId,
+            product_id: productId,
+            quantity: qty,
+            product: prod
+          }];
+        }
+        localStorage.setItem("guestCart", JSON.stringify(newCart));
+        return newCart;
+      });
+      addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/user/cart`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ product_id: productId, quantity: qty })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+        loadUserCart();
+      } else {
+        addToast("Cart Error", data.error || "Out of stock.", "danger");
+      }
+    } catch (e) {}
+  };
+
+  const handleAddToWishlist = async (productId) => {
+    if (role !== 'user') {
+      const prod = products.find(p => p.id === productId);
+      if (!prod) return;
+
+      setWishlist(prev => {
+        const existing = prev.find(item => item.product_id === productId);
+        if (existing) {
+          addToast("Wishlist", "This item is already pinned in your wishlist.", "info");
+          return prev;
+        }
+        const newWishlist = [...prev, {
+          id: "guest_" + productId,
+          product_id: productId,
+          product: prod
+        }];
+        localStorage.setItem("guestWishlist", JSON.stringify(newWishlist));
+        return newWishlist;
+      });
+      addToast("Wishlisted", "Product pinned in your wishlist.", "success");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/user/wishlist`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ product_id: productId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Wishlisted", "Product pinned in your wishlist.", "success");
+        loadUserWishlist();
+      }
+    } catch (e) {}
+  };
+
+  const handleRemoveFromCart = async (cartItemId) => {
+    if (role !== 'user') {
+      setCart(prev => {
+        const newCart = prev.filter(item => item.id !== cartItemId);
+        localStorage.setItem("guestCart", JSON.stringify(newCart));
+        return newCart;
+      });
+      addToast("Item Removed", "Removed from cart.", "info");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/user/cart/${cartItemId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Item Removed", "Removed from cart.", "info");
+        loadUserCart();
+      }
+    } catch (e) {}
+  };
+
+  const handleRemoveFromWishlist = async (wishlistItemId) => {
+    if (role !== 'user') {
+      setWishlist(prev => {
+        const newWishlist = prev.filter(item => item.id !== wishlistItemId);
+        localStorage.setItem("guestWishlist", JSON.stringify(newWishlist));
+        return newWishlist;
+      });
+      addToast("Item Removed", "Removed from wishlist.", "info");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/user/wishlist/${wishlistItemId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Item Removed", "Removed from wishlist.", "info");
+        loadUserWishlist();
+      }
+    } catch (e) {}
+  };
+
+  // Submit support ticket
+  const handleCreateTicket = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/user/help-tickets`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ ...newTicket, shop_id: activeShopId })
+      });
+      if (res.ok) {
+        addToast("Ticket Created", "Help center agent assigned. We will reply shortly.", "success");
+        setNewTicket({ shop_id: "", subject: "", message: "" });
+        loadUserHelpTickets();
+      }
+    } catch (e) {}
+  };
+
+  // Submit product review
+  const handleCreateReview = async (e, productId) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/user/reviews`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ product_id: productId, rating: newReview.rating, comment: newReview.comment })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Review Posted", "Thank you! Your verified customer review is active.", "success");
+        setNewReview({ rating: 5, comment: "" });
+        // Reload detail product to see the review immediately!
+        if (detailProduct && detailProduct.id === productId) {
+          const detailRes = await fetch(`${API_BASE}/opac/products/${productId}`);
+          const detailData = await detailRes.json();
+          if (detailRes.ok) setDetailProduct(detailData);
+        }
+      } else {
+        addToast("Cannot Review", data.error || "Reviews allowed only for verified buyers.", "danger");
+      }
+    } catch (e) {}
+  };
+
+  // File Return Request
+  const handleRequestReturn = async (orderId, reason) => {
+    try {
+      const res = await fetch(`${API_BASE}/user/orders/${orderId}/return`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Return Requested", "Pending admin validation approval.", "warning");
+        loadUserOrders();
+      } else {
+        addToast("Error", data.error, "danger");
+      }
+    } catch (e) {}
+  };
+
+  // Place Order Checkout
+  const handlePlaceOrder = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/user/orders`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ ...checkoutData, shop_id: activeShopId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
+        setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false });
+        
+        // Show invoice immediately!
+        setInvoiceOrder(data.order);
+        
+        // Route to orders list
+        setActivePanel("orders");
+      } else {
+        addToast("Checkout Error", data.error || "Failed to process checkout.", "danger");
+      }
+    } catch (e) {}
+  };
+
+  // ADMIN ACTION ROUTINES
+  useEffect(() => {
+    if (role === 'admin' && currentView === 'admin_dashboard') {
+      if (activePanel === 'shop_config') loadAdminShop();
+      if (activePanel === 'categories') loadAdminCategories();
+      if (activePanel === 'collections') { loadAdminCollections(); loadAdminCategories(); }
+      if (activePanel === 'products') loadAdminProducts();
+      if (activePanel === 'orders') loadAdminOrders();
+      if (activePanel === 'inventory') loadAdminInventory();
+      if (activePanel === 'revenue') loadAdminRevenue();
+      if (activePanel === 'popup_ads') loadAdminPopupAds();
+      if (activePanel === 'coupons') loadAdminCoupons();
+      if (activePanel === 'help_center') loadAdminHelpTickets();
+      if (activePanel === 'logs') loadAdminLogs();
+      if (activePanel === 'messaging') loadAdminSmsLogs();
+      if (activePanel === 'gst_report') loadGstReport();
+      if (activePanel === 'customers') loadAdminCustomers();
+    }
+  }, [role, currentView, activePanel]);
+
+  const loadAdminShop = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/shop`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminShop(data);
+    } catch (e) {}
+  };
+
+  const handleUpdateAdminShop = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/admin/shop`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(adminShop)
+      });
+      if (res.ok) {
+        addToast("Shop Details Saved", "Branding, credentials and API integrations updated.", "success");
+        loadAdminShop();
+        fetchShops();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminCategories = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/categories`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminCategories(data);
+    } catch (e) {}
+  };
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!categoryForm.id;
+      const method = isEdit ? 'PUT' : 'POST';
+      const endpoint = isEdit ? `/admin/categories/${categoryForm.id}` : '/admin/categories';
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify(categoryForm)
+      });
+      if (res.ok) {
+        addToast("Category Saved", `Category '${categoryForm.name}' updated.`, "success");
+        setCategoryForm({ id: null, name: "", description: "", image_url: "" });
+        loadAdminCategories();
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteCategory = async (catId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/categories/${catId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Deleted", "Category deleted successfully.", "info");
+        loadAdminCategories();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminCollections = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/collections`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminCollections(data);
+    } catch (e) {}
+  };
+
+  const handleSaveCollection = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!collectionForm.id;
+      const method = isEdit ? 'PUT' : 'POST';
+      const endpoint = isEdit ? `/admin/collections/${collectionForm.id}` : '/admin/collections';
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify(collectionForm)
+      });
+      if (res.ok) {
+        addToast("Collection Saved", `Collection '${collectionForm.name}' saved successfully.`, "success");
+        setCollectionForm({ id: null, name: "", category_ids: [] });
+        loadAdminCollections();
+      } else {
+        const err = await res.json();
+        addToast("Collection Error", err.error, "danger");
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteCollection = async (colId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/collections/${colId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Deleted", "Collection deleted successfully.", "info");
+        loadAdminCollections();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminProducts = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/products`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminProducts(data);
+    } catch (e) {}
+  };
+
+  const handleSaveProduct = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!productForm.id;
+      const method = isEdit ? 'PUT' : 'POST';
+      const endpoint = isEdit ? `/admin/products/${productForm.id}` : '/admin/products';
+
+      // Clean images JSON list
+      const payload = { 
+        ...productForm, 
+        price: parseFloat(productForm.price),
+        original_price: productForm.original_price ? parseFloat(productForm.original_price) : parseFloat(productForm.price),
+        stock: parseInt(productForm.stock),
+        alert_threshold: parseInt(productForm.alert_threshold),
+        promo_discount: productForm.promo_discount ? parseFloat(productForm.promo_discount) : 0,
+        bulk_sale_price: productForm.bulk_sale_price ? parseFloat(productForm.bulk_sale_price) : null,
+        min_quantity: productForm.min_quantity ? parseInt(productForm.min_quantity) : null,
+        images: productForm.images.filter(img => img.trim() !== "")
+      };
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        addToast("Catalog Updated", `Product saved.`, "success");
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
+        loadAdminProducts();
+      } else {
+        const err = await res.json();
+        addToast("Error", err.error, "danger");
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteProduct = async (prodId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/products/${prodId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Deleted", "Product removed.", "info");
+        loadAdminProducts();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminOrders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/orders`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminOrders(data);
+    } catch (e) {}
+  };
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ status: newStatus, tracking_info: `Dispatched via Hub Courier. Track ID: ${Math.floor(Math.random() * 90000) + 10000}` })
+      });
+      if (res.ok) {
+        addToast("Status Transition", `Order status set to '${newStatus}'.`, "success");
+        loadAdminOrders();
+      }
+    } catch (e) {}
+  };
+
+  const handleResolveReturn = async (orderId, decision) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/return`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ decision })
+      });
+      if (res.ok) {
+        addToast("Return Finalized", `Customer return request was ${decision}.`, "info");
+        loadAdminOrders();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminInventory = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/inventory`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminInventory(data);
+    } catch (e) {}
+  };
+
+  const loadAdminRevenue = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/revenue-report`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminRevenue(data);
+    } catch (e) {}
+  };
+
+  const loadAdminPopupAds = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/popup-ads`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminPopupAds(data);
+    } catch (e) {}
+  };
+
+  const handleSavePopupAd = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!adForm.id;
+      const method = isEdit ? 'PUT' : 'POST';
+      const endpoint = isEdit ? `/admin/popup-ads/${adForm.id}` : '/admin/popup-ads';
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify(adForm)
+      });
+      if (res.ok) {
+        addToast("Banner Saved", "Campaign status successfully updated.", "success");
+        setAdForm({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
+        loadAdminPopupAds();
+      }
+    } catch (e) {}
+  };
+
+  const handleDeletePopupAd = async (adId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/popup-ads/${adId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Deleted", "Ad banner removed.", "info");
+        loadAdminPopupAds();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminCoupons = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/coupons`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminCoupons(data);
+    } catch (e) {}
+  };
+
+  const handleSaveCoupon = async (e) => {
+    e.preventDefault();
+    try {
+      const isEdit = !!couponForm.id;
+      const method = isEdit ? 'PUT' : 'POST';
+      const endpoint = isEdit ? `/admin/coupons/${couponForm.id}` : '/admin/coupons';
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method,
+        headers: getHeaders(),
+        body: JSON.stringify({ 
+          ...couponForm, 
+          discount_percentage: parseFloat(couponForm.discount_percentage),
+          max_discount: parseFloat(couponForm.max_discount),
+          min_purchase: parseFloat(couponForm.min_purchase)
+        })
+      });
+      if (res.ok) {
+        addToast("Discount Code Created", `Coupon '${couponForm.code}' is now live.`, "success");
+        setCouponForm({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
+        loadAdminCoupons();
+      } else {
+        const err = await res.json();
+        addToast("Coupon Error", err.error, "danger");
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteCoupon = async (cpId) => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/coupons/${cpId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Deleted", "Discount code deleted.", "info");
+        loadAdminCoupons();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminHelpTickets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/help-tickets`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminHelpTickets(data);
+    } catch (e) {}
+  };
+
+  const handleResolveTicket = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/admin/help-tickets`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(ticketReplyForm)
+      });
+      if (res.ok) {
+        addToast("Reply Transmitted", "Help center ticket closed successfully.", "success");
+        setTicketReplyForm({ ticket_id: "", reply: "" });
+        loadAdminHelpTickets();
+      }
+    } catch (e) {}
+  };
+
+  const loadAdminLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/logs?shop_id=${user.shop_id}`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminLogs(data);
+    } catch (e) {}
+  };
+
+  const loadAdminSmsLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/sms-whatsapp-logs`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminSmsLogs(data);
+    } catch (e) {}
+  };
+
+  const handleDispatchCampaign = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/admin/sms-whatsapp-logs`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(messagingForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Dispatched Campaign", data.message, "success");
+        setMessagingForm({ platform: "SMS", recipient: "All Customers", message: "" });
+        loadAdminSmsLogs();
+      }
+    } catch (e) {}
+  };
+
+  const loadGstReport = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/gst-report`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setGstReport(data);
+    } catch (e) {}
+  };
+
+  const loadAdminCustomers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/customers`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminCustomers(data);
+    } catch (e) {}
+  };
+
+
+  // SUPER ADMIN ACTION ROUTINES
+  useEffect(() => {
+    if (role === 'super_admin' && currentView === 'super_admin_dashboard') {
+      if (activePanel === 'shop_creation') loadSuperShops();
+      if (activePanel === 'admin_creation') {
+        loadSuperShops();
+        loadSuperAdmins();
+      }
+      if (activePanel === 'audit_logs') {
+        loadSuperShops();
+        loadSuperLogs();
+      }
+      if (activePanel === 'orders') {
+        loadSuperShops();
+        loadSuperOrders();
+      }
+    }
+  }, [role, currentView, activePanel]);
+
+  const loadSuperShops = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/shops`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setSuperShops(data);
+    } catch (e) {}
+  };
+
+  const loadSuperAdmins = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/admins`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setSuperAdmins(data);
+    } catch (e) {}
+  };
+
+  const loadSuperLogs = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/logs`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setSuperLogs(data);
+    } catch (e) {}
+  };
+
+  const loadSuperOrders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/orders`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setSuperOrders(data);
+    } catch (e) {}
+  };
+
+  const handleCreateShop = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/shops`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(shopForm)
+      });
+      if (res.ok) {
+        addToast("Shop Activated", `Shop '${shopForm.name}' provisioned and set up successfully.`, "success");
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10 });
+        loadSuperShops();
+      }
+    } catch (e) {}
+  };
+
+  const handleUpdateShopConfig = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/shops/${shopForm.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(shopForm)
+      });
+      if (res.ok) {
+        addToast("Global Settings Overwritten", "Shop details updated.", "success");
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10 });
+        loadSuperShops();
+      }
+    } catch (e) {}
+  };
+
+  const handleDeleteShop = async (shopId) => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/shops/${shopId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Wiped Shop", "Shop completely removed from ecosystem.", "info");
+        loadSuperShops();
+      }
+    } catch (e) {}
+  };
+
+  const handleCreateAdmin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/admins`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(newAdminForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Admin Created", `Authorized login set up for '${newAdminForm.username}'.`, "success");
+        setNewAdminForm({ username: "", password: "", email: "", name: "", shop_id: "" });
+        loadSuperAdmins();
+      } else {
+        addToast("Creation Error", data.error, "danger");
+      }
+    } catch (e) {}
+  };
+
+  const currentShop = shops.find(s => Number(s.id) === Number(activeShopId));
+  const currentSareeModels = currentShop?.saree_models || [];
+
+  return (
+    <div className="app-container">
+      {/* Dynamic Toast Alerts Container */}
+      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '380px', width: '90%' }}>
+        {toasts.map(t => (
+          <div key={t.id} className="glass-panel animate-fade-in" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center', background: t.type === 'danger' ? 'rgba(239, 68, 68, 0.15)' : t.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(30, 41, 73, 0.95)', borderColor: t.type === 'danger' ? '#ef4444' : t.type === 'success' ? '#10b981' : '#6366f1' }}>
+            {t.type === 'danger' && <ShieldAlert style={{ color: '#ef4444', flexShrink: 0 }} />}
+            {t.type === 'success' && <Check style={{ color: '#10b981', flexShrink: 0 }} />}
+            {t.type === 'info' && <Bell style={{ color: '#6366f1', flexShrink: 0 }} />}
+            <div>
+              <h5 style={{ fontWeight: 800, fontSize: '0.9rem' }}>{t.title}</h5>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.message}</p>
+            </div>
+            <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} style={{ background: 'none', border: 'none', color: 'white', marginLeft: 'auto', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* RENDER ACTIVE POPUP AD IF GUEST OR USER OPENS SHOP */}
+      {popupAd && (
+        <div className="ad-modal-backdrop" onClick={() => setPopupAd(null)}>
+          <div className="ad-modal-body" onClick={e => e.stopPropagation()}>
+            <button className="ad-modal-close" onClick={() => setPopupAd(null)}>
+              <X size={18} />
+            </button>
+            <img className="ad-modal-img" src={popupAd.image_url} alt={popupAd.title} />
+            <div className="ad-modal-info">
+              <span className="badge badge-info" style={{ width: 'fit-content', margin: '0 auto' }}>Special Event Campaign</span>
+              <h3 style={{ fontWeight: 800, fontSize: '1.4rem' }}>{popupAd.title}</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Visit this shop page to redeem amazing discount and promo coupon codes right now.</p>
+              {popupAd.target_url && (
+                <button onClick={() => {
+                  setPopupAd(null);
+                  if (popupAd.target_url.includes('/shop/')) {
+                    const shopId = popupAd.target_url.split('/').pop();
+                    setActiveShopId(parseInt(shopId));
+                  }
+                }} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                  Explore Event Now <ChevronRight size={18} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AUTHENTICATION POPUP MODAL (LOGIN & REGISTRATION) */}
+      {showLoginModal && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 11000, backgroundColor: 'rgba(122, 78, 165, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setShowLoginModal(false)}>
+          <div className="login-modal-container" onClick={e => e.stopPropagation()} style={{ 
+            background: '#ffffff', 
+            borderRadius: '24px', 
+            width: '980px', 
+            maxWidth: '95%',
+            display: 'flex',
+            boxShadow: '0 30px 60px rgba(122, 78, 165, 0.15)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif",
+            overflow: 'hidden'
+          }}>
+            <button className="ad-modal-close" onClick={() => setShowLoginModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: 'rgba(255,255,255,0.8)', border: 'none', cursor: 'pointer', color: '#7a4ea5', zIndex: 100, borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+              <X size={20} />
+            </button>
+
+            {/* LEFT SIDE (LAVENDER BOUTIQUE PANEL WITH CONVEX ARCH) */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f5edff 0%, #ecdffa 100%)',
+              width: '44%',
+              padding: '30px',
+              color: '#2b0b57',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative',
+              overflow: 'hidden',
+              minHeight: '520px'
+            }}>
+              {/* Convex White Arch Overlay */}
+              <div style={{
+                position: 'absolute',
+                top: '-10%',
+                right: '-100px',
+                width: '200px',
+                height: '120%',
+                background: '#ffffff',
+                borderRadius: '50%',
+                zIndex: 1
+              }} />
+
+              {/* Brand Logo & Name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', zIndex: 2 }}>
+                <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.25rem', color: '#2b0b57', letterSpacing: '0.5px', lineHeight: 1.1 }}>Nobaraa Fashion</span>
+                  <span style={{ fontFamily: "'Great Vibes', cursive", fontSize: '0.8rem', color: '#7a4ea5', marginTop: '1px' }}>Style That Defines You</span>
+                </div>
+              </div>
+
+              {/* Welcome Greetings */}
+              <div style={{ zIndex: 2, marginTop: '20px', paddingRight: '20px' }}>
+                <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.9rem', fontWeight: 700, color: '#2b0b57', display: 'block', lineHeight: 1.2 }}>Welcome Back</span>
+                <span style={{ fontFamily: "'Great Vibes', cursive", fontSize: '3.2rem', color: '#7a4ea5', marginTop: '-10px', display: 'block' }}>Beautiful! ♡</span>
+                <p style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.85rem', color: '#555555', lineHeight: '1.4', marginTop: '10px', maxWidth: '280px' }}>
+                  Sign in to continue shopping the latest styles and exclusive collections.
+                </p>
+              </div>
+
+              {/* Saree Model Poses Mockup */}
+              <div style={{ zIndex: 2, width: '100%', height: '300px', marginTop: 'auto', display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-end', transform: 'translateX(-25px)' }}>
+                <img src="/nobaraa_login_mockup.png?v=5" alt="Saree Model Poses" style={{ width: '115%', maxHeight: '100%', objectFit: 'contain' }} />
+              </div>
+            </div>
+
+            {/* RIGHT SIDE (SLEEK FORM PANEL) */}
+            <div style={{
+              width: '56%',
+              padding: '35px 50px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              color: '#111',
+              zIndex: 5
+            }}>
+              {!showRegister ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Hello Again!</h3>
+                    <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '6px auto 0', borderRadius: '2px' }} />
+                    <p style={{ color: '#666666', fontSize: '0.85rem', marginTop: '6px', marginBottom: 0 }}>Login to your account</p>
+                  </div>
+
+                  <form onSubmit={handleUserLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input 
+                        type="text" 
+                        placeholder="Email or Phone Number"
+                        value={loginForm.username}
+                        onChange={e => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                        className="nobaraa-login-input"
+                        required
+                      />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Password"
+                        value={loginForm.password}
+                        onChange={e => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="nobaraa-login-input"
+                        style={{ paddingRight: '44px' }}
+                        required
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0 }}
+                      >
+                        <Eye size={18} style={{ color: showPassword ? '#7a4ea5' : '#888' }} />
+                      </button>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#555555', cursor: 'pointer' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={rememberMe} 
+                          onChange={e => setRememberMe(e.target.checked)} 
+                          style={{ accentColor: '#7a4ea5' }}
+                        />
+                        Remember Me
+                      </label>
+                      <span style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer' }}>Forgot Password?</span>
+                    </div>
+
+                    <button type="submit" style={{ 
+                      background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                      color: 'white', 
+                      border: 'none', 
+                      padding: '12px', 
+                      borderRadius: '10px', 
+                      fontSize: '0.95rem', 
+                      fontWeight: 600, 
+                      cursor: 'pointer', 
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                    }}>
+                      Login <ChevronRight size={18} />
+                    </button>
+                  </form>
+
+                  <div style={{ display: 'flex', alignItems: 'center', margin: '14px 0' }}>
+                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                    <span style={{ padding: '0 12px', color: '#888888', fontSize: '0.75rem' }}>or continue with</span>
+                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button className="nobaraa-login-social-btn">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                      </svg>
+                      Continue with Google
+                    </button>
+                    <button className="nobaraa-login-social-btn">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                      Continue with Facebook
+                    </button>
+                    <button className="nobaraa-login-social-btn">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.52-.63.73-1.18 1.87-1.03 2.98.1.1 2.32-.63 2.98-1.44z"/>
+                      </svg>
+                      Continue with Apple
+                    </button>
+                  </div>
+
+                  <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.88rem', color: '#666666', margin: '16px 0 0' }}>
+                    Don't have an account? <span onClick={() => setShowRegister(true)} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Sign Up</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Create Account</h3>
+                    <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '6px auto 0', borderRadius: '2px' }} />
+                    <p style={{ color: '#666666', fontSize: '0.85rem', marginTop: '6px', marginBottom: 0 }}>Join our platform today</p>
+                  </div>
+
+                  <form onSubmit={handleUserRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <User size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input type="text" placeholder="Username" value={registerForm.username} onChange={e => setRegisterForm(prev => ({ ...prev, username: e.target.value }))} className="nobaraa-login-input" required />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <User size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input type="text" placeholder="Full Name" value={registerForm.name} onChange={e => setRegisterForm(prev => ({ ...prev, name: e.target.value }))} className="nobaraa-login-input" required />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <User size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input type="email" placeholder="Email Address" value={registerForm.email} onChange={e => setRegisterForm(prev => ({ ...prev, email: e.target.value }))} className="nobaraa-login-input" required />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <Lock size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input type="password" placeholder="Password" value={registerForm.password} onChange={e => setRegisterForm(prev => ({ ...prev, password: e.target.value }))} className="nobaraa-login-input" required />
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <User size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                      <input type="text" placeholder="Phone Number (Optional)" value={registerForm.contact_phone} onChange={e => setRegisterForm(prev => ({ ...prev, contact_phone: e.target.value }))} className="nobaraa-login-input" />
+                    </div>
+                    
+                    <button type="submit" style={{ 
+                       background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                       color: 'white', 
+                       border: 'none', 
+                       padding: '12px', 
+                       borderRadius: '10px', 
+                       fontSize: '0.95rem', 
+                       fontWeight: 600, 
+                       cursor: 'pointer', 
+                       transition: 'all 0.2s',
+                       marginTop: '6px',
+                       boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                    }}>
+                      Sign Up
+                    </button>
+                  </form>
+
+                  <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.88rem', color: '#666666', margin: '16px 0 0' }}>
+                    Already have an account? <span onClick={() => setShowRegister(false)} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Login</span>
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRINTABLE INVOICE MODAL POPUP */}
+      {invoiceOrder && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 11000 }} onClick={() => setInvoiceOrder(null)}>
+          <div className="ad-modal-body glass-panel" onClick={e => e.stopPropagation()} style={{ background: 'white', color: '#1e293b', width: '90%', maxWidth: '650px', padding: '36px', overflowY: 'auto', maxHeight: '90vh', border: 'none' }}>
+            <button className="ad-modal-close" onClick={() => setInvoiceOrder(null)} style={{ background: '#475569' }}>
+              <X size={18} />
+            </button>
+            
+            {/* Printable Frame starts */}
+            <div id="print-invoice-area" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px' }}>
+                <div>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.6rem', color: '#0f172a' }}>TAX INVOICE</h2>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Order reference ID: #{invoiceOrder.id}</p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Date: {new Date(invoiceOrder.created_at).toLocaleDateString()}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#4f46e5' }}>{invoiceOrder.shop_name}</h3>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Multi-Tenant Shop Fulfillment</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', fontSize: '0.9rem' }}>
+                <div>
+                  <h4 style={{ fontWeight: 700, color: '#475569', marginBottom: '6px' }}>BILL TO:</h4>
+                  <p style={{ fontWeight: 'bold', color: '#0f172a' }}>{invoiceOrder.user_name}</p>
+                  <p style={{ color: '#64748b' }}>Phone: {invoiceOrder.billing_phone}</p>
+                  <p style={{ color: '#64748b' }}>Shipping: {invoiceOrder.shipping_address}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h4 style={{ fontWeight: 700, color: '#475569', marginBottom: '6px' }}>PAYMENT METHOD:</h4>
+                  <p style={{ fontWeight: 'bold', color: '#0f172a' }}>{invoiceOrder.payment_method}</p>
+                  <p style={{ color: '#64748b' }}>Payment Status: <span style={{ fontWeight: 'bold', color: invoiceOrder.payment_status === 'Paid' ? '#10b981' : '#f59e0b' }}>{invoiceOrder.payment_status}</span></p>
+                </div>
+              </div>
+
+              {/* Items listing table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    <th style={{ color: '#475569', padding: '10px', fontSize: '0.8rem', borderBottom: '1px solid #cbd5e1' }}>Product Details</th>
+                    <th style={{ color: '#475569', padding: '10px', fontSize: '0.8rem', textAlign: 'center', borderBottom: '1px solid #cbd5e1' }}>Qty</th>
+                    <th style={{ color: '#475569', padding: '10px', fontSize: '0.8rem', textAlign: 'right', borderBottom: '1px solid #cbd5e1' }}>Price</th>
+                    <th style={{ color: '#475569', padding: '10px', fontSize: '0.8rem', textAlign: 'right', borderBottom: '1px solid #cbd5e1' }}>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceOrder.items && invoiceOrder.items.map(item => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ color: '#0f172a', padding: '10px', fontSize: '0.85rem' }}>{item.product_name}</td>
+                      <td style={{ color: '#475569', padding: '10px', fontSize: '0.85rem', textAlign: 'center' }}>{item.quantity}</td>
+                      <td style={{ color: '#475569', padding: '10px', fontSize: '0.85rem', textAlign: 'right' }}>₹{item.price.toFixed(2)}</td>
+                      <td style={{ color: '#0f172a', padding: '10px', fontSize: '0.85rem', textAlign: 'right', fontWeight: 'bold' }}>₹{(item.price * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals Summary */}
+              <div style={{ marginLeft: 'auto', width: '280px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem', borderTop: '2px solid #e2e8f0', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Gross Total Value:</span>
+                  <span>₹{invoiceOrder.total_amount.toFixed(2)}</span>
+                </div>
+                {invoiceOrder.discount_amount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                    <span>Promo Coupon / Coins Discount:</span>
+                    <span>-₹{invoiceOrder.discount_amount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>GST (18% inclusive):</span>
+                  <span>₹{invoiceOrder.gst_amount.toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
+                  <span>NET AMOUNT DUE:</span>
+                  <span>₹{invoiceOrder.final_amount.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
+                <p>Thank you for shopping with {invoiceOrder.shop_name}! This is a computer generated invoice and requires no physical signature.</p>
+              </div>
+            </div>
+            
+            <button onClick={() => window.print()} className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '24px' }}>
+              Print Tax Document <FileText size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL PRODUCT OVERLAY POPUP */}
+      {detailProduct && (
+        <div className="ad-modal-backdrop" onClick={() => setDetailProduct(null)}>
+          <div className="ad-modal-body glass-panel" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', width: '90%', maxWidth: '800px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', overflow: 'hidden', border: '1px solid #eeeeee' }}>
+            <button className="ad-modal-close" onClick={() => setDetailProduct(null)}>
+              <X size={18} />
+            </button>
+            
+            {/* Left side: Images */}
+            <div style={{ background: '#fafafa', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', borderRight: '1px solid #eeeeee' }}>
+              <img 
+                src={detailProduct.images[activeDetailImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
+                alt={detailProduct.name}
+                style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px', transition: 'all 0.3s ease' }}
+              />
+              
+              {/* Image gallery previews */}
+              {detailProduct.images.length > 1 && (
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  {detailProduct.images.map((img, i) => (
+                    <img 
+                      key={i} 
+                      src={img} 
+                      alt="" 
+                      onClick={() => setActiveDetailImageIndex(i)}
+                      style={{ 
+                        width: '60px', 
+                        height: '60px', 
+                        objectFit: 'cover', 
+                        borderRadius: '4px', 
+                        cursor: 'pointer', 
+                        border: activeDetailImageIndex === i ? '2px solid #7a4ea5' : '1px solid #eeeeee',
+                        transition: 'all 0.2s ease',
+                        opacity: activeDetailImageIndex === i ? 1 : 0.7
+                      }}
+                      onMouseEnter={(e) => { if(activeDetailImageIndex !== i) e.currentTarget.style.opacity = 1; }}
+                      onMouseLeave={(e) => { if(activeDetailImageIndex !== i) e.currentTarget.style.opacity = 0.7; }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            {/* Right side: Information */}
+            <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '600px' }}>
+              <span className="badge badge-info" style={{ width: 'fit-content' }}>{detailProduct.category_name}</span>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222' }}>{detailProduct.name}</h3>
+              
+              <div className="price-row">
+                <span className="current-price" style={{ fontSize: '1.6rem' }}>₹{detailProduct.price.toFixed(2)}</span>
+                {detailProduct.original_price > detailProduct.price && (
+                  <span className="original-price" style={{ fontSize: '1.1rem' }}>₹{detailProduct.original_price.toFixed(2)}</span>
+                )}
+              </div>
+              
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{detailProduct.description}</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.8rem', background: '#fafafa', padding: '12px', borderRadius: '4px', border: '1px solid #eeeeee' }}>
+                <div>Stock Status: <span style={{ color: detailProduct.stock > 0 ? 'var(--accent-primary)' : 'var(--accent-secondary)', fontWeight: 'bold' }}>{detailProduct.stock > 0 ? `${detailProduct.stock} Available` : "Out of Stock"}</span></div>
+                {detailProduct.promo_code && <div style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>Coupon Active: {detailProduct.promo_code}</div>}
+              </div>
+              
+              {/* Order checkout buttons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button 
+                  onClick={() => {
+                    handleAddToCart(detailProduct.id);
+                  }}
+                  className="btn-primary" 
+                  style={{ flexGrow: 1, justifyContent: 'center' }}
+                  disabled={detailProduct.stock <= 0}
+                >
+                  <ShoppingCart size={18} /> Buy / Place Order
+                </button>
+                <button 
+                  onClick={() => handleAddToWishlist(detailProduct.id)}
+                  className="btn-secondary"
+                  style={{ padding: '12px' }}
+                >
+                  <Heart size={18} />
+                </button>
+              </div>
+
+              {/* Reviews listing section */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+                <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Customer Reviews</h4>
+                
+                {role === 'user' && (
+                  <form onSubmit={(e) => handleCreateReview(e, detailProduct.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
+                    <h5 style={{ fontWeight: 700, fontSize: '0.85rem' }}>Write a verified review</h5>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rating:</span>
+                      <select 
+                        value={newReview.rating} 
+                        onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
+                        style={{ width: '80px', padding: '4px' }}
+                      >
+                        {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
+                      </select>
+                    </div>
+                    <textarea 
+                      placeholder="Comment text feedback..." 
+                      rows={2} 
+                      value={newReview.comment}
+                      onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                      required
+                    />
+                    <button type="submit" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content' }}>Post Review</button>
+                  </form>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {detailProduct.reviews && detailProduct.reviews.length > 0 ? (
+                    detailProduct.reviews.map(r => (
+                      <div key={r.id} style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '0.75rem' }}>
+                          <span style={{ fontWeight: 'bold' }}>{r.user_name}</span>
+                          <span style={{ color: 'var(--coin-gold)' }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
+                        </div>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.comment}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No reviews yet. Be the first to leave one!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CORE WEB NAVIGATION HEADER */}
+      <header className="navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 60px', background: '#ffffff', borderBottom: '1px solid #eeeeee', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        {/* Left Side: Logo & Brand Name */}
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} 
+          onClick={() => { setCurrentView("opac"); setActiveCategoryPage(null); setSelectedCategory(""); }}
+        >
+          <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+          <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem', color: '#222222', letterSpacing: '0.5px' }}>
+            Nobaraa Fashion
+          </span>
+        </div>
+
+        {/* Center: Navigation Links */}
+        <div className="desktop-nav-links" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
+          {['Home', 'Shop', 'New Arrivals', 'Categories', 'About Us', 'Contact'].map((item) => (
+            <span 
+              key={item} 
+              onClick={() => {
+                setCurrentView("opac");
+                setActiveCategoryPage(null);
+                setSelectedCategory("");
+                if (item === 'Shop' || item === 'Categories' || item === 'New Arrivals') {
+                  const section = document.getElementById("catalog-section");
+                  if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                    if (item === 'Categories') {
+                      document.getElementById("category-grid-title")?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }
+                } else if (item === 'Contact' || item === 'About Us') {
+                  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+              }}
+              style={{
+                fontFamily: "'Jost', sans-serif",
+                fontWeight: 500,
+                fontSize: '0.95rem',
+                color: item === 'Home' && !activeCategoryPage ? '#7a4ea5' : '#222222',
+                cursor: 'pointer',
+                position: 'relative',
+                paddingBottom: '4px',
+                transition: 'color 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#7a4ea5'}
+              onMouseLeave={(e) => {
+                if (item !== 'Home' || activeCategoryPage) {
+                  e.currentTarget.style.color = '#222222';
+                }
+              }}
+            >
+              {item}
+              {item === 'Home' && !activeCategoryPage && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '2px',
+                  background: '#7a4ea5'
+                }} />
+              )}
+            </span>
+          ))}
+        </div>
+
+        {/* Right Side: Interactive Icons Row */}
+        <div className="desktop-nav-icons" style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#222222' }}>
+          {/* Search Icon */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }} title="Search Catalog">
+            <Search 
+              size={22} 
+              onClick={() => {
+                const catalog = document.getElementById("catalog-section");
+                if (catalog) {
+                  catalog.scrollIntoView({ behavior: 'smooth' });
+                  setTimeout(() => {
+                    document.getElementById("search-input")?.focus();
+                  }, 500);
+                }
+              }}
+              style={{ transition: 'color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#7a4ea5'}
+              onMouseLeave={e => e.currentTarget.style.color = '#222222'}
+            />
+          </div>
+
+          {/* Account Icon */}
+          <div style={{ position: 'relative' }}>
+            <div 
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              onClick={() => {
+                if (role === 'guest') {
+                  setLoginRoleTab("user");
+                  setShowLoginModal(true);
+                } else if (role === 'user') {
+                  setShowProfileDropdown(!showProfileDropdown);
+                } else {
+                  setCurrentView(role === 'admin' ? "admin_dashboard" : "super_admin_dashboard");
+                }
+              }}
+              title={role === 'guest' ? "Account Sign In" : "Account Menu"}
+            >
+              <User 
+                size={22} 
+                style={{ transition: 'color 0.2s', color: role !== 'guest' ? '#7a4ea5' : '#222222' }}
+                onMouseEnter={e => { if (role === 'guest') e.currentTarget.style.color = '#7a4ea5'; }}
+                onMouseLeave={e => { if (role === 'guest') e.currentTarget.style.color = '#222222'; }}
+              />
+            </div>
+
+            {role === 'user' && showProfileDropdown && (
+              <div className="glass-panel animate-fade-in" style={{
+                position: 'absolute',
+                top: '32px',
+                right: '0',
+                width: '260px',
+                zIndex: 1000,
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                border: '1px solid rgba(122, 78, 165, 0.2)',
+                borderRadius: '12px',
+                background: '#ffffff',
+                color: '#222222',
+                textAlign: 'left'
+              }}>
+                {/* Header profile info */}
+                <div style={{ borderBottom: '1px solid #eeeeee', paddingBottom: '10px' }}>
+                  <h5 style={{ fontWeight: 800, margin: 0, fontSize: '0.95rem', color: '#222222', fontFamily: "'Playfair Display', serif" }}>{user?.name || 'Kirubanithi Customer'}</h5>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#666666', fontWeight: 500 }}>Customer Wallet</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                    <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)' }}>
+                      ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                    </div>
+                  </div>
+                </div>
+
+                {/* Menu Options */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("dashboard");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <LayoutDashboard size={14} />
+                    <span>Personalized Home</span>
+                  </div>
+
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("cart");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <ShoppingCart size={14} />
+                    <span>My Active Cart ({cart.length})</span>
+                  </div>
+
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("wishlist");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <Heart size={14} />
+                    <span>Wishlist ({wishlist.length})</span>
+                  </div>
+
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("orders");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <ShoppingBag size={14} />
+                    <span>Order History</span>
+                  </div>
+
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("notifications");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <Bell size={14} />
+                    <span>Notifications</span>
+                  </div>
+
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("help_center");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <HelpCircle size={14} />
+                    <span>Support Ticket Center</span>
+                  </div>
+
+                  {/* Settings Link */}
+                  <div 
+                    className="dropdown-item" 
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("settings");
+                      setShowProfileDropdown(false);
+                    }}
+                    style={{ borderTop: '1px solid #f0f0f0', marginTop: '4px', paddingTop: '6px' }}
+                  >
+                    <Settings size={14} />
+                    <span style={{ fontWeight: 600 }}>Account Settings</span>
+                  </div>
+                </div>
+
+                {/* Logout Button */}
+                <button 
+                  onClick={() => {
+                    handleLogout();
+                    setShowProfileDropdown(false);
+                  }}
+                  className="btn-secondary" 
+                  style={{ 
+                    width: '100%', 
+                    padding: '6px 12px', 
+                    fontSize: '0.75rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '6px',
+                    borderColor: '#ff4d4f',
+                    color: '#ff4d4f'
+                  }}
+                >
+                  <LogOut size={12} /> Sign Out
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Wishlist Icon */}
+          <div 
+            style={{ position: 'relative', cursor: 'pointer' }} 
+            onClick={() => setShowWishlistDrawer(true)}
+            title="My Wishlist"
+          >
+            <Heart 
+              size={22} 
+              style={{ 
+                fill: wishlist.length > 0 ? '#ff4d4f' : 'none', 
+                color: wishlist.length > 0 ? '#ff4d4f' : '#222222',
+                transition: 'transform 0.2s' 
+              }} 
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            />
+            {wishlist.length > 0 && (
+              <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ff4d4f', color: '#ffffff', borderRadius: '50%', width: '15px', height: '15px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                {wishlist.length}
+              </span>
+            )}
+          </div>
+
+          {/* Cart Icon */}
+          <div 
+            style={{ position: 'relative', cursor: 'pointer' }} 
+            onClick={() => setShowCartDrawer(true)}
+            title="Shopping Cart"
+          >
+            <ShoppingBag 
+              size={22} 
+              style={{ transition: 'transform 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            />
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              background: '#7a4ea5',
+              color: '#ffffff',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              borderRadius: '50%',
+              width: '16px',
+              height: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
+            </span>
+          </div>
+
+          {/* Logout Button (if logged in) */}
+          {role !== 'guest' && (
+            <button 
+              className="btn-secondary" 
+              onClick={handleLogout} 
+              style={{ padding: '6px 12px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginLeft: '8px' }}
+            >
+              <LogOut size={12} /> Log Out
+            </button>
+          )}
+        </div>
+
+        {/* MOBILE HAMBURGER MENU BUTTON */}
+        <div 
+          className="mobile-menu-btn" 
+          style={{ display: 'none', alignItems: 'center', cursor: 'pointer', color: '#222222' }}
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <Menu size={28} />
+        </div>
+      </header>
+
+      {/* MOBILE SLIDING MENU OVERLAY (MOCKUP ACCURATE) */}
+      {mobileMenuOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 10000,
+          display: 'flex',
+          justifyContent: 'flex-start'
+        }} onClick={() => setMobileMenuOpen(false)}>
+          <div style={{
+            width: '320px',
+            maxWidth: '85%',
+            height: '100%',
+            backgroundColor: '#ffffff',
+            boxShadow: '4px 0 32px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideRight 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            padding: '50px 0 30px'
+          }} onClick={e => e.stopPropagation()}>
+            
+            {/* Drawer Close Button */}
+            <button onClick={() => setMobileMenuOpen(false)} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', cursor: 'pointer', color: '#888888' }}>
+              <X size={24} />
+            </button>
+
+            {/* Logo Area */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '50px' }}>
+              <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '54px', height: '54px', objectFit: 'contain' }} />
+              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.5rem', color: '#222222', letterSpacing: '0.5px', marginTop: '10px' }}>
+                Nobaraa Fashion
+              </span>
+            </div>
+
+            {/* Links Stack */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', flexGrow: 1 }}>
+              {['Home', 'Shop', 'New Arrivals', 'Categories', 'About Us', 'Contact'].map((item) => (
+                <span 
+                  key={item} 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setCurrentView("opac");
+                    setActiveCategoryPage(null);
+                    setSelectedCategory("");
+                    if (item === 'Shop' || item === 'Categories' || item === 'New Arrivals') {
+                      setTimeout(() => {
+                        const section = document.getElementById("catalog-section");
+                        if (section) section.scrollIntoView({ behavior: 'smooth' });
+                      }, 200);
+                    } else if (item === 'Contact' || item === 'About Us') {
+                      setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 200);
+                    }
+                  }}
+                  style={{
+                    fontFamily: "'Jost', sans-serif",
+                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    color: item === 'Home' && !activeCategoryPage ? '#7a4ea5' : '#222222',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    paddingBottom: '4px',
+                    letterSpacing: '0.5px'
+                  }}
+                >
+                  {item}
+                  {item === 'Home' && !activeCategoryPage && (
+                    <div style={{ position: 'absolute', bottom: -2, left: 0, width: '100%', height: '2px', background: '#7a4ea5' }} />
+                  )}
+                </span>
+              ))}
+            </div>
+
+            {/* Bottom Icons Stack */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', paddingBottom: '20px' }}>
+              <Search size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' }); }} />
+              <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if(role==='guest'){setLoginRoleTab("user");setShowLoginModal(true);}else{setCurrentView("user_dashboard");} }} />
+              
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowWishlistDrawer(true); }}>
+                <Heart size={26} color="#222222" />
+                {wishlist.length > 0 && <span style={{ position: 'absolute', top: -4, right: -6, background: '#7a4ea5', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{wishlist.length}</span>}
+              </div>
+              
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowCartDrawer(true); }}>
+                <ShoppingBag size={26} color="#222222" />
+                <span style={{ position: 'absolute', top: -6, right: -8, background: '#7a4ea5', color: 'white', borderRadius: '50%', width: 18, height: 18, fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                  {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* RENDER VIEW: SECURE CHECKOUT (AMAZON STYLE) */}
+      {currentView === 'checkout' && (
+        <div style={{ minHeight: '100vh', background: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
+          {/* Minimalist Header for Focus */}
+          <header style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('opac')}>
+              <NobaraaLogo size={40} color="#2b0b57" />
+              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.4rem', color: '#2b0b57' }}>Nobaraa Checkout</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666' }}>
+              <Lock size={18} />
+              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Secure Checkout</span>
+            </div>
+          </header>
+
+          <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '40px 20px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px', alignItems: 'start', flex: 1 }}>
+            
+            {/* Left Column: Checkout Steps */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Step 1: Delivery Address */}
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>1</div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Delivery Address</h2>
+                </div>
+                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Full Street Address</label>
+                    <textarea 
+                      placeholder="Enter your complete delivery address (Street, Apartment, City, State, ZIP)..." 
+                      rows={3} 
+                      value={checkoutData.shipping_address}
+                      onChange={e => setCheckoutData(prev => ({ ...prev, shipping_address: e.target.value }))}
+                      style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', resize: 'vertical', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Billing Phone Number</label>
+                    <input 
+                      type="text" 
+                      placeholder="+91..."
+                      value={checkoutData.billing_phone}
+                      onChange={e => setCheckoutData(prev => ({ ...prev, billing_phone: e.target.value }))}
+                      style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Payment Method */}
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>2</div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Payment Method</h2>
+                </div>
+                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* Payment Options */}
+                  <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderBottom: '1px solid #e0e0e0', cursor: 'pointer', background: checkoutData.payment_method === 'COD' ? '#fcf9ff' : '#fff' }}>
+                      <input 
+                        type="radio" 
+                        name="payment_method" 
+                        value="COD" 
+                        checked={checkoutData.payment_method === 'COD'}
+                        onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
+                      />
+                      <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>Cash on Delivery (COD)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', cursor: 'pointer', background: checkoutData.payment_method === 'UPI' ? '#fcf9ff' : '#fff' }}>
+                      <input 
+                        type="radio" 
+                        name="payment_method" 
+                        value="UPI" 
+                        checked={checkoutData.payment_method === 'UPI'}
+                        onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
+                      />
+                      <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>UPI / Netbanking (Mock Gateway)</span>
+                    </label>
+                  </div>
+
+                  {checkoutData.payment_method === 'UPI' && (
+                    <div style={{ background: '#f0fbff', border: '1px solid #b3e5fc', padding: '12px', borderRadius: '4px', fontSize: '0.85rem', color: '#0277bd', display: 'flex', gap: '8px' }}>
+                      <ShieldCheck size={18} style={{ flexShrink: 0 }} />
+                      Mock Razorpay UPI active. Credentials will be securely authorized by gateway settings.
+                    </div>
+                  )}
+
+                  <div style={{ padding: '16px', border: '1px dashed var(--coin-gold)', background: '#fffdf5', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <Award style={{ color: 'var(--coin-gold)' }} size={24} />
+                      <div>
+                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#222', display: 'block' }}>Redeem SuperCoins</span>
+                        <span style={{ fontSize: '0.85rem', color: '#666' }}>Deduct up to 30% of your cart value immediately.</span>
+                      </div>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      style={{ width: '22px', height: '22px', accentColor: 'var(--coin-gold)' }}
+                      checked={checkoutData.use_super_coins}
+                      onChange={e => setCheckoutData(prev => ({ ...prev, use_super_coins: e.target.checked }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Promo Coupon Code (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Enter code..."
+                      value={checkoutData.coupon_code}
+                      onChange={e => setCheckoutData(prev => ({ ...prev, coupon_code: e.target.value.toUpperCase() }))}
+                      style={{ width: '50%', minWidth: '200px', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', fontSize: '0.95rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Review Items */}
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Review Items and Delivery</h2>
+                </div>
+                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '16px' }}>
+                    <h3 style={{ fontSize: '1.1rem', color: '#388e3c', margin: '0 0 16px 0', fontWeight: 600 }}>Guaranteed Free Delivery</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {cart.map(ci => (
+                        <div key={ci.id} style={{ display: 'flex', gap: '16px' }}>
+                          <img src={ci.product.images[0]} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>{ci.product.name}</div>
+                            <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>₹{ci.product.price.toFixed(2)}</div>
+                            <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px' }}>Quantity: {ci.quantity}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Right Column: Order Summary (Amazon style sticky box) */}
+            <div style={{ position: 'sticky', top: '24px' }}>
+              <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <button 
+                  className="btn-primary" 
+                  onClick={handlePlaceOrder}
+                  disabled={!checkoutData.shipping_address || !checkoutData.billing_phone}
+                  style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: 600, justifyContent: 'center', background: '#f0c14b', color: '#111', border: '1px solid #a88734', textShadow: 'none', boxShadow: '0 1px 0 rgba(255,255,255,.4) inset' }}
+                >
+                  Place your order
+                </button>
+                <div style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', lineHeight: '1.4' }}>
+                  By placing your order, you agree to Nobaraa's privacy notice and conditions of use.
+                </div>
+
+                <div style={{ borderTop: '1px solid #e0e0e0', margin: '0' }}></div>
+                
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#222', margin: 0, fontFamily: 'var(--font-serif)' }}>Order Summary</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Items ({cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
+                    <span>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Delivery:</span>
+                    <span>₹0.00</span>
+                  </div>
+                  {checkoutData.use_super_coins && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
+                      <span>SuperCoin Discount:</span>
+                      <span>-₹{(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.15).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {checkoutData.coupon_code && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
+                      <span>Coupon Discount:</span>
+                      <span>-₹{(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.05).toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ borderTop: '1px solid #e0e0e0', margin: '0' }}></div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b12704' }}>
+                  <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>Order Total:</span>
+                  <span style={{ fontWeight: 700, fontSize: '1.4rem' }}>
+                    ₹{(
+                      cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) 
+                      - (checkoutData.use_super_coins ? cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.15 : 0)
+                      - (checkoutData.coupon_code ? cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.05 : 0)
+                    ).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </main>
+        </div>
+      )}
+
+      {/* RENDER VIEW: PRODUCT DETAIL (FLIPKART STYLE) */}
+      {currentView === 'product_detail' && activeProduct && (
+        <main className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '20px 40px', background: '#ffffff' }}>
+          {/* Breadcrumb */}
+          <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '24px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
+            <span>/</span>
+            <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>{activeProduct.category_name}</span>
+            <span>/</span>
+            <span style={{ color: '#222' }}>{activeProduct.name}</span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(400px, 450px) 1fr', gap: '40px', alignItems: 'start' }}>
+            {/* Left Column: Images & Actions */}
+            <div style={{ position: 'sticky', top: '100px' }}>
+              <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: '450px', overflow: 'hidden' }}>
+                <img 
+                  src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
+                  alt={activeProduct.name}
+                  style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', cursor: 'crosshair', transition: 'transform 0.3s' }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                />
+              </div>
+
+              {activeProduct.images.length > 1 && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+                  {activeProduct.images.map((img, i) => (
+                    <div 
+                      key={i}
+                      onClick={() => setActiveProductImageIndex(i)}
+                      style={{ 
+                        width: '64px', height: '64px', border: activeProductImageIndex === i ? '2px solid #7a4ea5' : '1px solid #e0e0e0',
+                        padding: '4px', cursor: 'pointer', borderRadius: '4px'
+                      }}
+                    >
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Single / Bulk Purchase Mode Toggle */}
+              {activeProduct.bulk_sale_price && activeProduct.min_quantity && (
+                <div style={{ marginTop: '20px', display: 'flex', gap: '0', border: '2px solid rgba(122,78,165,0.25)', borderRadius: '12px', overflow: 'hidden', background: '#f9f5ff' }}>
+                  <button
+                    onClick={() => setPurchaseMode('single')}
+                    style={{
+                      flex: 1, padding: '12px 16px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.5px', transition: 'all 0.2s ease',
+                      background: purchaseMode === 'single' ? 'linear-gradient(135deg, #7a4ea5, #56337a)' : 'transparent',
+                      color: purchaseMode === 'single' ? '#fff' : '#7a4ea5',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    <ShoppingBag size={16} /> Single Unit
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, opacity: 0.85 }}>₹{activeProduct.price?.toFixed(2)}</span>
+                  </button>
+                  <div style={{ width: '1px', background: 'rgba(122,78,165,0.2)' }} />
+                  <button
+                    onClick={() => setPurchaseMode('bulk')}
+                    style={{
+                      flex: 1, padding: '12px 16px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.5px', transition: 'all 0.2s ease',
+                      background: purchaseMode === 'bulk' ? 'linear-gradient(135deg, #7a4ea5, #56337a)' : 'transparent',
+                      color: purchaseMode === 'bulk' ? '#fff' : '#7a4ea5',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    }}
+                  >
+                    <Tag size={16} /> Bulk Order
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, opacity: 0.85 }}>₹{activeProduct.bulk_sale_price?.toFixed(2)}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Bulk mode info banner */}
+              {activeProduct.bulk_sale_price && activeProduct.min_quantity && purchaseMode === 'bulk' && (
+                <div style={{ marginTop: '12px', padding: '12px 16px', background: 'linear-gradient(135deg, rgba(122,78,165,0.08), rgba(86,51,122,0.05))', border: '1px solid rgba(122,78,165,0.2)', borderRadius: '10px', fontSize: '0.85rem', color: '#56337a', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '1.1rem' }}>📦</span>
+                  <span>Bulk price of <strong>₹{activeProduct.bulk_sale_price?.toFixed(2)}</strong> applies when you order <strong>{activeProduct.min_quantity}+</strong> units. You save <strong>₹{(activeProduct.price - activeProduct.bulk_sale_price)?.toFixed(2)}</strong> per unit!</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+                <button 
+                  className="btn-secondary" 
+                  onClick={() => {
+                    const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
+                    handleAddToCart(activeProduct.id, qty);
+                  }}
+                  disabled={activeProduct.stock <= 0}
+                  style={{ flex: 1, padding: '16px', fontSize: '1.1rem', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '8px' }}
+                >
+                  <ShoppingCart size={20} /> {purchaseMode === 'bulk' ? `ADD ${activeProduct.min_quantity || 1} TO CART` : 'ADD TO CART'}
+                </button>
+                <button 
+                  className="btn-primary" 
+                  onClick={() => {
+                    const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
+                    handleAddToCart(activeProduct.id, qty);
+                    setCurrentView('user_dashboard');
+                    setActivePanel('cart');
+                  }}
+                  disabled={activeProduct.stock <= 0}
+                  style={{ flex: 1, padding: '16px', fontSize: '1.1rem', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '8px' }}
+                >
+                  <ShoppingBag size={20} /> BUY NOW
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column: Details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h1 style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    4.5 <Star size={14} fill="white" />
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>{(activeProduct.reviews || []).length} Ratings & Reviews</span>
+                  <span className="badge badge-info">{activeProduct.category_name}</span>
+                </div>
+              </div>
+
+              {/* Price Block */}
+              <div>
+                <div style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }}>
+                  {purchaseMode === 'bulk' ? 'Bulk / Wholesale Price' : 'Special price'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
+                  <span style={{ fontSize: '2.4rem', fontWeight: 700, color: '#222222', lineHeight: 1 }}>
+                    ₹{purchaseMode === 'bulk' && activeProduct.bulk_sale_price
+                      ? activeProduct.bulk_sale_price.toFixed(2)
+                      : activeProduct.price.toFixed(2)}
+                  </span>
+                  {purchaseMode === 'single' && activeProduct.original_price > activeProduct.price && (
+                    <>
+                      <span style={{ fontSize: '1.2rem', color: '#878787', textDecoration: 'line-through', marginBottom: '4px' }}>₹{activeProduct.original_price.toFixed(2)}</span>
+                      <span style={{ fontSize: '1.2rem', color: 'var(--coin-gold)', fontWeight: 700, marginBottom: '4px' }}>
+                        {Math.round(((activeProduct.original_price - activeProduct.price) / activeProduct.original_price) * 100)}% off
+                      </span>
+                    </>
+                  )}
+                  {purchaseMode === 'bulk' && activeProduct.bulk_sale_price && (
+                    <>
+                      <span style={{ fontSize: '1.2rem', color: '#878787', textDecoration: 'line-through', marginBottom: '4px' }}>₹{activeProduct.price.toFixed(2)}</span>
+                      <span style={{ fontSize: '1.2rem', color: 'var(--coin-gold)', fontWeight: 700, marginBottom: '4px' }}>
+                        {Math.round(((activeProduct.price - activeProduct.bulk_sale_price) / activeProduct.price) * 100)}% bulk off
+                      </span>
+                    </>
+                  )}
+                </div>
+                {purchaseMode === 'bulk' && activeProduct.min_quantity && (
+                  <div style={{ fontSize: '0.82rem', color: '#7a4ea5', marginTop: '6px', fontWeight: 600 }}>
+                    Min. order: {activeProduct.min_quantity} units · Save ₹{((activeProduct.price - activeProduct.bulk_sale_price) * activeProduct.min_quantity).toFixed(2)} on minimum order
+                  </div>
+                )}
+              </div>
+
+              {/* Offers */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222222', margin: '0 0 4px 0' }}>Available offers</h3>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
+                  <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <span><b>Bank Offer</b> 5% Unlimited Cashback on Kiruba Bank Axis Credit Card</span>
+                </div>
+                {activeProduct.promo_code && (
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
+                    <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                    <span><b>Special Coupon</b> Use code <span style={{ fontWeight: 700, color: 'var(--coin-gold)' }}>{activeProduct.promo_code}</span> for extra discount at checkout</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
+                  <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <span><b>Partner Offer</b> Sign up for Kiruba Pay Later and get free gift card worth ₹500*</span>
+                </div>
+              </div>
+
+              {/* Specs & Description */}
+              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', fontSize: '0.95rem', color: '#444', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
+                <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Description</div>
+                <div style={{ lineHeight: '1.6' }}>{activeProduct.description}</div>
+                
+                <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Stock</div>
+                <div style={{ color: activeProduct.stock > 0 ? '#222' : '#ff6161', fontWeight: 600 }}>
+                  {activeProduct.stock > 0 ? `In Stock (${activeProduct.stock} items left)` : 'Out of Stock'}
+                </div>
+                
+                <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Seller</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#2b0b57', fontWeight: 700 }}>Kirubanithi Enterprises</span>
+                  <span style={{ background: 'linear-gradient(135deg, #7a4ea5, #2b0b57)', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Kiruba Assured</span>
+                </div>
+              </div>
+
+              {/* Ratings and Reviews */}
+              <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '24px', marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Ratings & Reviews</h2>
+                  <button className="btn-secondary" style={{ padding: '8px 16px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({behavior: "smooth"})}>Rate Product</button>
+                </div>
+                
+                <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} style={{ border: '1px solid #f0f0f0', borderRadius: '8px', padding: '24px', marginBottom: '32px', background: '#fafafa' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', color: '#2b0b57', fontWeight: 600 }}>Write a Review</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                    <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 500 }}>Your Rating:</span>
+                    <select 
+                      value={newReview.rating} 
+                      onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
+                      style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #e0e0e0', outline: 'none' }}
+                    >
+                      {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
+                    </select>
+                  </div>
+                  <textarea 
+                    placeholder="Tell us what you think about this product..." 
+                    rows={4} 
+                    value={newReview.comment}
+                    onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                    style={{ width: '100%', padding: '16px', border: '1px solid #e0e0e0', borderRadius: '4px', outline: 'none', resize: 'vertical', marginBottom: '16px', fontSize: '0.95rem', fontFamily: 'inherit' }}
+                    required
+                  />
+                  <button type="submit" className="btn-primary" style={{ padding: '10px 28px', fontWeight: 600 }}>Submit Review</button>
+                </form>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  {activeProduct.reviews && activeProduct.reviews.length > 0 ? (
+                    activeProduct.reviews.map(r => (
+                      <div key={r.id} style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                          <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {r.rating} <Star size={12} fill="white" />
+                          </span>
+                          <span style={{ fontWeight: 600, fontSize: '1rem', color: '#2b0b57' }}>Awesome Product!</span>
+                        </div>
+                        <p style={{ fontSize: '0.95rem', color: '#444', margin: '0 0 12px 0', lineHeight: 1.6 }}>{r.comment}</p>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 600 }}>{r.user_name}</span>
+                          <span>|</span>
+                          <span>Certified Buyer</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ fontSize: '0.9rem', color: '#878787', textAlign: 'center', padding: '20px' }}>No reviews yet. Be the first to leave one!</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recommended / Similar Products */}
+          <div style={{ marginTop: '40px', borderTop: '1px solid #f0f0f0', paddingTop: '32px' }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 24px 0', color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Similar Elegant Products</h2>
+            <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px', paddingRight: '20px' }}>
+              {products
+                .filter(p => p.category_id === activeProduct.category_id && p.id !== activeProduct.id)
+                .slice(0, 8)
+                .map(p => (
+                  <div key={p.id} onClick={() => {handleProductSelection(p.id); window.scrollTo(0,0);}} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)'}} onMouseLeave={e => {e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'}}>
+                    <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}>
+                      <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ fontSize: '1rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px', fontWeight: 600, fontFamily: 'var(--font-serif)' }} title={p.name}>{p.name}</div>
+                    <div style={{ color: 'var(--coin-gold)', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 700 }}>{Math.round(Math.random() * 20 + 10)}% Special Discount</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</div>
+                  </div>
+              ))}
+              {products.filter(p => p.category_id === activeProduct.category_id && p.id !== activeProduct.id).length === 0 && (
+                <div style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No similar products found in this category.</div>
+              )}
+            </div>
+          </div>
+        </main>
+      )}
+
+      {/* RENDER VIEW 1: PUBLIC OPAC VIEW */}
+      {currentView === 'opac' && (
+        <>
+          {!activeCategoryPage && (
+            <div className="animate-fade-in" style={{ width: '100%' }}>
+              <NobaraaHero sareeModels={currentSareeModels} />
+            </div>
+          )}
+          <main className="main-content" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: '0 40px' }}>
+          
+          {activeCategoryPage ? (
+            <div className="animate-fade-in" style={{ width: '100%', padding: '20px 0' }}>
+              
+              {/* Category Page Breadcrumb / Navigation bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '30px' }}>
+                <button 
+                  onClick={() => setActiveCategoryPage(null)} 
+                  className="btn-secondary"
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    padding: '8px 16px', 
+                    borderRadius: '0px', 
+                    border: '1px solid #222222',
+                    background: 'transparent',
+                    color: '#222222',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    fontSize: '0.75rem',
+                    letterSpacing: '1px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Back to Collections
+                </button>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>/</span>
+                <span style={{ fontSize: '0.8rem', color: '#222222', fontWeight: 600 }}>{activeCategoryPage.name}</span>
+              </div>
+
+              {/* Premium Luxury Jumbotron Cover for Category */}
+              <div style={{ 
+                position: 'relative', 
+                height: '350px', 
+                background: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                color: 'white',
+                padding: '40px',
+                marginBottom: '40px'
+              }}>
+                <div>
+                  <h1 style={{ 
+                    fontFamily: 'var(--font-serif)', 
+                    fontSize: '3rem', 
+                    fontWeight: 700, 
+                    marginBottom: '12px',
+                    letterSpacing: '2px',
+                    textTransform: 'uppercase'
+                  }}>
+                    {activeCategoryPage.name}
+                  </h1>
+                  <p style={{ 
+                    fontSize: '1.1rem', 
+                    maxWidth: '650px', 
+                    margin: '0 auto',
+                    opacity: 0.9,
+                    fontWeight: 300,
+                    fontFamily: "'Jost', sans-serif"
+                  }}>
+                    {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Dedicated Category Product Catalog Grid */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>
+                  Curated Catalog ({products.filter(p => p.category_id === activeCategoryPage.id).length} Items)
+                </h3>
+              </div>
+
+              <div className="product-grid">
+                {products.filter(p => p.category_id === activeCategoryPage.id).length > 0 ? (
+                  products.filter(p => p.category_id === activeCategoryPage.id).map(p => (
+                    <div key={p.id} className="product-card" onClick={() => handleProductSelection(p.id)}
+                    style={{ 
+                      background: '#ffffff', 
+                      borderRadius: '20px', 
+                      overflow: 'hidden', 
+                      boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                      border: '1px solid #f0e6fc',
+                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-6px)';
+                      e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                    }}
+                    >
+                      <div className="product-image-container" style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                        <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                        {p.images[1] && (
+                          <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                        )}
+                        {p.original_price > p.price && (
+                          <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                            {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                          </div>
+                        )}
+                        <button 
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleAddToWishlist(p.id);
+                          }} 
+                          style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <Heart size={18} />
+                        </button>
+                      </div>
+                      
+                      <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                        <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                          <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                            {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                          </span>
+                          <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                        </div>
+
+                        <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+                        
+                        <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                          <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                          {p.original_price > p.price && (
+                            <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                          )}
+                        </div>
+                        
+                        <button 
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleAddToCart(p.id);
+                          }} 
+                          style={{ 
+                            background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                            border: 'none',
+                            borderRadius: '30px',
+                            padding: '12px',
+                            justifyContent: 'center', 
+                            width: '100%',
+                            fontFamily: "'Jost', sans-serif",
+                            fontWeight: 700,
+                            letterSpacing: '1px',
+                            boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            color: 'white',
+                            cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                            opacity: p.stock > 0 ? 1 : 0.6
+                          }}
+                          onMouseEnter={e => {
+                            if(p.stock > 0) {
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            if(p.stock > 0) {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                            }
+                          }}
+                          disabled={p.stock <= 0}
+                        >
+                          <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                    <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                    <p>No products currently available under this category. We are weaving new designs soon!</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Back Button */}
+              <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => { setActiveCategoryPage(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
+                  className="btn-primary"
+                  style={{ padding: '12px 28px' }}
+                >
+                  ← Back to Home Collections
+                </button>
+              </div>
+
+            </div>
+          ) : (
+            <>
+              {/* Dynamic Collections Sections */}
+              <div id="catalog-section" style={{ paddingTop: '20px' }}></div>
+
+
+
+              {/* Dynamic Collections Sections */}
+              {collections.length > 0 ? (
+                collections.map(col => {
+                  const colCategories = categories.filter(c => col.category_ids.includes(c.id));
+                  const colProducts = products.filter(p => col.category_ids.includes(p.category_id));
+                  const isCategoryFromThisCollectionSelected = col.category_ids.includes(parseInt(selectedCategory));
+                  const displayedProducts = isCategoryFromThisCollectionSelected 
+                    ? colProducts.filter(p => p.category_id === parseInt(selectedCategory))
+                    : colProducts;
+
+                  if (colCategories.length === 0) return null;
+
+                  return (
+                    <div key={col.id} style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0' }} className="animate-fade-in">
+                      
+                      {/* Leafy Corner branches */}
+                      <img 
+                        src="/nobaraa_flowers.png" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '10px', 
+                          left: '-40px', 
+                          width: '190px', 
+                          height: 'auto', 
+                          opacity: 0.6, 
+                          transform: 'rotate(-45deg)', 
+                          pointerEvents: 'none' 
+                        }} 
+                        alt="" 
+                      />
+                      <img 
+                        src="/nobaraa_flowers.png" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '10px', 
+                          right: '-40px', 
+                          width: '190px', 
+                          height: 'auto', 
+                          opacity: 0.6, 
+                          transform: 'rotate(45deg) scaleX(-1)', 
+                          pointerEvents: 'none' 
+                        }} 
+                        alt="" 
+                      />
+
+                      {/* Header Ribbon Line & centered logo mark */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
+                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
+                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                      </div>
+
+                      {/* Collection Header Title */}
+                      {renderCollectionTitle(col.name)}
+                      
+                      {/* Subtitle */}
+                      <p style={{ 
+                        fontFamily: "'Jost', sans-serif", 
+                        fontSize: '0.95rem', 
+                        color: '#666666', 
+                        textAlign: 'center', 
+                        marginBottom: '40px',
+                        marginTop: '-5px'
+                      }}>
+                        Find everything you love, all in one place.
+                      </p>
+
+                      {/* Category Grid Section styled like mockup card list */}
+                      {!(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
+                        <div className="nobaraa-category-grid" style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                          justifyContent: 'center',
+                          gap: '24px',
+                          width: '100%',
+                          margin: '0 auto 50px'
+                        }}>
+                          {colCategories.map(c => {
+                            const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
+                            const coverImg = c.image_url || defaultImg;
+                            return (
+                              <div 
+                                key={c.id}
+                                className="nobaraa-category-card"
+                                onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                style={{ 
+                                  position: 'relative', 
+                                  background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                                  borderRadius: '20px',
+                                  padding: '16px 16px 24px',
+                                  cursor: 'pointer',
+                                  boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
+                                  transition: 'all 0.3s ease',
+                                  border: '1px solid rgba(122, 78, 165, 0.05)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  maxWidth: '290px',
+                                  width: '100%',
+                                  margin: '0 auto'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(-6px)';
+                                  e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                                }}
+                              >
+                                {/* Inner image container */}
+                                <div className="nobaraa-category-image-container" style={{
+                                  width: '100%',
+                                  height: '350px',
+                                  borderRadius: '16px',
+                                  overflow: 'hidden',
+                                  position: 'relative'
+                                }}>
+                                  <img 
+                                    src={coverImg} 
+                                    alt={c.name}
+                                    style={{ 
+                                      width: '100%', 
+                                      height: '100%', 
+                                      objectFit: 'cover',
+                                      transition: 'transform 0.5s ease'
+                                    }}
+                                  />
+                                  
+                                  {/* White Circle Overlapping Icon Button */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    bottom: '0',
+                                    left: '50%',
+                                    transform: 'translate(-50%, 50%)',
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '50%',
+                                    background: '#ffffff',
+                                    boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 5
+                                  }}>
+                                    {getCategoryIcon(c.name)}
+                                  </div>
+                                </div>
+
+                                {/* Label and Link details below the overlap */}
+                                <div style={{
+                                  paddingTop: '28px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}>
+                                  <span style={{ 
+                                    fontFamily: "'Playfair Display', serif", 
+                                    fontWeight: 700, 
+                                    fontSize: '1.05rem', 
+                                    color: '#2b0b57',
+                                    textAlign: 'center',
+                                    display: 'block'
+                                  }}>
+                                    {c.name}
+                                  </span>
+                                  <span style={{ 
+                                    fontFamily: "'Jost', sans-serif", 
+                                    fontWeight: 800, 
+                                    fontSize: '0.72rem', 
+                                    color: '#7a4ea5', 
+                                    letterSpacing: '1px', 
+                                    marginTop: '8px', 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px', 
+                                    textTransform: 'uppercase' 
+                                  }}>
+                                    Shop Now <ChevronRight size={12} />
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Saree products in this collection */}
+                      <div className="product-grid animate-fade-in">
+                        {colProducts.length > 0 ? (
+                          colProducts.map((p, idx) => (
+                            <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                              <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                              style={{ 
+                                background: '#ffffff', 
+                                borderRadius: '20px', 
+                                overflow: 'hidden', 
+                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                border: '1px solid #f0e6fc',
+                                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                cursor: 'pointer',
+                                height: '100%'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-6px)';
+                                e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                              }}
+                              >
+                                <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                                  <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                  {p.images[1] && (
+                                    <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                                  )}
+                                {p.original_price > p.price && (
+                                  <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                    {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                  </div>
+                                )}
+                                <button 
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleAddToWishlist(p.id);
+                                  }} 
+                                  style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                  <Heart size={18} />
+                                </button>
+                              </div>
+                              
+                              <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                  <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                    {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                  </span>
+                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                </div>
+
+                                <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+                                
+                                <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                  <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                  {p.original_price > p.price && (
+                                    <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                  )}
+                                </div>
+                                
+                                <button 
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleAddToCart(p.id);
+                                  }} 
+                                  style={{ 
+                                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                    border: 'none',
+                                    borderRadius: '30px',
+                                    padding: '12px',
+                                    justifyContent: 'center', 
+                                    width: '100%',
+                                    fontFamily: "'Jost', sans-serif",
+                                    fontWeight: 700,
+                                    letterSpacing: '1px',
+                                    boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: 'white',
+                                    cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                    opacity: p.stock > 0 ? 1 : 0.6
+                                  }}
+                                  onMouseEnter={e => {
+                                    if(p.stock > 0) {
+                                      e.currentTarget.style.transform = 'translateY(-2px)';
+                                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                                    }
+                                  }}
+                                  onMouseLeave={e => {
+                                    if(p.stock > 0) {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                                    }
+                                  }}
+                                  disabled={p.stock <= 0}
+                                >
+                                  <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                        ) : (
+                          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                            <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                            <p>No products match your current filters in this collection.</p>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  {/* Shop by Categories Section */}
+                  {categories.length > 0 && (
+                    <div style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0' }} className="animate-fade-in">
+                      
+                      {/* Leafy Corner branches */}
+                      <img 
+                        src="/nobaraa_flowers.png" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '10px', 
+                          left: '-40px', 
+                          width: '190px', 
+                          height: 'auto', 
+                          opacity: 0.6, 
+                          transform: 'rotate(-45deg)', 
+                          pointerEvents: 'none' 
+                        }} 
+                        alt="" 
+                      />
+                      <img 
+                        src="/nobaraa_flowers.png" 
+                        style={{ 
+                          position: 'absolute', 
+                          top: '10px', 
+                          right: '-40px', 
+                          width: '190px', 
+                          height: 'auto', 
+                          opacity: 0.6, 
+                          transform: 'rotate(45deg) scaleX(-1)', 
+                          pointerEvents: 'none' 
+                        }} 
+                        alt="" 
+                      />
+
+                      {/* Header Ribbon Line & centered logo mark */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
+                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
+                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                      </div>
+
+                      {/* Collection Header Title */}
+                      <h2 style={{ 
+                        fontFamily: "'Playfair Display', serif", 
+                        fontSize: '2.5rem', 
+                        fontWeight: 700, 
+                        color: '#2b0b57', 
+                        textAlign: 'center', 
+                        margin: '0 auto 10px',
+                        lineHeight: 1.2
+                      }}>
+                        Shop by <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'inline-block', transform: 'translateY(5px)', textTransform: 'none' }}>Category</span>
+                      </h2>
+                      
+                      {/* Subtitle */}
+                      <p style={{ 
+                        fontFamily: "'Jost', sans-serif", 
+                        fontSize: '0.95rem', 
+                        color: '#666666', 
+                        textAlign: 'center', 
+                        marginBottom: '40px',
+                        marginTop: '-5px'
+                      }}>
+                        Find everything you love, all in one place.
+                      </p>
+
+                      {/* Category Grid Section styled like mockup card list */}
+                      <div className="nobaraa-category-grid" style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        justifyContent: 'center',
+                        gap: '24px',
+                        width: '100%',
+                        margin: '0 auto 50px'
+                      }}>
+                        {categories.map(c => {
+                          const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
+                          const coverImg = c.image_url || defaultImg;
+                          return (
+                            <div 
+                              key={c.id}
+                              className="nobaraa-category-card"
+                              onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                              style={{ 
+                                position: 'relative', 
+                                background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                                borderRadius: '20px',
+                                padding: '16px 16px 24px',
+                                cursor: 'pointer',
+                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
+                                transition: 'all 0.3s ease',
+                                border: '1px solid rgba(122, 78, 165, 0.05)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                maxWidth: '290px',
+                                width: '100%',
+                                margin: '0 auto'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-6px)';
+                                e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                              }}
+                            >
+                              {/* Inner image container */}
+                              <div className="nobaraa-category-image-container" style={{
+                                width: '100%',
+                                height: '350px',
+                                borderRadius: '16px',
+                                overflow: 'hidden',
+                                position: 'relative'
+                              }}>
+                                <img 
+                                  src={coverImg} 
+                                  alt={c.name}
+                                  style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
+                                    transition: 'transform 0.5s ease'
+                                  }}
+                                />
+                                
+                                {/* White Circle Overlapping Icon Button */}
+                                <div style={{
+                                  position: 'absolute',
+                                  bottom: '0',
+                                  left: '50%',
+                                  transform: 'translate(-50%, 50%)',
+                                  width: '44px',
+                                  height: '44px',
+                                  borderRadius: '50%',
+                                  background: '#ffffff',
+                                  boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  zIndex: 5
+                                }}>
+                                  {getCategoryIcon(c.name)}
+                                </div>
+                              </div>
+
+                              {/* Label and Link details below the overlap */}
+                              <div style={{
+                                paddingTop: '28px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                <span style={{ 
+                                  fontFamily: "'Playfair Display', serif", 
+                                  fontWeight: 700, 
+                                  fontSize: '1.05rem', 
+                                  color: '#2b0b57',
+                                  textAlign: 'center',
+                                  display: 'block'
+                                }}>
+                                  {c.name}
+                                </span>
+                                <span style={{ 
+                                  fontFamily: "'Jost', sans-serif", 
+                                  fontWeight: 800, 
+                                  fontSize: '0.72rem', 
+                                  color: '#7a4ea5', 
+                                  letterSpacing: '1px', 
+                                  marginTop: '8px', 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '4px', 
+                                  textTransform: 'uppercase' 
+                                }}>
+                                  Shop Now <ChevronRight size={12} />
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Product list grid */}
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', marginBottom: '20px', color: '#222222' }}>The Saree & Ethnic Collection</h3>
+                  <div className="product-grid animate-fade-in">
+                    {loadingProducts ? (
+                      Array.from({ length: 8 }).map((_, idx) => (
+                        <div key={`skeleton-${idx}`} className="product-card" style={{
+                          background: '#ffffff',
+                          borderRadius: '20px',
+                          overflow: 'hidden',
+                          boxShadow: '0 8px 24px rgba(122, 78, 165, 0.05)',
+                          border: '1px solid #f0e6fc',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          height: '520px',
+                          position: 'relative'
+                        }}>
+                          {/* Image Placeholder */}
+                          <div className="shim-bar" style={{ height: '300px', background: '#f6efff', position: 'relative' }}></div>
+                          {/* Details Placeholder */}
+                          <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {/* Category tag */}
+                            <div className="shim-bar" style={{ width: '35%', height: '12px', borderRadius: '4px' }}></div>
+                            {/* Title */}
+                            <div className="shim-bar" style={{ width: '85%', height: '22px', borderRadius: '6px' }}></div>
+                            {/* Rating */}
+                            <div className="shim-bar" style={{ width: '25%', height: '16px', borderRadius: '12px' }}></div>
+                            {/* Description lines */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0' }}>
+                              <div className="shim-bar" style={{ width: '100%', height: '12px', borderRadius: '4px' }}></div>
+                              <div className="shim-bar" style={{ width: '90%', height: '12px', borderRadius: '4px' }}></div>
+                            </div>
+                            {/* Bottom row */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                              <div className="shim-bar" style={{ width: '45%', height: '24px', borderRadius: '6px' }}></div>
+                              <div className="shim-bar" style={{ width: '100px', height: '36px', borderRadius: '20px' }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : products.length > 0 ? (
+                      products.map((p, idx) => (
+                        <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                          <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                          style={{ 
+                            background: '#ffffff', 
+                            borderRadius: '20px', 
+                            overflow: 'hidden', 
+                            boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                            border: '1px solid #f0e6fc',
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            cursor: 'pointer',
+                            height: '100%'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-6px)';
+                            e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                          }}
+                          >
+                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                              <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                              {p.images[1] && (
+                                <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                              )}
+                              {p.original_price > p.price && (
+                                <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                  {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                </div>
+                              )}
+                              <button 
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleAddToWishlist(p.id);
+                                }} 
+                                style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                              >
+                                <Heart size={18} />
+                              </button>
+                            </div>
+                            
+                            <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                              <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                  {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                </span>
+                                <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                              </div>
+
+                              <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+                              
+                              <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                {p.original_price > p.price && (
+                                  <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                )}
+                              </div>
+                              
+                              <button 
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleAddToCart(p.id);
+                                }} 
+                                style={{ 
+                                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                  border: 'none',
+                                  borderRadius: '30px',
+                                  padding: '12px',
+                                  justifyContent: 'center', 
+                                  width: '100%',
+                                  fontFamily: "'Jost', sans-serif",
+                                  fontWeight: 700,
+                                  letterSpacing: '1px',
+                                  boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  color: 'white',
+                                  cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                  opacity: p.stock > 0 ? 1 : 0.6
+                                }}
+                                onMouseEnter={e => {
+                                  if(p.stock > 0) {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                                  }
+                                }}
+                                onMouseLeave={e => {
+                                  if(p.stock > 0) {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                                  }
+                                }}
+                                disabled={p.stock <= 0}
+                              >
+                                <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                        <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                        <p>No products match your current filters. Adjust search query or range.</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Flipkart-style Hero Banner Carousel */}
+              <div className="glass-panel animate-fade-in" style={{ height: '280px', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginTop: '40px', marginBottom: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <img 
+                  src={opacBanners[currentSlide].image} 
+                  alt="" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)' }}
+                />
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px', color: '#ffffff' }}>
+                  <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, marginBottom: '12px' }}>BOUTIQUE SPECIALS</span>
+                  <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide].title}</h2>
+                  <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem', maxWidth: '500px', marginBottom: '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide].subtitle}</p>
+                  <button className="btn-primary" onClick={() => addToast("Promo Campaign Active", "Discounts applied automatically on designer saree catalog collections!", "success")} style={{ width: 'fit-content', padding: '10px 24px' }}>
+                    {opacBanners[currentSlide].actionText} <ChevronRight size={18} />
+                  </button>
+                </div>
+                
+                {/* Slider Dots */}
+                <div style={{ position: 'absolute', bottom: '16px', right: '24px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                  {opacBanners.map((_, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => setCurrentSlide(idx)}
+                      style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSlide === idx ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', transition: 'background 0.3s' }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </main>
+
+        {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
+        {currentView === 'opac' && !activeCategoryPage && <FeaturesBar />}
+
+        {/* PREMIUM DEEP LUXURY NOBARAA FOOTER */}
+        <footer style={{ background: '#130525', padding: '80px 80px 40px', borderTop: 'none', fontFamily: "'Jost', sans-serif", color: '#e0d1f5', position: 'relative', marginTop: '60px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1fr', gap: '40px', marginBottom: '60px', flexWrap: 'wrap' }}>
+            
+            {/* COLUMN 1: LET'S GET IN TOUCH */}
+            <div>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.2rem', fontWeight: '400', marginBottom: '16px', color: '#ffffff' }}>Stay Connected</h3>
+              <p style={{ color: '#bba1d8', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6', maxWidth: '300px' }}>
+                Join the Nobaraa family to receive exclusive luxury offers, early access to new collections, and 10% off your first ethnic wear order.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '300px' }}>
+                <input 
+                  type="email" 
+                  placeholder="Enter your email address" 
+                  style={{ width: '100%', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', borderRadius: '30px', color: '#ffffff', fontSize: '0.85rem', fontFamily: "'Jost', sans-serif", outline: 'none' }} 
+                />
+                <button 
+                  style={{ width: '100%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', padding: '14px 20px', border: 'none', borderRadius: '30px', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)', transition: 'transform 0.2s' }}
+                  onClick={() => alert("Thank you for subscribing to our boutique newsletter! Your 10% coupon code is: NOBARAA10")}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                >
+                  Subscribe now
+                </button>
+              </div>
+            </div>
+
+            {/* COLUMN 2: QUICK LINK */}
+            <div>
+              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Quick Links</h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {['Return and Refund Policy', 'Privacy Policy', 'Shipping Policy', 'Terms of Service', 'Contact'].map(link => (
+                  <a 
+                    key={link} 
+                    href="#" 
+                    onClick={e => e.preventDefault()}
+                    style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
+                  >
+                    {link}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* COLUMN 3: COMPANY */}
+            <div>
+              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Company</h5>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {['Home', 'Shop Collections', 'Store Locator', 'About Nobaraa'].map(link => (
+                  <a 
+                    key={link} 
+                    href="#" 
+                    onClick={e => e.preventDefault()}
+                    style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
+                    onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
+                  >
+                    {link}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            {/* COLUMN 4: OUR STORE & SOCIALS */}
+            <div>
+              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Experience Nobaraa</h5>
+              
+              {/* Circular Social Buttons */}
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                {[
+                  { name: 'pinterest', icon: 'P' },
+                  { name: 'facebook', icon: 'f' },
+                  { name: 'instagram', icon: '📸' },
+                  { name: 'twitter', icon: '𝕏' },
+                  { name: 'youtube', icon: '▶' }
+                ].map(soc => (
+                  <a 
+                    key={soc.name}
+                    href="#"
+                    onClick={e => e.preventDefault()}
+                    style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', textDecoration: 'none', fontWeight: 'bold', transition: 'all 0.3s ease', border: '1px solid rgba(255,255,255,0.1)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#e84e7e'; e.currentTarget.style.borderColor = '#e84e7e'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                  >
+                    {soc.icon}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* BOTTOM ROW: COPYRIGHT & SCROLL TO TOP */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.85rem', color: '#886d9e', letterSpacing: '1px' }}>© NOBARAA FASHION 2026. ALL RIGHTS RESERVED.</span>
+            
+            {/* SCROLL TO TOP BUTTON */}
+            <button 
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(122, 78, 165, 0.4)' }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              ↑
+            </button>
+          </div>
+        </footer>
+      </>
+    )}
+
+      {/* RENDER VIEW 2: CUSTOMER / USER VIEW */}
+      {currentView === 'user_dashboard' && role === 'user' && (
+        <div className="dashboard-grid">
+          <aside className="sidebar">
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+              <User style={{ color: 'var(--accent-primary)' }} />
+              <div>
+                <h5 style={{ fontWeight: 800 }}>{user.name}</h5>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Customer Wallet</span>
+              </div>
+            </div>
+            
+            <span className={`sidebar-link ${activePanel === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePanel("dashboard")}>
+              <LayoutDashboard size={18} /> Personalized Home
+            </span>
+            <span className={`sidebar-link ${activePanel === 'cart' ? 'active' : ''}`} onClick={() => setActivePanel("cart")}>
+              <ShoppingCart size={18} /> My Active Cart ({cart.length})
+            </span>
+            <span className={`sidebar-link ${activePanel === 'wishlist' ? 'active' : ''}`} onClick={() => setActivePanel("wishlist")}>
+              <Heart size={18} /> Wishlist ({wishlist.length})
+            </span>
+            <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
+              <ShoppingBag size={18} /> Order History
+            </span>
+            <span className={`sidebar-link ${activePanel === 'notifications' ? 'active' : ''}`} onClick={() => setActivePanel("notifications")}>
+              <Bell size={18} /> Notifications
+            </span>
+            <span className={`sidebar-link ${activePanel === 'help_center' ? 'active' : ''}`} onClick={() => setActivePanel("help_center")}>
+              <HelpCircle size={18} /> Support Ticket Center
+            </span>
+            <span className={`sidebar-link ${activePanel === 'settings' ? 'active' : ''}`} onClick={() => setActivePanel("settings")}>
+              <Settings size={18} /> Account Settings
+            </span>
+            <span className="sidebar-link" onClick={() => setCurrentView("opac")} style={{ borderTop: '1px solid #eeeeee', marginTop: '16px', paddingTop: '16px' }}>
+              ← Return to Storefront
+            </span>
+          </aside>
+          
+          <main className="main-content">
+            
+            {/* Dashboard Home panel */}
+            {activePanel === 'dashboard' && userDashboardData && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Welcome Back, {user.name}!</h2>
+                    <p style={{ color: 'var(--text-muted)' }}>Explore today's recommendations and apply your saved coupons.</p>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', gap: '12px', alignItems: 'center', borderColor: 'var(--coin-gold)' }}>
+                    <Award size={36} style={{ color: 'var(--coin-gold)' }} />
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SuperCoin Balance</span>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--coin-gold)' }}>{userDashboardData.super_coins} Coins</h3>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Banner alert of unread notifications */}
+                {userDashboardData.unread_notifications_count > 0 && (
+                  <div className="glass-panel" style={{ padding: '16px', background: 'rgba(99, 102, 241, 0.08)', borderColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <Bell style={{ color: 'var(--accent-primary)' }} />
+                      <span>You have {userDashboardData.unread_notifications_count} unread notifications about arrivals and discount campaign promotions!</span>
+                    </div>
+                    <button onClick={() => setActivePanel("notifications")} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>View Feed</button>
+                  </div>
+                )}
+
+                {/* Quick actions catalog selection */}
+                <div className="glass-panel" style={{ padding: '24px', background: 'radial-gradient(circle at right, rgba(6, 182, 212, 0.1), transparent)' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '8px' }}>Store Catalogue Hub</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>Browse products across active shops and checkout instantly.</p>
+                  <button onClick={() => setCurrentView("opac")} className="btn-primary">
+                    Shop Now <ChevronRight size={18} />
+                  </button>
+                </div>
+
+                {/* Recommendations */}
+                <div>
+                  <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Top Recommended For You</h4>
+                  <div className="product-grid">
+                    {userDashboardData.recommendations && userDashboardData.recommendations.map(p => (
+                      <div key={p.id} className="glass-panel product-card" onClick={() => handleProductSelection(p.id)}>
+                        <div className="product-image-container">
+                          <img className="product-img" src={p.images[0]} alt="" />
+                        </div>
+                        <div className="product-info">
+                          <h5 className="product-name">{p.name}</h5>
+                          <span className="current-price">₹{p.price.toFixed(2)}</span>
+                          <button 
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleAddToCart(p.id);
+                            }} 
+                            className="btn-primary" 
+                            style={{ marginTop: '12px', justifyContent: 'center' }}
+                          >
+                            Buy Product
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Shopping Cart panel */}
+            {activePanel === 'cart' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Shopping Cart</h2>
+                
+                {cart.length > 0 ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
+                    
+                    {/* Cart Items list */}
+                    <div className="glass-panel" style={{ padding: '24px' }}>
+                      {cart.map(ci => (
+                        <div key={ci.id} className="cart-row">
+                          <img className="cart-img" src={ci.product.images[0]} alt="" />
+                          <div>
+                            <h4 style={{ fontWeight: 800, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{ci.product.name}</h4>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Store ID: {ci.product.shop_id}</span>
+                          </div>
+                          <div>
+                            <span className="current-price" style={{ fontSize: '1rem' }}>₹{ci.product.price}</span>
+                          </div>
+                          <div>
+                            <input 
+                              type="number" 
+                              className="cart-qty-input" 
+                              min="1" 
+                              max={ci.product.stock}
+                              value={ci.quantity} 
+                              onChange={e => handleAddToCart(ci.product_id, parseInt(e.target.value))}
+                            />
+                          </div>
+                          <button onClick={() => handleRemoveFromCart(ci.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer' }}>
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cart Order Summary */}
+                    <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', height: 'fit-content', position: 'sticky', top: '20px' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: '1.4rem', color: '#2b0b57', fontFamily: 'var(--font-serif)', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>Order Summary</h3>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
+                        <span>Items ({cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
+                        <span style={{ fontWeight: 600 }}>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
+                        <span>Delivery:</span>
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Free</span>
+                      </div>
+                      
+                      <div style={{ borderTop: '1px dashed #e0e0e0', margin: '8px 0' }}></div>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1.2rem', color: '#222' }}>Order Total:</span>
+                        <span style={{ fontWeight: 800, fontSize: '1.6rem', color: '#2b0b57' }}>
+                          ₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      <button 
+                        className="btn-primary" 
+                        onClick={() => setCurrentView('checkout')}
+                        style={{ padding: '16px', fontSize: '1.1rem', fontWeight: 700, justifyContent: 'center', marginTop: '16px' }}
+                      >
+                        Proceed to Checkout
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                    <ShoppingCart size={48} style={{ margin: '0 auto 12px' }} />
+                    <p>Your shopping cart is currently empty. Visit the OPAC catalog page to select items.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Wishlist panel */}
+            {activePanel === 'wishlist' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Wishlist</h2>
+                <div className="product-grid">
+                  {wishlist.length > 0 ? (
+                    wishlist.map(wi => (
+                      <div key={wi.id} className="glass-panel product-card">
+                        <div className="product-image-container">
+                          <img className="product-img" src={wi.product.images[0]} alt="" />
+                          <button onClick={() => handleRemoveFromWishlist(wi.id)} className="wishlist-btn-overlay active">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                        <div className="product-info">
+                          <h4 className="product-name">{wi.product.name}</h4>
+                          <span className="current-price">₹{wi.product.price}</span>
+                          <button onClick={() => handleAddToCart(wi.product.id)} className="btn-primary" style={{ marginTop: '12px', justifyContent: 'center' }}>
+                            Move to Cart
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                      <Heart size={48} style={{ margin: '0 auto 12px' }} />
+                      <p>Your wishlist is currently empty. Tap the heart icons on products to add them here.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Orders list panel */}
+            {activePanel === 'orders' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Order History</h2>
+                
+                {myOrders.length > 0 ? (
+                  myOrders.map(o => (
+                    <div key={o.id} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ORDER ID</span>
+                          <h5 style={{ fontWeight: 800 }}>#{o.id}</h5>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>DATE</span>
+                          <h5>{new Date(o.created_at).toLocaleDateString()}</h5>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>TOTAL PAID</span>
+                          <h5 style={{ color: 'var(--accent-secondary)' }}>₹{o.final_amount}</h5>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>STATUS</span>
+                          <div>
+                            <span className={`badge ${
+                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                            }`}>
+                              {o.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Items */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {o.items && o.items.map(item => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                            <span>{item.product_name} <strong style={{ color: 'var(--text-muted)' }}>x {item.quantity}</strong></span>
+                            <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Return filing clause */}
+                      {o.status === 'Customer Received' && o.return_request_status === 'None' && (
+                        <div className="return-box" style={{ margin: 0 }}>
+                          <h5 style={{ fontWeight: 800, color: 'var(--accent-danger)', marginBottom: '8px' }}>Need to return this product?</h5>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <input 
+                              type="text" 
+                              placeholder="Describe reason for returning product..." 
+                              id={`return-reason-${o.id}`}
+                              style={{ flexGrow: 1, padding: '8px' }} 
+                            />
+                            <button 
+                              onClick={() => {
+                                const input = document.getElementById(`return-reason-${o.id}`);
+                                if (input && input.value) {
+                                  handleRequestReturn(o.id, input.value);
+                                }
+                              }} 
+                              className="btn-danger" 
+                              style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                            >
+                              File Return
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {o.return_request_status !== 'None' && (
+                        <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                          Return Request Status: <strong style={{ textTransform: 'uppercase' }}>{o.return_request_status}</strong>
+                          {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>Reason: "{o.return_reason}"</p>}
+                        </div>
+                      )}
+
+                      {o.tracking_info && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-secondary)' }}>
+                          Tracking Logistics: <strong>{o.tracking_info}</strong>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                        <button onClick={() => setInvoiceOrder(o)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                          <FileText size={16} /> View Tax Invoice
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                    <ShoppingBag size={48} style={{ margin: '0 auto 12px' }} />
+                    <p>No orders logged under this user session yet.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notifications Feed */}
+            {activePanel === 'notifications' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h2>
+                  <button 
+                    onClick={async () => {
+                      const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
+                      if (res.ok) {
+                        addToast("Marked Read", "All notifications cleared.", "info");
+                        loadUserNotifications();
+                      }
+                    }} 
+                    className="btn-secondary" 
+                    style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                  >
+                    Clear Unread Bullets
+                  </button>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {userNotifications.length > 0 ? (
+                    userNotifications.map(n => (
+                      <div key={n.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', background: n.is_read ? 'var(--bg-card)' : 'rgba(99,102,241,0.06)' }}>
+                        <Bell style={{ color: n.is_read ? 'var(--text-muted)' : 'var(--accent-primary)' }} />
+                        <div>
+                          <h5 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{n.title}</h5>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{n.message}</p>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Your notification center feed is currently clean.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Help Center panel */}
+            {activePanel === 'help_center' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+                
+                {/* File Ticket Form */}
+                <form onSubmit={handleCreateTicket} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>Submit Support Case</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Your help request is dispatched directly to the active shop admins.</p>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Related Shop</label>
+                    <select 
+                      value={activeShopId} 
+                      onChange={e => setActiveShopId(e.target.value)}
+                    >
+                      {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Subject Topic</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., Delay in order delivery" 
+                      value={newTicket.subject}
+                      onChange={e => setNewTicket(prev => ({ ...prev, subject: e.target.value }))}
+                      required 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Help Message Context</label>
+                    <textarea 
+                      placeholder="Please write details..." 
+                      rows={3} 
+                      value={newTicket.message}
+                      onChange={e => setNewTicket(prev => ({ ...prev, message: e.target.value }))}
+                      required 
+                    />
+                  </div>
+                  
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Open Support Ticket <Send size={16} />
+                  </button>
+                </form>
+
+                {/* Submitted Tickets list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Your Opened Cases</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {userHelpTickets.length > 0 ? (
+                      userHelpTickets.map(t => (
+                        <div key={t.id} className="glass-panel" style={{ padding: '20px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <h4 style={{ fontWeight: 800, fontSize: '1rem' }}>{t.subject}</h4>
+                            <span className={`badge ${t.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>{t.status}</span>
+                          </div>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '12px' }}>{t.message}</p>
+                          
+                          {t.reply && (
+                            <div style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--accent-success)', padding: '12px', borderRadius: '0 8px 8px 0', fontSize: '0.8rem' }}>
+                              <strong>Admin reply:</strong> "{t.reply}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>You have no open support cases currently.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Account Settings Panel */}
+            {activePanel === 'settings' && (
+              <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <form onSubmit={handleUpdateProfile} className="glass-panel" style={{ padding: '36px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div>
+                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem', fontFamily: "'Playfair Display', serif", marginBottom: '6px' }}>Account Settings</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Update your personal profile details and security credentials.</p>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Full Name</label>
+                      <input 
+                        type="text" 
+                        value={profileForm.name} 
+                        onChange={e => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Username</label>
+                      <input 
+                        type="text" 
+                        value={user?.username || ""} 
+                        disabled 
+                        style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.05)' }} 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      value={profileForm.email} 
+                      onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
+                    <input 
+                      type="text" 
+                      value={profileForm.contact_phone} 
+                      onChange={e => setProfileForm(prev => ({ ...prev, contact_phone: e.target.value }))}
+                    />
+                  </div>
+
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Change Password (leave empty to keep current)</label>
+                    <input 
+                      type="password" 
+                      placeholder="New Secure Password" 
+                      value={profileForm.password} 
+                      onChange={e => setProfileForm(prev => ({ ...prev, password: e.target.value }))}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ marginTop: '10px', justifyContent: 'center' }}>
+                    Save Account Settings
+                  </button>
+                </form>
+              </div>
+            )}
+
+          </main>
+        </div>
+      )}
+
+      {/* RENDER VIEW 3: STORE ADMIN VIEW */}
+      {currentView === 'admin_dashboard' && role === 'admin' && (
+        <div className="dashboard-grid">
+          <aside className="sidebar">
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+              <Settings style={{ color: 'var(--accent-secondary)' }} />
+              <div>
+                <h5 style={{ fontWeight: 800 }}>Store Admin</h5>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Fulfillment Center</span>
+              </div>
+            </div>
+
+            <span className={`sidebar-link ${activePanel === 'shop_config' ? 'active' : ''}`} onClick={() => setActivePanel("shop_config")}>
+              <Settings size={18} /> Shop Branding Config
+            </span>
+            <span className={`sidebar-link ${activePanel === 'categories' ? 'active' : ''}`} onClick={() => setActivePanel("categories")}>
+              <Plus size={18} /> Categories Manager
+            </span>
+            <span className={`sidebar-link ${activePanel === 'collections' ? 'active' : ''}`} onClick={() => setActivePanel("collections")}>
+              <Award size={18} /> Collections Manager
+            </span>
+            <span className={`sidebar-link ${activePanel === 'products' ? 'active' : ''}`} onClick={() => setActivePanel("products")}>
+              <ShoppingBag size={18} /> Product Catalog
+            </span>
+            <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
+              <ShoppingCart size={18} /> Orders & Returns
+            </span>
+            <span className={`sidebar-link ${activePanel === 'inventory' ? 'active' : ''}`} onClick={() => setActivePanel("inventory")}>
+              <AlertCircle size={18} /> Stock Alerts
+            </span>
+            <span className={`sidebar-link ${activePanel === 'revenue' ? 'active' : ''}`} onClick={() => setActivePanel("revenue")}>
+              <BarChart2 size={18} /> Graphical Revenue
+            </span>
+            <span className={`sidebar-link ${activePanel === 'popup_ads' ? 'active' : ''}`} onClick={() => setActivePanel("popup_ads")}>
+              <Sparkles size={18} /> Popup Ad Banners
+            </span>
+            <span className={`sidebar-link ${activePanel === 'coupons' ? 'active' : ''}`} onClick={() => setActivePanel("coupons")}>
+              <Percent size={18} /> Coupons & Promo Codes
+            </span>
+            <span className={`sidebar-link ${activePanel === 'help_center' ? 'active' : ''}`} onClick={() => setActivePanel("help_center")}>
+              <HelpCircle size={18} /> Customer Support
+            </span>
+            <span className={`sidebar-link ${activePanel === 'messaging' ? 'active' : ''}`} onClick={() => setActivePanel("messaging")}>
+              <Phone size={18} /> Fast2SMS & WhatsApp
+            </span>
+            <span className={`sidebar-link ${activePanel === 'gst_report' ? 'active' : ''}`} onClick={() => setActivePanel("gst_report")}>
+              <FileText size={18} /> GST Accounting
+            </span>
+            <span className={`sidebar-link ${activePanel === 'customers' ? 'active' : ''}`} onClick={() => setActivePanel("customers")}>
+              <User size={18} /> Customer List
+            </span>
+            <span className={`sidebar-link ${activePanel === 'logs' ? 'active' : ''}`} onClick={() => setActivePanel("logs")}>
+              <FileText size={18} /> Store Audit Trail
+            </span>
+          </aside>
+
+          <main className="main-content">
+            
+            {/* Shop Config panel */}
+            {activePanel === 'shop_config' && adminShop && (
+              <form onSubmit={handleUpdateAdminShop} className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>Shop Branding & API Configurations</h2>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shop Name Title</label>
+                    <input 
+                      type="text" 
+                      value={adminShop.name}
+                      onChange={e => setAdminShop(prev => ({ ...prev, name: e.target.value }))}
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Logo Image</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {adminShop.logo_url && (
+                        <img src={adminShop.logo_url} alt="Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            handleUploadFile(file, (url) => {
+                              setAdminShop(prev => ({ ...prev, logo_url: url }));
+                            });
+                          }
+                        }}
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Image path URL (automatically filled after upload)"
+                        value={adminShop.logo_url}
+                        onChange={e => setAdminShop(prev => ({ ...prev, logo_url: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email</label>
+                    <input 
+                      type="email" 
+                      value={adminShop.contact_email}
+                      onChange={e => setAdminShop(prev => ({ ...prev, contact_email: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
+                    <input 
+                      type="text" 
+                      value={adminShop.contact_phone}
+                      onChange={e => setAdminShop(prev => ({ ...prev, contact_phone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Privacy Policy content</label>
+                  <textarea 
+                    value={adminShop.privacy_policy}
+                    onChange={e => setAdminShop(prev => ({ ...prev, privacy_policy: e.target.value }))}
+                    rows={4} 
+                  />
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>API Gateway Credentials</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Razorpay Key ID</label>
+                      <input 
+                        type="text" 
+                        placeholder="rzp_test..."
+                        value={adminShop.razorpay_key_id}
+                        onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_id: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Razorpay Secret Key</label>
+                      <input 
+                        type="password" 
+                        placeholder="Razorpay password secret..."
+                        value={adminShop.razorpay_key_secret}
+                        onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_secret: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fast2SMS platform API Key</label>
+                    <input 
+                      type="text" 
+                      value={adminShop.sms_api_key}
+                      onChange={e => setAdminShop(prev => ({ ...prev, sms_api_key: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>WhatsApp Campaign API Secret</label>
+                    <input 
+                      type="password" 
+                      value={adminShop.whatsapp_api_key}
+                      onChange={e => setAdminShop(prev => ({ ...prev, whatsapp_api_key: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '24px', marginTop: '10px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5' }}>Hero Section Slider & Cards</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+                    Customize the images, titles, and descriptions of the card overlay floating alongside the model showcase in the header.
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                    {(adminShop.saree_models || [
+                      { id: 1, image: "/nobaraa_saree_model_1.png?v=2", name: "Royal Purple Saree", description: "Intricate gold zari borders woven on rich premium silk." },
+                      { id: 2, image: "/nobaraa_saree_model_2.png?v=2", name: "Cream & Gold Banarasi", description: "Timeless luxury heritage weave from Varanasi." },
+                      { id: 3, image: "/nobaraa_saree_model_3.png?v=2", name: "Kanjeevaram Magenta", description: "Vibrant royal pink and gold Kanjeevaram silk." }
+                    ]).map((model, index, arr) => (
+                      <div 
+                        key={model.id || index} 
+                        style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: '80px 1fr 1.5fr 2fr 100px', 
+                          gap: '16px', 
+                          alignItems: 'center', 
+                          background: 'rgba(122, 78, 165, 0.02)',
+                          border: '1px solid rgba(122, 78, 165, 0.08)',
+                          borderRadius: '12px',
+                          padding: '16px'
+                        }}
+                      >
+                        {/* Image Preview */}
+                        <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
+                          <img 
+                            src={model.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"} 
+                            alt="" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"; }}
+                          />
+                        </div>
+
+                        {/* Card Title */}
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Card Text/Title</label>
+                          <input 
+                            type="text" 
+                            value={model.name || ""} 
+                            onChange={(e) => {
+                              const updated = [...(adminShop.saree_models || arr)];
+                              updated[index] = { ...updated[index], name: e.target.value };
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            placeholder="e.g. Royal Purple Saree"
+                            style={{ padding: '8px', fontSize: '0.85rem' }}
+                            required
+                          />
+                        </div>
+
+                        {/* Image URL */}
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Image Path / URL</label>
+                          <input 
+                            type="text" 
+                            value={model.image || ""} 
+                            onChange={(e) => {
+                              const updated = [...(adminShop.saree_models || arr)];
+                              updated[index] = { ...updated[index], image: e.target.value };
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            placeholder="e.g. /nobaraa_saree_model_1.png"
+                            style={{ padding: '8px', fontSize: '0.85rem' }}
+                            required
+                          />
+                        </div>
+
+                        {/* Card Description */}
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Card Description</label>
+                          <input 
+                            type="text" 
+                            value={model.description || ""} 
+                            onChange={(e) => {
+                              const updated = [...(adminShop.saree_models || arr)];
+                              updated[index] = { ...updated[index], description: e.target.value };
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            placeholder="Short description..."
+                            style={{ padding: '8px', fontSize: '0.85rem' }}
+                            required
+                          />
+                        </div>
+
+                        {/* Control Actions */}
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            style={{ padding: '6px', minWidth: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}
+                            disabled={index === 0}
+                            onClick={() => {
+                              const updated = [...(adminShop.saree_models || arr)];
+                              const temp = updated[index];
+                              updated[index] = updated[index - 1];
+                              updated[index - 1] = temp;
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            title="Move Up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            style={{ padding: '6px', minWidth: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}
+                            disabled={index === (adminShop.saree_models || arr).length - 1}
+                            onClick={() => {
+                              const updated = [...(adminShop.saree_models || arr)];
+                              const temp = updated[index];
+                              updated[index] = updated[index + 1];
+                              updated[index + 1] = temp;
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            title="Move Down"
+                          >
+                            ▼
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            style={{ padding: '6px', minWidth: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', color: '#ff4d4f', border: '1px solid #ff4d4f' }}
+                            onClick={() => {
+                              const updated = (adminShop.saree_models || arr).filter((_, i) => i !== index);
+                              setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                            }}
+                            title="Delete Card"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      const currentList = adminShop.saree_models || [
+                        { id: 1, image: "/nobaraa_saree_model_1.png?v=2", name: "Royal Purple Saree", description: "Intricate gold zari borders woven on rich premium silk." },
+                        { id: 2, image: "/nobaraa_saree_model_2.png?v=2", name: "Cream & Gold Banarasi", description: "Timeless luxury heritage weave from Varanasi." },
+                        { id: 3, image: "/nobaraa_saree_model_3.png?v=2", name: "Kanjeevaram Magenta", description: "Vibrant royal pink and gold Kanjeevaram silk." }
+                      ];
+                      const newId = currentList.length > 0 ? Math.max(...currentList.map(m => m.id || 0)) + 1 : 1;
+                      const newItem = {
+                        id: newId,
+                        image: "/nobaraa_saree_model_1.png?v=2",
+                        name: "New Saree Design",
+                        description: "Premium handcrafted silk saree design."
+                      };
+                      setAdminShop(prev => ({ ...prev, saree_models: [...currentList, newItem] }));
+                    }}
+                    style={{ fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.3)', marginBottom: '24px' }}
+                  >
+                    <Plus size={14} /> Add Saree Slider Card
+                  </button>
+                </div>
+
+                <button type="submit" className="btn-primary" style={{ width: 'fit-content' }}>
+                  Save Shop System Configurations <Check size={18} />
+                </button>
+              </form>
+            )}
+
+            {/* Categories Management panel */}
+            {activePanel === 'categories' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+                
+                {/* Save category form */}
+                <form onSubmit={handleSaveCategory} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>{categoryForm.id ? "Edit Category" : "Add New Category"}</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Category Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., Electronics"
+                      value={categoryForm.name}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Description text</label>
+                    <textarea 
+                      placeholder="Category catalog information..."
+                      value={categoryForm.description}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3} 
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Category Cover Image</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {categoryForm.image_url && (
+                        <img src={categoryForm.image_url} alt="Category Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            handleUploadFile(file, (url) => {
+                              setCategoryForm(prev => ({ ...prev, image_url: url }));
+                            });
+                          }
+                        }}
+                      />
+                      <input 
+                        type="url" 
+                        placeholder="Image path URL (automatically filled after upload)"
+                        value={categoryForm.image_url || ""}
+                        onChange={e => setCategoryForm(prev => ({ ...prev, image_url: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Save Category <Check size={16} />
+                  </button>
+                </form>
+
+                {/* Categories Table list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Active Product Categories</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Description</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminCategories.map(c => (
+                          <tr key={c.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{c.name}</td>
+                            <td>{c.description}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setCategoryForm(c)} className="btn-secondary" style={{ padding: '6px' }}>
+                                  <Edit2 size={14} />
+                                </button>
+                                <button onClick={() => handleDeleteCategory(c.id)} className="btn-danger" style={{ padding: '6px' }}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Collections Management panel */}
+            {activePanel === 'collections' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+                
+                {/* Save collection form */}
+                <form onSubmit={handleSaveCollection} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>{collectionForm.id ? "Edit Collection" : "Add New Collection"}</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Collection Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., The Saree & Ethnic Collection"
+                      value={collectionForm.name}
+                      onChange={e => setCollectionForm(prev => ({ ...prev, name: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Associate Categories</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto', padding: '10px', border: '1px solid var(--border-subtle)', borderRadius: '4px', background: 'rgba(255,255,255,0.02)' }}>
+                      {adminCategories.map(c => {
+                        const isChecked = collectionForm.category_ids.includes(c.id);
+                        return (
+                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setCollectionForm(prev => {
+                                  const updatedCategoryIds = checked 
+                                    ? [...prev.category_ids, c.id]
+                                    : prev.category_ids.filter(id => id !== c.id);
+                                  return { ...prev, category_ids: updatedCategoryIds };
+                                });
+                              }}
+                            />
+                            <span>{c.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Save Collection <Check size={16} />
+                  </button>
+                  {collectionForm.id && (
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ justifyContent: 'center' }}
+                      onClick={() => setCollectionForm({ id: null, name: "", category_ids: [] })}
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </form>
+
+                {/* Collections Table list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Active Collections</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Collection Name</th>
+                          <th>Linked Categories</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminCollections.map(col => {
+                          // Find category names
+                          const linkedNames = col.category_ids.map(id => {
+                            const found = adminCategories.find(c => c.id === id);
+                            return found ? found.name : `Category #${id}`;
+                          }).join(", ");
+
+                          return (
+                            <tr key={col.id}>
+                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{col.name}</td>
+                              <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{linkedNames || "No categories linked"}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button onClick={() => setCollectionForm(col)} className="btn-secondary" style={{ padding: '6px' }}>
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button onClick={() => handleDeleteCollection(col.id)} className="btn-danger" style={{ padding: '6px' }}>
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {adminCollections.length === 0 && (
+                          <tr>
+                            <td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>No collections defined. Add one!</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Product catalog panel */}
+            {activePanel === 'products' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                
+                {/* Add product form */}
+                <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <h3 style={{ fontWeight: 800 }}>{productForm.id ? "Edit Product Catalog Item" : "Publish New Product"}</h3>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Title Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., iPhone 15 Pro"
+                        value={productForm.name}
+                        onChange={e => setProductForm(prev => ({ ...prev, name: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Category Allocation</label>
+                      <select 
+                        value={productForm.category_id}
+                        onChange={e => setProductForm(prev => ({ ...prev, category_id: e.target.value }))}
+                      >
+                        <option value="">Choose category...</option>
+                        {adminCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Detailed catalog description</label>
+                    <textarea 
+                      placeholder="Specifications, highlights, and shipping logistics details..."
+                      value={productForm.description}
+                      onChange={e => setProductForm(prev => ({ ...prev, description: e.target.value }))}
+                      rows={3} 
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Sale Price (₹)</label>
+                      <input 
+                        type="number" 
+                        placeholder="12000"
+                        value={productForm.price}
+                        onChange={e => setProductForm(prev => ({ ...prev, price: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Original MRP (₹)</label>
+                      <input 
+                        type="number" 
+                        placeholder="15000"
+                        value={productForm.original_price}
+                        onChange={e => setProductForm(prev => ({ ...prev, original_price: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Warehouse Stock Quantity</label>
+                      <input 
+                        type="number" 
+                        placeholder="100"
+                        value={productForm.stock}
+                        onChange={e => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Stock Alert Threshold</label>
+                      <input 
+                        type="number" 
+                        value={productForm.alert_threshold}
+                        onChange={e => setProductForm(prev => ({ ...prev, alert_threshold: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Promo Code (Specific discount)</label>
+                      <input 
+                        type="text" 
+                        placeholder="IPHONE20"
+                        value={productForm.promo_code}
+                        onChange={e => setProductForm(prev => ({ ...prev, promo_code: e.target.value.toUpperCase() }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Promo Code Flat Discount (₹)</label>
+                      <input 
+                        type="number" 
+                        placeholder="2000"
+                        value={productForm.promo_discount}
+                        onChange={e => setProductForm(prev => ({ ...prev, promo_discount: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bulk Pricing Section */}
+                  <div style={{ background: 'linear-gradient(135deg, rgba(122,78,165,0.06), rgba(86,51,122,0.04))', border: '1px solid rgba(122,78,165,0.18)', borderRadius: '12px', padding: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                      <div style={{ background: 'linear-gradient(135deg, #7a4ea5, #56337a)', width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ color: '#fff', fontSize: '0.75rem', fontWeight: 800 }}>B</span>
+                      </div>
+                      <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: '#2b0b57', margin: 0 }}>Bulk / Wholesale Pricing</h4>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>(Optional — leave blank to disable bulk mode)</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Bulk Sale Price (₹)</label>
+                        <input 
+                          type="number" 
+                          placeholder="e.g., 9500"
+                          value={productForm.bulk_sale_price}
+                          onChange={e => setProductForm(prev => ({ ...prev, bulk_sale_price: e.target.value }))}
+                          style={{ borderColor: productForm.bulk_sale_price ? 'rgba(122,78,165,0.5)' : undefined }}
+                        />
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Price per unit when buying in bulk</span>
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Minimum Quantity for Bulk</label>
+                        <input 
+                          type="number" 
+                          placeholder="e.g., 10"
+                          value={productForm.min_quantity}
+                          onChange={e => setProductForm(prev => ({ ...prev, min_quantity: e.target.value }))}
+                          style={{ borderColor: productForm.min_quantity ? 'rgba(122,78,165,0.5)' : undefined }}
+                        />
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Min units buyer must order for bulk price</span>
+                      </div>
+                    </div>
+                    {productForm.bulk_sale_price && productForm.min_quantity && (
+                      <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(122,78,165,0.08)', borderRadius: '8px', fontSize: '0.82rem', color: '#56337a', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span>✓</span>
+                        <span>Bulk pricing enabled: <strong>₹{productForm.bulk_sale_price}</strong> per unit for orders of <strong>{productForm.min_quantity}+</strong> units</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Multiple Product Images - maximum below 10 */}
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Images (up to 10 images)</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {productForm.images.map((img, i) => (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', border: '1px solid var(--border-subtle)', borderRadius: '6px', background: 'rgba(0,0,0,0.01)' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {img && (
+                              <img src={img} alt="Product Preview" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-subtle)' }} />
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              style={{ border: 'none', padding: '4px 0', cursor: 'pointer', flex: 1 }}
+                              onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  handleUploadFile(file, (url) => {
+                                    const updated = [...productForm.images];
+                                    updated[i] = url;
+                                    setProductForm(prev => ({ ...prev, images: updated }));
+                                  });
+                                }
+                              }}
+                            />
+                            {productForm.images.length > 1 && (
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  const updated = productForm.images.filter((_, idx) => idx !== i);
+                                  setProductForm(prev => ({ ...prev, images: updated }));
+                                }}
+                                className="btn-danger" 
+                                style={{ padding: '8px 12px' }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder={`Image URL #${i+1} (automatically filled after upload)`}
+                            value={img}
+                            onChange={e => {
+                              const updated = [...productForm.images];
+                              updated[i] = e.target.value;
+                              setProductForm(prev => ({ ...prev, images: updated }));
+                            }}
+                          />
+                        </div>
+                      ))}
+                      {productForm.images.length < 10 && (
+                        <button 
+                          type="button" 
+                          onClick={() => setProductForm(prev => ({ ...prev, images: [...prev.images, ""] }))}
+                          className="btn-secondary" 
+                          style={{ padding: '8px 16px', fontSize: '0.8rem', width: 'fit-content' }}
+                        >
+                          <Plus size={14} /> Add Another Image Bullet
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: 'fit-content' }}>
+                    Publish to Store Catalog <Check size={18} />
+                  </button>
+                </form>
+
+                {/* Products Table list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Current Store Products</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Details</th>
+                          <th>Category</th>
+                          <th>Price</th>
+                          <th>MRP</th>
+                          <th>Stock</th>
+                          <th>Promo discount</th>
+                          <th>Bulk Price</th>
+                          <th>Min Qty</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminProducts.map(p => (
+                          <tr key={p.id}>
+                            <td>
+                              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                <img src={p.images[0]} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                                <div>
+                                  <strong style={{ color: 'var(--text-main)' }}>{p.name}</strong>
+                                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {p.id}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td><span className="badge badge-info">{p.category_name}</span></td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{p.price.toFixed(2)}</td>
+                            <td style={{ textDecoration: 'line-through' }}>₹{p.original_price.toFixed(2)}</td>
+                            <td>
+                              <span className={`badge ${p.stock <= p.alert_threshold ? 'badge-danger' : 'badge-success'}`}>
+                                {p.stock} units
+                              </span>
+                            </td>
+                            <td>{p.promo_code ? `${p.promo_code} (-₹${p.promo_discount})` : "None"}</td>
+                            <td>
+                              {p.bulk_sale_price ? (
+                                <span style={{ color: '#7a4ea5', fontWeight: 700 }}>₹{p.bulk_sale_price.toFixed(2)}</span>
+                              ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>}
+                            </td>
+                            <td>
+                              {p.min_quantity ? (
+                                <span className="badge badge-info">{p.min_quantity}+ units</span>
+                              ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "" })} className="btn-secondary" style={{ padding: '6px' }}>
+                                  <Edit2 size={14} />
+                                </button>
+                                <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Orders & Returns panel */}
+            {activePanel === 'orders' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                
+                {/* Returns management */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px', color: 'var(--accent-danger)' }}>Pending Customer Return Requests</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Buyer</th>
+                          <th>Return Reason</th>
+                          <th>Refund Value</th>
+                          <th style={{ textAlign: 'right' }}>Decide Resolution</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminOrders.filter(o => o.return_request_status === 'Pending').map(o => (
+                          <tr key={o.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                            <td>{o.user_name}</td>
+                            <td>"{o.return_reason}"</td>
+                            <td style={{ fontWeight: 'bold', color: '#10b981' }}>₹{o.final_amount}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => handleResolveReturn(o.id, 'Approved')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--accent-success)' }}>
+                                  Approve & Refund
+                                </button>
+                                <button onClick={() => handleResolveReturn(o.id, 'Rejected')} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                                  Reject request
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {adminOrders.filter(o => o.return_request_status === 'Pending').length === 0 && (
+                          <tr>
+                            <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }}>No pending return claims currently registered.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Orders list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Store Sales Transactions</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Buyer</th>
+                          <th>Shipping Location</th>
+                          <th>Gross Total</th>
+                          <th>Method</th>
+                          <th>Ship State</th>
+                          <th style={{ textAlign: 'right' }}>Logistics dispatch</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminOrders.map(o => (
+                          <tr key={o.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                            <td>{o.user_name}</td>
+                            <td>{o.shipping_address}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{o.final_amount}</td>
+                            <td><span className="badge badge-info">{o.payment_method}</span></td>
+                            <td>
+                              <span className={`badge ${
+                                o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                              }`}>
+                                {o.status}
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              {o.status === 'Pending' && (
+                                <button onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                                  Dispatch Order
+                                </button>
+                              )}
+                              {o.status === 'Dispatched' && (
+                                <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399' }}>
+                                  Confirm Delivery
+                                </button>
+                              )}
+                              {o.status === 'Customer Received' && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
+                              )}
+                              {o.status === 'Returned' && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Inventory panel with alerts */}
+            {activePanel === 'inventory' && adminInventory && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                
+                {/* Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Unique Products</span>
+                    <h2 style={{ fontWeight: 800, fontSize: '2rem', marginTop: '8px' }}>{adminInventory.total_unique_products} Items</h2>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Warehoused Stock</span>
+                    <h2 style={{ fontWeight: 800, fontSize: '2rem', marginTop: '8px' }}>{adminInventory.total_stock_count} units</h2>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Store Inventory Evaluation</span>
+                    <h2 style={{ fontWeight: 800, fontSize: '2rem', color: 'var(--accent-secondary)', marginTop: '8px' }}>₹{adminInventory.total_inventory_value.toFixed(2)}</h2>
+                  </div>
+                </div>
+
+                {/* Stock alert triggers */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center', color: adminInventory.alerts.length > 0 ? 'var(--accent-danger)' : 'white' }}>
+                    <AlertCircle /> Stock Threshold Warnings ({adminInventory.alerts.length})
+                  </h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Product ID</th>
+                          <th>Product Name</th>
+                          <th>Available Stock</th>
+                          <th>Alert Threshold</th>
+                          <th style={{ textAlign: 'right' }}>Restock adjustment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminInventory.alerts.map(al => (
+                          <tr key={al.id} style={{ background: 'rgba(239,68,68,0.04)' }}>
+                            <td style={{ fontWeight: 'bold' }}>#{al.id}</td>
+                            <td style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>{al.name}</td>
+                            <td><span className="badge badge-danger">{al.stock} Remaining</span></td>
+                            <td>{al.threshold} units limit</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button onClick={() => {
+                                // Find item in product list and open edit form
+                                const p = adminProducts.find(x => x.id === al.id);
+                                if (p) {
+                                  setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""] });
+                                  setActivePanel("products");
+                                  addToast("Modify Stock", "Input updated stock quantity in the catalog form below.", "info");
+                                }
+                              }} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                                Replenish Stock
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {adminInventory.alerts.length === 0 && (
+                          <tr>
+                            <td colSpan="5" style={{ textAlign: 'center', padding: '24px', color: 'var(--accent-success)', fontWeight: 'bold' }}>All product warehouses adequately stocked.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Graphical Revenue Report panel */}
+            {activePanel === 'revenue' && adminRevenue && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                
+                {/* Stats */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>NET SALES REVENUE</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-success)', marginTop: '4px' }}>₹{adminRevenue.summary.total_revenue}</h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GST TAX COLLECTED</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.gst_collected}</h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ORDER VOLUME</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>{adminRevenue.summary.order_count} Sales</h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>AVERAGE ORDER VALUE</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.average_order_value}</h3>
+                  </div>
+                </div>
+
+                {/* Premium Custom SVG bar chart rendering */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                  
+                  {/* Daily sales progress */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Daily Sales Progress (past week)</h4>
+                    <div className="chart-container">
+                      {adminRevenue.charts.daily_sales.length > 0 ? (
+                        adminRevenue.charts.daily_sales.map((item, idx) => {
+                          const maxVal = Math.max(...adminRevenue.charts.daily_sales.map(x => x.revenue)) || 1;
+                          const heightPct = (item.revenue / maxVal) * 80; // scale max to 80% height
+                          return (
+                            <div key={idx} className="chart-bar-wrapper">
+                              <div className="chart-bar" style={{ height: `${heightPct}%` }}>
+                                <div className="chart-tooltip">₹{item.revenue}</div>
+                              </div>
+                              <span className="chart-label">{item.date.split('-').slice(1).join('/')}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No daily sales recorded yet.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category distribution */}
+                  <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+                    <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Revenue share by category</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, justifyContent: 'center' }}>
+                      {adminRevenue.charts.category_sales.length > 0 ? (
+                        adminRevenue.charts.category_sales.map((item, idx) => {
+                          const sum = adminRevenue.charts.category_sales.reduce((a, b) => a + b.value, 0) || 1;
+                          const pct = Math.round((item.value / sum) * 100);
+                          return (
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                                <span>{item.name}</span>
+                                <strong>₹{item.value} ({pct}%)</strong>
+                              </div>
+                              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent-secondary)', borderRadius: '4px' }} />
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No categories registered.</p>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            )}
+
+            {/* Popup Ads panel */}
+            {activePanel === 'popup_ads' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+                
+                {/* Save Ad banner form */}
+                <form onSubmit={handleSavePopupAd} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>{adForm.id ? "Edit Popup Banner" : "New Ad Banner Campaign"}</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Campaign Title</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., Tech Season Blowout"
+                      value={adForm.title}
+                      onChange={e => setAdForm(prev => ({ ...prev, title: e.target.value }))}
+                      required 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Campaign Banner Image</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {adForm.image_url && (
+                        <img src={adForm.image_url} alt="Ad Banner Preview" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            handleUploadFile(file, (url) => {
+                              setAdForm(prev => ({ ...prev, image_url: url }));
+                            });
+                          }
+                        }}
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Image path URL (automatically filled after upload)"
+                        value={adForm.image_url}
+                        onChange={e => setAdForm(prev => ({ ...prev, image_url: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Target Navigation Link</label>
+                    <input 
+                      type="text" 
+                      placeholder="/shop/1"
+                      value={adForm.target_url}
+                      onChange={e => setAdForm(prev => ({ ...prev, target_url: e.target.value }))}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '20px', height: '20px' }}
+                        checked={adForm.show_before_login}
+                        onChange={e => setAdForm(prev => ({ ...prev, show_before_login: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Show Guest Visitor</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '20px', height: '20px' }}
+                        checked={adForm.show_after_login}
+                        onChange={e => setAdForm(prev => ({ ...prev, show_after_login: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Show Logged In</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      style={{ width: '20px', height: '20px' }}
+                      checked={adForm.is_active}
+                      onChange={e => setAdForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Campaign Active Toggle</span>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Save Ad Campaign <Check size={16} />
+                  </button>
+                </form>
+
+                {/* Ads list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Active Promotional Banners</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {adminPopupAds.map(ad => (
+                      <div key={ad.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src={ad.image_url} alt="" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                        <div style={{ flexGrow: 1 }}>
+                          <h5 style={{ fontWeight: 800 }}>{ad.title}</h5>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Target: {ad.target_url || "none"}</span>
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                            {ad.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-danger">Disabled</span>}
+                            {ad.show_before_login && <span className="badge badge-info">Guest</span>}
+                            {ad.show_after_login && <span className="badge badge-info">Users</span>}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <button onClick={() => setAdForm(ad)} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
+                          <button onClick={() => handleDeletePopupAd(ad.id)} className="btn-danger" style={{ padding: '6px' }}><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Coupons panel */}
+            {activePanel === 'coupons' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+                
+                {/* Save Coupon form */}
+                <form onSubmit={handleSaveCoupon} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>{couponForm.id ? "Edit Coupon" : "Add Discount Code"}</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Coupon Code (Caps)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., TECH20"
+                      value={couponForm.code}
+                      onChange={e => setCouponForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                      required 
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Discount (%)</label>
+                      <input 
+                        type="number" 
+                        placeholder="20"
+                        value={couponForm.discount_percentage}
+                        onChange={e => setCouponForm(prev => ({ ...prev, discount_percentage: e.target.value }))}
+                        required 
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Max Discount Limit (₹)</label>
+                      <input 
+                        type="number" 
+                        value={couponForm.max_discount}
+                        onChange={e => setCouponForm(prev => ({ ...prev, max_discount: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Minimum Purchase Required (₹)</label>
+                    <input 
+                      type="number" 
+                      value={couponForm.min_purchase}
+                      onChange={e => setCouponForm(prev => ({ ...prev, min_purchase: e.target.value }))}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      style={{ width: '20px', height: '20px' }}
+                      checked={couponForm.is_active}
+                      onChange={e => setCouponForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Coupon Active status</span>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Publish Discount Coupon <Check size={16} />
+                  </button>
+                </form>
+
+                {/* Coupons Table list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Available Store Coupons</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Code</th>
+                          <th>Value (%)</th>
+                          <th>Min Spend</th>
+                          <th>Max Cap</th>
+                          <th>State</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminCoupons.map(cp => (
+                          <tr key={cp.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{cp.code}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>{cp.discount_percentage}%</td>
+                            <td>₹{cp.min_purchase}</td>
+                            <td>₹{cp.max_discount}</td>
+                            <td>{cp.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-danger">Disabled</span>}</td>
+                            <td style={{ textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setCouponForm(cp)} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
+                                <button onClick={() => handleDeleteCoupon(cp.id)} className="btn-danger" style={{ padding: '6px' }}><Trash2 size={12} /></button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Support Tickets panel */}
+            {activePanel === 'help_center' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                
+                {/* Tickets list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Help Center support tickets</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {adminHelpTickets.map(t => (
+                      <div key={t.id} className="glass-panel" style={{ padding: '20px', cursor: 'pointer', borderColor: ticketReplyForm.ticket_id === t.id ? 'var(--accent-primary)' : 'var(--border-subtle)' }} onClick={() => setTicketReplyForm({ ticket_id: t.id, reply: t.reply || "" })}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <h4 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>{t.subject}</h4>
+                          <span className={`badge ${t.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>{t.status}</span>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Customer: <strong>{t.user_name}</strong></p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginTop: '8px' }}>"{t.message}"</p>
+                        {t.reply && <p style={{ fontSize: '0.75rem', color: 'var(--accent-success)', marginTop: '6px' }}>Reply: "{t.reply}"</p>}
+                      </div>
+                    ))}
+                    {adminHelpTickets.length === 0 && (
+                      <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No support cases opened in this shop currently.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reply Form */}
+                {ticketReplyForm.ticket_id && (
+                  <form onSubmit={handleResolveTicket} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                    <h3 style={{ fontWeight: 800 }}>Resolve Ticket ID #{ticketReplyForm.ticket_id}</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Type support reply which will be dynamically notified to user.</p>
+                    
+                    <textarea 
+                      placeholder="Type response reply..." 
+                      rows={4}
+                      value={ticketReplyForm.reply}
+                      onChange={e => setTicketReplyForm(prev => ({ ...prev, reply: e.target.value }))}
+                      required
+                    />
+                    
+                    <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                      Transmit Resolution reply <Send size={16} />
+                    </button>
+                  </form>
+                )}
+
+              </div>
+            )}
+
+            {/* Messaging campaigns (SMS & WhatsApp logs) */}
+            {activePanel === 'messaging' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                
+                {/* Send messaging campaign */}
+                <form onSubmit={handleDispatchCampaign} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>Broadcast Message Campaign</h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Transmit promo codes or notifications to customers via configured FAST2SMS or WhatsApp API keys.</p>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Transmit Platform</label>
+                      <select 
+                        value={messagingForm.platform}
+                        onChange={e => setMessagingForm(prev => ({ ...prev, platform: e.target.value }))}
+                      >
+                        <option value="SMS">Fast2SMS (SMS)</option>
+                        <option value="WhatsApp">WhatsApp Business</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Recipient Target</label>
+                      <select 
+                        value={messagingForm.recipient}
+                        onChange={e => setMessagingForm(prev => ({ ...prev, recipient: e.target.value }))}
+                      >
+                        <option value="All Customers">All Store Buyers</option>
+                        <option value="Active Cart Users">Users with Active Carts</option>
+                        <option value="+91 94444 33333">Test Phone (+91 94444 33333)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Message Text</label>
+                    <textarea 
+                      placeholder="Type promotional text details..." 
+                      rows={4}
+                      value={messagingForm.message}
+                      onChange={e => setMessagingForm(prev => ({ ...prev, message: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Transmit Broadcast Campaign <Send size={16} />
+                  </button>
+                </form>
+
+                {/* Sent Messages logs */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Campaign Transmission History</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '500px', overflowY: 'auto' }}>
+                    {adminSmsLogs.map(l => (
+                      <div key={l.id} className="glass-panel" style={{ padding: '16px', fontSize: '0.8rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <strong style={{ color: 'var(--text-main)' }}>{l.platform}</strong>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(l.timestamp).toLocaleString()}</span>
+                        </div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '4px' }}>Target: {l.recipient}</p>
+                        <p style={{ color: 'var(--text-main)' }}>"{l.message}"</p>
+                        <span className="badge badge-success" style={{ marginTop: '6px', fontSize: '0.65rem' }}>{l.status}</span>
+                      </div>
+                    ))}
+                    {adminSmsLogs.length === 0 && (
+                      <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No campaigns dispatched yet.</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* GST Accounting panel */}
+            {activePanel === 'gst_report' && gstReport && (
+              <div className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>GST Tax Accounting Report</h2>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gross Store Volume</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-main)', marginTop: '4px' }}>₹{gstReport.gross_revenue.toFixed(2)}</h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Net Taxable Sales</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-main)', marginTop: '4px' }}>₹{gstReport.net_sales.toFixed(2)}</h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px', borderColor: 'var(--accent-secondary)' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total GST Tax collected</span>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-secondary)', marginTop: '4px' }}>₹{gstReport.total_gst_collected.toFixed(2)}</h3>
+                  </div>
+                </div>
+                
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', fontSize: '0.85rem' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '8px' }}>Reporting Aggregates Info</h4>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Active reporting schedule: <strong>{gstReport.reporting_period}</strong></p>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Aggregate GST tariff: <strong>{gstReport.gst_rate_applied}</strong></p>
+                  <p style={{ color: 'var(--text-muted)' }}>Invoice sales count: <strong>{gstReport.total_orders_count} successful orders</strong></p>
+                </div>
+              </div>
+            )}
+
+            {/* Customers list panel */}
+            {activePanel === 'customers' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Customer Base Manager</h2>
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Display Name</th>
+                        <th>Username ID</th>
+                        <th>Email Contact</th>
+                        <th>Phone</th>
+                        <th>Orders Count</th>
+                        <th>Total Purchase spend</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminCustomers.map(cust => (
+                        <tr key={cust.id}>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{cust.name}</td>
+                          <td>{cust.username}</td>
+                          <td>{cust.email}</td>
+                          <td>{cust.contact_phone || "none"}</td>
+                          <td style={{ fontWeight: 'bold' }}>{cust.total_orders} sales</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>₹{cust.total_spent.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                      {adminCustomers.length === 0 && (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No buyers recorded in this shop database yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Logs Audit panel */}
+            {activePanel === 'logs' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Store System Logs</h2>
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Actor</th>
+                        <th>Activity description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminLogs.map(l => (
+                        <tr key={l.id}>
+                          <td>{new Date(l.created_at).toLocaleString()}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
+                          <td>{l.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+          </main>
+        </div>
+      )}
+
+      {/* RENDER VIEW 4: SUPER ADMIN VIEW */}
+      {currentView === 'super_admin_dashboard' && role === 'super_admin' && (
+        <div className="dashboard-grid">
+          <aside className="sidebar">
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+              <ShieldAlert style={{ color: 'var(--accent-danger)' }} />
+              <div>
+                <h5 style={{ fontWeight: 800 }}>Super Admin</h5>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Portal Console</span>
+              </div>
+            </div>
+
+            <span className={`sidebar-link ${activePanel === 'shop_creation' ? 'active' : ''}`} onClick={() => { setActivePanel("shop_creation"); setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10 }); }}>
+              <Plus size={18} /> Shop Provisioning
+            </span>
+            <span className={`sidebar-link ${activePanel === 'admin_creation' ? 'active' : ''}`} onClick={() => setActivePanel("admin_creation")}>
+              <User size={18} /> Admin Accounts Allocation
+            </span>
+            <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
+              <ShoppingBag size={18} /> System Orders
+            </span>
+            <span className={`sidebar-link ${activePanel === 'audit_logs' ? 'active' : ''}`} onClick={() => setActivePanel("audit_logs")}>
+              <FileText size={18} /> Absolute Audit Logs
+            </span>
+          </aside>
+
+          <main className="main-content">
+            
+            {/* Shop creation and list */}
+            {activePanel === 'shop_creation' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                
+                {/* Create/Edit Shop form */}
+                <form onSubmit={shopForm.id ? handleUpdateShopConfig : handleCreateShop} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>{shopForm.id ? "Global Shop Customization" : "Create New Shop Platform"}</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Shop Name Title</label>
+                    <input 
+                      type="text" 
+                      value={shopForm.name}
+                      onChange={e => setShopForm(prev => ({ ...prev, name: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Branding Logo Image</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {shopForm.logo_url && (
+                        <img src={shopForm.logo_url} alt="Shop Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
+                      )}
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            handleUploadFile(file, (url) => {
+                              setShopForm(prev => ({ ...prev, logo_url: url }));
+                            });
+                          }
+                        }}
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Logo path URL (automatically filled after upload)"
+                        value={shopForm.logo_url}
+                        onChange={e => setShopForm(prev => ({ ...prev, logo_url: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Email</label>
+                      <input 
+                        type="email" 
+                        value={shopForm.contact_email}
+                        onChange={e => setShopForm(prev => ({ ...prev, contact_email: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Phone</label>
+                      <input 
+                        type="text" 
+                        value={shopForm.contact_phone}
+                        onChange={e => setShopForm(prev => ({ ...prev, contact_phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Privacy Policy Text</label>
+                    <textarea 
+                      value={shopForm.privacy_policy}
+                      onChange={e => setShopForm(prev => ({ ...prev, privacy_policy: e.target.value }))}
+                      rows={2} 
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '18px', height: '18px' }}
+                        checked={shopForm.super_coin_enabled}
+                        onChange={e => setShopForm(prev => ({ ...prev, super_coin_enabled: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Enable Super Coins</span>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Ratio spent per coin (₹)</label>
+                      <input 
+                        type="number" 
+                        value={shopForm.super_coin_ratio}
+                        onChange={e => setShopForm(prev => ({ ...prev, super_coin_ratio: parseInt(e.target.value) }))}
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center', marginTop: '10px' }}>
+                    {shopForm.id ? "Overwite Global Configurations" : "Provision Shop"} <Check size={16} />
+                  </button>
+                </form>
+
+                {/* Provisioned Shops list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Provisioned Shop Platforms</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {superShops.map(s => (
+                      <div key={s.id} className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src={s.logo_url} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <div style={{ flexGrow: 1 }}>
+                          <h4 style={{ fontWeight: 800 }}>{s.name}</h4>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Email: {s.contact_email} | Phone: {s.contact_phone}</p>
+                          <span className={`badge ${s.super_coin_enabled ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '6px', fontSize: '0.65rem' }}>
+                            Coins: {s.super_coin_enabled ? `Ratio ₹${s.super_coin_ratio}` : "Disabled"}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <button onClick={() => setShopForm(s)} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
+                          <button onClick={() => handleDeleteShop(s.id)} className="btn-danger" style={{ padding: '6px' }}><Trash2 size={12} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Admin accounts allocation */}
+            {activePanel === 'admin_creation' && (
+              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                
+                {/* Create Admin form */}
+                <form onSubmit={handleCreateAdmin} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                  <h3 style={{ fontWeight: 800 }}>Allocate Store Administrator</h3>
+                  
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Target Shop</label>
+                    <select 
+                      value={newAdminForm.shop_id}
+                      onChange={e => setNewAdminForm(prev => ({ ...prev, shop_id: e.target.value }))}
+                      required
+                    >
+                      <option value="">Choose Shop Platform...</option>
+                      {superShops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Admin Username ID</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g., tech_hub_admin"
+                      value={newAdminForm.username}
+                      onChange={e => setNewAdminForm(prev => ({ ...prev, username: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Display Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Aura Tech Admin"
+                      value={newAdminForm.name}
+                      onChange={e => setNewAdminForm(prev => ({ ...prev, name: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email Address</label>
+                    <input 
+                      type="email" 
+                      placeholder="admin@auratech.com"
+                      value={newAdminForm.email}
+                      onChange={e => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Security Password</label>
+                    <input 
+                      type="password" 
+                      placeholder="admin123"
+                      value={newAdminForm.password}
+                      onChange={e => setNewAdminForm(prev => ({ ...prev, password: e.target.value }))}
+                      required 
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                    Authorize Store Administrator <Check size={16} />
+                  </button>
+                </form>
+
+                {/* Admins list */}
+                <div>
+                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Authorized Store Administrators</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Username</th>
+                          <th>Shop Platform</th>
+                          <th>Email Address</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {superAdmins.map(a => (
+                          <tr key={a.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.name} ({a.username})</td>
+                            <td><span className="badge badge-info">{a.shop_name}</span></td>
+                            <td>{a.email}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* Platform-wide Orders list */}
+            {activePanel === 'orders' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Global Sales Ledger</h2>
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Order ID</th>
+                        <th>Shop Name</th>
+                        <th>Customer</th>
+                        <th>Gross Value</th>
+                        <th>Tax Inclusive</th>
+                        <th>Date & Time</th>
+                        <th>Status State</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {superOrders.map(o => (
+                        <tr key={o.id}>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                          <td style={{ fontWeight: 'bold' }}>{o.shop_name}</td>
+                          <td>{o.user_name}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>₹{o.final_amount}</td>
+                          <td>₹{o.gst_amount} (GST)</td>
+                          <td>{new Date(o.created_at).toLocaleString()}</td>
+                          <td>
+                            <span className={`badge ${
+                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                            }`}>
+                              {o.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Absolute Audit logs */}
+            {activePanel === 'audit_logs' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Absolute Audit Logs</h2>
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Actor</th>
+                        <th>Store ID</th>
+                        <th>System Activity Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {superLogs.map(l => (
+                        <tr key={l.id}>
+                          <td>{new Date(l.created_at).toLocaleString()}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
+                          <td>{l.shop_id || "Global Core"}</td>
+                          <td>{l.action}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+          </main>
+        </div>
+      )}
+
+      {/* PREMIUM SLIDING CART DRAWER OVERLAY */}
+      {showCartDrawer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 10000,
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }} onClick={() => setShowCartDrawer(false)}>
+          <div style={{
+            width: '460px',
+            maxWidth: '100%',
+            height: '100%',
+            backgroundColor: '#ffffff',
+            color: '#111111',
+            boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            {/* Drawer Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eeeeee', paddingBottom: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <ShoppingBag size={22} style={{ color: '#111111' }} />
+                <h3 style={{ fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>Shopping Bag ({cart.length})</h3>
+              </div>
+              <button onClick={() => setShowCartDrawer(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888888', transition: 'color 0.2s' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Drawer Body (Scrollable Cart items list) */}
+            <div style={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '4px' }}>
+              {cart.length > 0 ? (
+                cart.map(ci => (
+                  <div key={ci.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
+                    <img src={ci.product.images[0]} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
+                    <div style={{ flexGrow: 1 }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{ci.product.name}</h4>
+                      <span style={{ fontSize: '0.75rem', color: '#888888', display: 'block', marginBottom: '8px' }}>Store: {ci.product.shop_id}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dddddd', borderRadius: '4px' }}>
+                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1))}>-</button>
+                          <span style={{ padding: '0 8px', fontSize: '0.85rem', fontWeight: 600 }}>{ci.quantity}</span>
+                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, ci.quantity + 1)}>+</button>
+                        </div>
+                        <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111' }}>₹{ci.product.price * ci.quantity}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => handleRemoveFromCart(ci.id)} style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', alignSelf: 'center' }}>
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#888888', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                  <ShoppingBag size={48} style={{ color: '#cccccc' }} />
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>Your shopping bag is empty.</p>
+                  <button onClick={() => setShowCartDrawer(false)} style={{ border: '1px solid #111111', background: 'none', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>Continue Shopping</button>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer (Subtotal and Action buttons) */}
+            {cart.length > 0 && (
+              <div style={{ borderTop: '1px solid #eeeeee', paddingTop: '20px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 500, color: '#888888' }}>Estimated Subtotal</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111111' }}>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)}</span>
+                </div>
+                <button onClick={() => {
+                  setShowCartDrawer(false);
+                  if (role === 'user') {
+                    setCurrentView("user_dashboard");
+                    setActivePanel("cart");
+                  } else {
+                    setLoginRoleTab("user");
+                    setShowLoginModal(true);
+                    addToast("Checkout", "Please log in to finalize your purchase order.", "warning");
+                  }
+                }} style={{ width: '100%', backgroundColor: '#000000', color: '#ffffff', border: 'none', padding: '16px', fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                  Proceed to Checkout <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PREMIUM SLIDING WISHLIST DRAWER OVERLAY */}
+      {showWishlistDrawer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 10000,
+          display: 'flex',
+          justifyContent: 'flex-end'
+        }} onClick={() => setShowWishlistDrawer(false)}>
+          <div style={{
+            width: '460px',
+            maxWidth: '100%',
+            height: '100%',
+            backgroundColor: '#ffffff',
+            color: '#111111',
+            boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            animation: 'slideLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+            padding: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            {/* Drawer Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eeeeee', paddingBottom: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Heart size={22} style={{ color: '#ff4d4f', fill: '#ff4d4f' }} />
+                <h3 style={{ fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>My Wishlist ({wishlist.length})</h3>
+              </div>
+              <button onClick={() => setShowWishlistDrawer(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888888', transition: 'color 0.2s' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Drawer Body (Scrollable items list) */}
+            <div style={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '4px' }}>
+              {wishlist.length > 0 ? (
+                wishlist.map(wi => (
+                  <div key={wi.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
+                    <img src={wi.product.images[0]} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
+                    <div style={{ flexGrow: 1 }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wi.product.name}</h4>
+                      <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111', display: 'block', marginBottom: '12px' }}>₹{wi.product.price}</span>
+                      <button onClick={() => {
+                        handleAddToCart(wi.product_id);
+                        handleRemoveFromWishlist(wi.id);
+                      }} style={{ backgroundColor: '#111111', color: '#ffffff', border: 'none', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        Add To Bag <ShoppingBag size={12} />
+                      </button>
+                    </div>
+                    <button onClick={() => handleRemoveFromWishlist(wi.id)} style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', alignSelf: 'center' }}>
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#888888', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                  <Heart size={48} style={{ color: '#cccccc' }} />
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>Your wishlist is empty.</p>
+                  <button onClick={() => setShowWishlistDrawer(false)} style={{ border: '1px solid #111111', background: 'none', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>Browse Products</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE STICKY BOTTOM NAVIGATION BAR */}
+      <div className="mobile-bottom-nav" style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        width: '100%',
+        height: '60px',
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderTop: '1px solid rgba(122, 78, 165, 0.1)',
+        boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.04)',
+        display: 'none', // Overridden in CSS media query
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        zIndex: 9999,
+        paddingBottom: 'safe-area-inset-bottom'
+      }}>
+        {/* Home Item */}
+        <button 
+          onClick={() => {
+            setCurrentView("opac");
+            setActiveCategoryPage(null);
+            setSelectedCategory("");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: currentView === 'opac' && !activeCategoryPage ? '#7a4ea5' : '#666666',
+            cursor: 'pointer',
+            gap: '3px'
+          }}
+        >
+          <Home size={20} style={{ color: currentView === 'opac' && !activeCategoryPage ? '#7a4ea5' : '#666666' }} />
+          <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Home</span>
+        </button>
+
+        {/* Search Item */}
+        <button 
+          onClick={() => {
+            setCurrentView("opac");
+            setActiveCategoryPage(null);
+            setTimeout(() => {
+              const catalog = document.getElementById("catalog-section");
+              if (catalog) {
+                catalog.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => {
+                  document.getElementById("search-input")?.focus();
+                }, 500);
+              }
+            }, 100);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#666666',
+            cursor: 'pointer',
+            gap: '3px'
+          }}
+        >
+          <Search size={20} />
+          <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Search</span>
+        </button>
+
+        {/* Wishlist Item */}
+        <button 
+          onClick={() => setShowWishlistDrawer(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#666666',
+            cursor: 'pointer',
+            position: 'relative',
+            gap: '3px'
+          }}
+        >
+          <Heart size={20} style={{ fill: wishlist.length > 0 ? '#ff4d4f' : 'none', color: wishlist.length > 0 ? '#ff4d4f' : '#666666' }} />
+          {wishlist.length > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '-3px',
+              right: '12px',
+              background: '#ff4d4f',
+              color: 'white',
+              borderRadius: '50%',
+              width: '14px',
+              height: '14px',
+              fontSize: '0.6rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold'
+            }}>{wishlist.length}</span>
+          )}
+          <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Wishlist</span>
+        </button>
+
+        {/* Cart Item */}
+        <button 
+          onClick={() => setShowCartDrawer(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#666666',
+            cursor: 'pointer',
+            position: 'relative',
+            gap: '3px'
+          }}
+        >
+          <ShoppingBag size={20} />
+          <span style={{
+            position: 'absolute',
+            top: '-4px',
+            right: '2px',
+            background: '#7a4ea5',
+            color: '#ffffff',
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            borderRadius: '50%',
+            width: '15px',
+            height: '15px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
+          </span>
+          <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Cart</span>
+        </button>
+
+        {/* Profile Item */}
+        <button 
+          onClick={() => {
+            if (role === 'guest') {
+              setLoginRoleTab("user");
+              setShowLoginModal(true);
+            } else {
+              setCurrentView(role === 'user' ? "user_dashboard" : role === 'admin' ? "admin_dashboard" : "super_admin_dashboard");
+            }
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: role !== 'guest' ? '#7a4ea5' : '#666666',
+            cursor: 'pointer',
+            gap: '3px'
+          }}
+        >
+          <User size={20} style={{ color: role !== 'guest' ? '#7a4ea5' : '#666666' }} />
+          <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Account</span>
+        </button>
+      </div>
+
+    </div>
+  );
+}

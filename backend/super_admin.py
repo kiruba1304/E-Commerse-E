@@ -1,0 +1,239 @@
+from flask import Blueprint, request, jsonify
+from models import db, SuperAdmin, Shop, Admin, User, Order, SystemLog
+from auth_middleware import generate_token, token_required, role_required
+
+super_admin_bp = Blueprint('super_admin', __name__)
+
+def log_system_action(actor_type, actor_id, username, action, shop_id=None):
+    try:
+        log = SystemLog(
+            actor_type=actor_type,
+            actor_id=actor_id,
+            username=username,
+            action=action,
+            shop_id=shop_id
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print("Log error:", e)
+        db.session.rollback()
+
+@super_admin_bp.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    sa = SuperAdmin.query.filter_by(username=username).first()
+    if not sa or not sa.check_password(password):
+        return jsonify({"error": "Invalid super admin credentials"}), 401
+
+    token = generate_token(sa.id, sa.username, 'super_admin')
+    
+    # Log login action
+    log_system_action('super_admin', sa.id, sa.username, "Super Admin logged in successfully")
+    
+    return jsonify({
+        "message": "Login successful",
+        "token": token,
+        "user": sa.serialize()
+    }), 200
+
+@super_admin_bp.route('/logout', methods=['POST'])
+@role_required(['super_admin'])
+def logout():
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], "Super Admin logged out")
+    return jsonify({"message": "Logout successful"}), 200
+
+@super_admin_bp.route('/profile', methods=['GET'])
+@role_required(['super_admin'])
+def get_profile():
+    sa = SuperAdmin.query.get(request.user['user_id'])
+    if not sa:
+        return jsonify({"error": "Super admin profile not found"}), 404
+    return jsonify(sa.serialize()), 200
+
+# SHOP MANAGEMENT
+@super_admin_bp.route('/shops', methods=['POST'])
+@role_required(['super_admin'])
+def create_shop():
+    data = request.get_json() or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Shop name is required"}), 400
+
+    shop = Shop(
+        name=name,
+        logo_url=data.get('logo_url', ''),
+        contact_email=data.get('contact_email', ''),
+        contact_phone=data.get('contact_phone', ''),
+        privacy_policy=data.get('privacy_policy', 'Default Privacy Policy'),
+        sms_api_key=data.get('sms_api_key', ''),
+        whatsapp_api_key=data.get('whatsapp_api_key', ''),
+        razorpay_key_id=data.get('razorpay_key_id', ''),
+        razorpay_key_secret=data.get('razorpay_key_secret', ''),
+        super_coin_enabled=data.get('super_coin_enabled', True),
+        super_coin_ratio=data.get('super_coin_ratio', 10)
+    )
+
+    db.session.add(shop)
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Created shop '{name}' (ID: {shop.id})")
+
+    return jsonify({"message": "Shop created successfully", "shop": shop.serialize()}), 201
+
+@super_admin_bp.route('/shops', methods=['GET'])
+@token_required
+def list_shops():
+    # Anyone authenticated can get lists of shops (or even unauthenticated - we will allow that on app.py OPAC)
+    shops = Shop.query.all()
+    return jsonify([s.serialize() for s in shops]), 200
+
+@super_admin_bp.route('/shops/<int:shop_id>', methods=['GET'])
+def get_shop(shop_id):
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+    return jsonify(shop.serialize()), 200
+
+@super_admin_bp.route('/shops/<int:shop_id>', methods=['PUT'])
+@role_required(['super_admin'])
+def update_shop(shop_id):
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    data = request.get_json() or {}
+    
+    if 'name' in data:
+        shop.name = data['name']
+    if 'logo_url' in data:
+        shop.logo_url = data['logo_url']
+    if 'contact_email' in data:
+        shop.contact_email = data['contact_email']
+    if 'contact_phone' in data:
+        shop.contact_phone = data['contact_phone']
+    if 'privacy_policy' in data:
+        shop.privacy_policy = data['privacy_policy']
+    
+    # API credentials updates
+    if 'sms_api_key' in data:
+        shop.sms_api_key = data['sms_api_key']
+    if 'whatsapp_api_key' in data:
+        shop.whatsapp_api_key = data['whatsapp_api_key']
+    if 'razorpay_key_id' in data:
+        shop.razorpay_key_id = data['razorpay_key_id']
+    if 'razorpay_key_secret' in data:
+        shop.razorpay_key_secret = data['razorpay_key_secret']
+        
+    # Supercoin rules
+    if 'super_coin_enabled' in data:
+        shop.super_coin_enabled = bool(data['super_coin_enabled'])
+    if 'super_coin_ratio' in data:
+        shop.super_coin_ratio = int(data['super_coin_ratio'])
+
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Updated configurations for shop '{shop.name}' (ID: {shop.id})")
+
+    return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
+
+@super_admin_bp.route('/shops/<int:shop_id>', methods=['DELETE'])
+@role_required(['super_admin'])
+def delete_shop(shop_id):
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    shop_name = shop.name
+    db.session.delete(shop)
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Deleted shop '{shop_name}' (ID: {shop_id})")
+
+    return jsonify({"message": "Shop and all associated data deleted successfully"}), 200
+
+# ADMIN CREATION & ALLOCATION
+@super_admin_bp.route('/admins', methods=['POST'])
+@role_required(['super_admin'])
+def create_admin():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
+    shop_id = data.get('shop_id')
+
+    if not all([username, password, email, shop_id]):
+        return jsonify({"error": "Username, password, email, and shop_id are required"}), 400
+
+    # Verify shop exists
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": f"Shop with ID {shop_id} does not exist"}), 404
+
+    # Check duplicate admin
+    existing = Admin.query.filter_by(username=username).first()
+    if existing:
+        return jsonify({"error": "Admin username already exists"}), 400
+
+    admin = Admin(
+        username=username,
+        email=email,
+        name=data.get('name', username),
+        shop_id=shop_id,
+        is_active=data.get('is_active', True)
+    )
+    admin.set_password(password)
+
+    db.session.add(admin)
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Created Admin '{username}' for shop '{shop.name}'")
+
+    return jsonify({"message": "Admin user created successfully", "admin": admin.serialize()}), 201
+
+@super_admin_bp.route('/admins', methods=['GET'])
+@role_required(['super_admin'])
+def list_admins():
+    admins = Admin.query.all()
+    # Serialize with shop info
+    res = []
+    for a in admins:
+        item = a.serialize()
+        shop = Shop.query.get(a.shop_id)
+        item['shop_name'] = shop.name if shop else "Deleted Shop"
+        res.append(item)
+    return jsonify(res), 200
+
+# LOGS AUDITING AND USER TRACKING
+@super_admin_bp.route('/logs', methods=['GET'])
+@role_required(['super_admin'])
+def get_logs():
+    shop_id = request.args.get('shop_id')
+    actor_type = request.args.get('actor_type')
+    
+    query = SystemLog.query
+    if shop_id:
+        query = query.filter_by(shop_id=int(shop_id))
+    if actor_type:
+        query = query.filter_by(actor_type=actor_type)
+        
+    logs = query.order_by(SystemLog.created_at.desc()).all()
+    return jsonify([log.serialize() for log in logs]), 200
+
+@super_admin_bp.route('/orders', methods=['GET'])
+@role_required(['super_admin'])
+def get_all_orders():
+    shop_id = request.args.get('shop_id')
+    
+    query = Order.query
+    if shop_id:
+        query = query.filter_by(shop_id=int(shop_id))
+        
+    orders = query.order_by(Order.created_at.desc()).all()
+    return jsonify([o.serialize() for o in orders]), 200

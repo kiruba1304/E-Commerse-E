@@ -1,0 +1,803 @@
+from flask import Blueprint, request, jsonify
+from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection
+from auth_middleware import generate_token, token_required, role_required
+from datetime import datetime, timezone
+import json
+
+admin_bp = Blueprint('admin', __name__)
+
+def log_admin_action(admin_id, username, shop_id, action):
+    try:
+        log = SystemLog(
+            actor_type='admin',
+            actor_id=admin_id,
+            username=username,
+            action=action,
+            shop_id=shop_id
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print("Log error:", e)
+        db.session.rollback()
+
+@admin_bp.route('/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    admin = Admin.query.filter_by(username=username).first()
+    if not admin or not admin.check_password(password) or not admin.is_active:
+        return jsonify({"error": "Invalid admin credentials or account is suspended"}), 401
+
+    token = generate_token(admin.id, admin.username, 'admin', admin.shop_id)
+    
+    # Log login
+    log_admin_action(admin.id, admin.username, admin.shop_id, "Admin logged in successfully")
+    
+    return jsonify({
+        "message": "Login successful",
+        "token": token,
+        "user": admin.serialize()
+    }), 200
+
+@admin_bp.route('/logout', methods=['POST'])
+@role_required(['admin'])
+def logout():
+    user = request.user
+    log_admin_action(user['user_id'], user['username'], user['shop_id'], "Admin logged out")
+    return jsonify({"message": "Logout successful"}), 200
+
+@admin_bp.route('/profile', methods=['GET', 'PUT'])
+@role_required(['admin'])
+def manage_profile():
+    admin = Admin.query.get(request.user['user_id'])
+    if not admin:
+        return jsonify({"error": "Admin not found"}), 404
+
+    if request.method == 'GET':
+        return jsonify(admin.serialize()), 200
+    
+    data = request.get_json() or {}
+    if 'name' in data:
+        admin.name = data['name']
+    if 'email' in data:
+        admin.email = data['email']
+    if 'password' in data and data['password']:
+        admin.set_password(data['password'])
+        
+    db.session.commit()
+    log_admin_action(admin.id, admin.username, admin.shop_id, "Updated admin profile details")
+    
+    return jsonify({"message": "Profile updated successfully", "admin": admin.serialize()}), 200
+
+@admin_bp.route('/shop', methods=['GET', 'PUT'])
+@role_required(['admin'])
+def manage_shop():
+    shop = Shop.query.get(request.user['shop_id'])
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    if request.method == 'GET':
+        return jsonify(shop.serialize()), 200
+
+    data = request.get_json() or {}
+    if 'name' in data:
+        shop.name = data['name']
+    if 'logo_url' in data:
+        shop.logo_url = data['logo_url']
+    if 'contact_email' in data:
+        shop.contact_email = data['contact_email']
+    if 'contact_phone' in data:
+        shop.contact_phone = data['contact_phone']
+    if 'privacy_policy' in data:
+        shop.privacy_policy = data['privacy_policy']
+    if 'sms_api_key' in data:
+        shop.sms_api_key = data['sms_api_key']
+    if 'whatsapp_api_key' in data:
+        shop.whatsapp_api_key = data['whatsapp_api_key']
+    if 'razorpay_key_id' in data:
+        shop.razorpay_key_id = data['razorpay_key_id']
+    if 'razorpay_key_secret' in data:
+        shop.razorpay_key_secret = data['razorpay_key_secret']
+    if 'saree_models' in data:
+        shop.saree_models = data['saree_models']
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
+    return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
+
+# CATEGORY MANAGEMENT
+@admin_bp.route('/categories', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_categories():
+    shop_id = request.user['shop_id']
+    
+    if request.method == 'GET':
+        categories = Category.query.filter_by(shop_id=shop_id).all()
+        return jsonify([c.serialize() for c in categories]), 200
+
+    data = request.get_json() or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Category name is required"}), 400
+
+    cat = Category(
+        name=name,
+        description=data.get('description', ''),
+        image_url=data.get('image_url', ''),
+        shop_id=shop_id
+    )
+    db.session.add(cat)
+    db.session.commit()
+    
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created product category '{name}'")
+    return jsonify(cat.serialize()), 201
+
+@admin_bp.route('/categories/<int:cat_id>', methods=['PUT', 'DELETE'])
+@role_required(['admin'])
+def modify_category(cat_id):
+    shop_id = request.user['shop_id']
+    cat = Category.query.filter_by(id=cat_id, shop_id=shop_id).first()
+    if not cat:
+        return jsonify({"error": "Category not found"}), 404
+
+    if request.method == 'DELETE':
+        # Re-assign products to uncategorized if category deleted
+        products = Product.query.filter_by(category_id=cat_id).all()
+        for p in products:
+            p.category_id = None
+        
+        name = cat.name
+        db.session.delete(cat)
+        db.session.commit()
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted product category '{name}'")
+        return jsonify({"message": "Category deleted successfully"}), 200
+
+    data = request.get_json() or {}
+    if 'name' in data:
+        cat.name = data['name']
+    if 'description' in data:
+        cat.description = data['description']
+    if 'image_url' in data:
+        cat.image_url = data['image_url']
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated product category '{cat.name}'")
+    return jsonify(cat.serialize()), 200
+
+# COLLECTION MANAGEMENT
+@admin_bp.route('/collections', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_collections():
+    shop_id = request.user['shop_id']
+    
+    if request.method == 'GET':
+        collections = Collection.query.filter_by(shop_id=shop_id).all()
+        return jsonify([c.serialize() for c in collections]), 200
+
+    data = request.get_json() or {}
+    name = data.get('name')
+    if not name:
+        return jsonify({"error": "Collection name is required"}), 400
+
+    category_ids = data.get('category_ids', [])
+    col = Collection(
+        name=name,
+        shop_id=shop_id
+    )
+    col.category_ids = category_ids
+    db.session.add(col)
+    db.session.commit()
+    
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created collection '{name}'")
+    return jsonify(col.serialize()), 201
+
+@admin_bp.route('/collections/<int:col_id>', methods=['PUT', 'DELETE'])
+@role_required(['admin'])
+def modify_collection(col_id):
+    shop_id = request.user['shop_id']
+    col = Collection.query.filter_by(id=col_id, shop_id=shop_id).first()
+    if not col:
+        return jsonify({"error": "Collection not found"}), 404
+
+    if request.method == 'DELETE':
+        name = col.name
+        db.session.delete(col)
+        db.session.commit()
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted collection '{name}'")
+        return jsonify({"message": "Collection deleted successfully"}), 200
+
+    data = request.get_json() or {}
+    if 'name' in data:
+        col.name = data['name']
+    if 'category_ids' in data:
+        col.category_ids = data['category_ids']
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated collection '{col.name}'")
+    return jsonify(col.serialize()), 200
+
+# PRODUCT CATALOG (CRUD with multiple image support up to 10)
+@admin_bp.route('/products', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_products():
+    shop_id = request.user['shop_id']
+
+    if request.method == 'GET':
+        products = Product.query.filter_by(shop_id=shop_id).all()
+        return jsonify([p.serialize() for p in products]), 200
+
+    data = request.get_json() or {}
+    name = data.get('name')
+    price = data.get('price')
+    stock = data.get('stock')
+
+    if not name or price is None or stock is None:
+        return jsonify({"error": "Name, price, and stock are required fields"}), 400
+
+    images = data.get('images', [])
+    if len(images) > 10:
+        return jsonify({"error": "A product can have a maximum of 10 images"}), 400
+
+    p = Product(
+        name=name,
+        description=data.get('description', ''),
+        price=float(price),
+        original_price=float(data.get('original_price', price)),
+        stock=int(stock),
+        alert_threshold=int(data.get('alert_threshold', 5)),
+        promo_code=data.get('promo_code', ''),
+        promo_discount=float(data.get('promo_discount', 0.0)) if data.get('promo_discount') else 0.0,
+        bulk_sale_price=float(data['bulk_sale_price']) if data.get('bulk_sale_price') else None,
+        min_quantity=int(data['min_quantity']) if data.get('min_quantity') else None,
+        category_id=data.get('category_id'),
+        shop_id=shop_id
+    )
+    p.images = images  # sets JSON field via property setter
+    
+    db.session.add(p)
+    db.session.commit()
+
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Added product '{name}' (Stock: {stock}, Price: {price})")
+    
+    return jsonify(p.serialize()), 201
+
+@admin_bp.route('/products/<int:prod_id>', methods=['PUT', 'DELETE'])
+@role_required(['admin'])
+def modify_product(prod_id):
+    shop_id = request.user['shop_id']
+    p = Product.query.filter_by(id=prod_id, shop_id=shop_id).first()
+    if not p:
+        return jsonify({"error": "Product not found"}), 404
+
+    if request.method == 'DELETE':
+        name = p.name
+        db.session.delete(p)
+        db.session.commit()
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted product '{name}'")
+        return jsonify({"message": "Product deleted successfully"}), 200
+
+    data = request.get_json() or {}
+    if 'name' in data:
+        p.name = data['name']
+    if 'description' in data:
+        p.description = data['description']
+    if 'price' in data:
+        p.price = float(data['price'])
+    if 'original_price' in data:
+        p.original_price = float(data['original_price'])
+    if 'stock' in data:
+        p.stock = int(data['stock'])
+    if 'alert_threshold' in data:
+        p.alert_threshold = int(data['alert_threshold'])
+    if 'images' in data:
+        images = data['images']
+        if len(images) > 10:
+            return jsonify({"error": "A product can have a maximum of 10 images"}), 400
+        p.images = images
+    if 'promo_code' in data:
+        p.promo_code = data['promo_code']
+    if 'promo_discount' in data:
+        p.promo_discount = float(data['promo_discount'])
+    if 'bulk_sale_price' in data:
+        p.bulk_sale_price = float(data['bulk_sale_price']) if data['bulk_sale_price'] else None
+    if 'min_quantity' in data:
+        p.min_quantity = int(data['min_quantity']) if data['min_quantity'] else None
+    if 'category_id' in data:
+        p.category_id = data['category_id']
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")
+    return jsonify(p.serialize()), 200
+
+# INVENTORY MANAGEMENT (Stock Evaluation & Alert)
+@admin_bp.route('/inventory', methods=['GET'])
+@role_required(['admin'])
+def inventory_evaluation():
+    shop_id = request.user['shop_id']
+    products = Product.query.filter_by(shop_id=shop_id).all()
+    
+    total_items = 0
+    total_value = 0.0
+    alerts = []
+    
+    for p in products:
+        total_items += p.stock
+        total_value += (p.stock * p.price)
+        if p.stock <= p.alert_threshold:
+            alerts.append({
+                "id": p.id,
+                "name": p.name,
+                "stock": p.stock,
+                "threshold": p.alert_threshold
+            })
+            
+    return jsonify({
+        "total_unique_products": len(products),
+        "total_stock_count": total_items,
+        "total_inventory_value": total_value,
+        "alerts": alerts
+    }), 200
+
+# REVENUE REPORT AND GRAPHICAL ANALYSIS
+@admin_bp.route('/revenue-report', methods=['GET'])
+@role_required(['admin'])
+def revenue_report():
+    shop_id = request.user['shop_id']
+    orders = Order.query.filter_by(shop_id=shop_id, status='Customer Received').all()
+    
+    # We can also get all completed orders to see total revenue
+    all_completed = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
+    
+    total_sales = sum([o.final_amount for o in all_completed])
+    gst_collected = sum([o.gst_amount for o in all_completed])
+    total_orders = len(all_completed)
+    
+    # Group by category
+    category_sales = {}
+    # Group by payment method
+    payment_sales = {"COD": 0, "UPI": 0}
+    # Sales by day (past 7 days simple grouping)
+    sales_by_day = {}
+    
+    for o in all_completed:
+        # Payment breakdown
+        payment_sales[o.payment_method] = payment_sales.get(o.payment_method, 0) + 1
+        
+        # Day breakdown
+        day_str = o.created_at.strftime('%Y-%m-%d')
+        sales_by_day[day_str] = sales_by_day.get(day_str, 0.0) + o.final_amount
+        
+        # Category breakdown
+        for item in o.items:
+            prod = Product.query.get(item.product_id)
+            cat_name = prod.category.name if (prod and prod.category) else "Uncategorized"
+            category_sales[cat_name] = category_sales.get(cat_name, 0.0) + (item.price * item.quantity)
+            
+    # Format reports for simple React graph components
+    cat_data = [{"name": k, "value": round(v, 2)} for k, v in category_sales.items()]
+    day_data = [{"date": k, "revenue": round(v, 2)} for k, v in sorted(sales_by_day.items())]
+    pay_data = [{"method": k, "count": v} for k, v in payment_sales.items()]
+    
+    return jsonify({
+        "summary": {
+            "total_revenue": round(total_sales, 2),
+            "gst_collected": round(gst_collected, 2),
+            "order_count": total_orders,
+            "average_order_value": round(total_sales / total_orders, 2) if total_orders > 0 else 0.0
+        },
+        "charts": {
+            "category_sales": cat_data,
+            "daily_sales": day_data,
+            "payment_methods": pay_data
+        }
+    }), 200
+
+# CUSTOMER MANAGEMENT
+@admin_bp.route('/customers', methods=['GET'])
+@role_required(['admin'])
+def list_customers():
+    shop_id = request.user['shop_id']
+    # Select distinct users who purchased from this shop
+    orders = Order.query.filter_by(shop_id=shop_id).all()
+    user_ids = list(set([o.user_id for o in orders]))
+    
+    customers = []
+    for uid in user_ids:
+        user = User.query.get(uid)
+        if user:
+            user_orders = [o for o in orders if o.user_id == uid]
+            total_spent = sum([o.final_amount for o in user_orders])
+            customers.append({
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "email": user.email,
+                "contact_phone": user.contact_phone,
+                "total_orders": len(user_orders),
+                "total_spent": round(total_spent, 2),
+                "joined_at": user.created_at.isoformat() if user.created_at else None
+            })
+            
+    return jsonify(customers), 200
+
+# ORDER MANAGEMENT (Tracking status: Dispatched, Customer Received, Returns)
+@admin_bp.route('/orders', methods=['GET'])
+@role_required(['admin'])
+def manage_orders():
+    shop_id = request.user['shop_id']
+    orders = Order.query.filter_by(shop_id=shop_id).order_by(Order.created_at.desc()).all()
+    return jsonify([o.serialize() for o in orders]), 200
+
+@admin_bp.route('/orders/<int:order_id>', methods=['PUT'])
+@role_required(['admin'])
+def update_order_status(order_id):
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    data = request.get_json() or {}
+    status = data.get('status') # Pending, Dispatched, Customer Received, Returned
+    tracking_info = data.get('tracking_info')
+
+    if status:
+        valid_statuses = ['Pending', 'Dispatched', 'Customer Received', 'Returned']
+        if status not in valid_statuses:
+            return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+        
+        # Handle SuperCoin additions if transitioned to Customer Received
+        if status == 'Customer Received' and order.status != 'Customer Received':
+            # Add supercoins to user profile
+            shop = Shop.query.get(shop_id)
+            if shop and shop.super_coin_enabled:
+                coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                if coins_to_add > 0:
+                    order.user.super_coins += coins_to_add
+                    order.super_coins_earned = coins_to_add
+                    # Push in-app notification to customer
+                    notif = Notification(
+                        recipient_type='user',
+                        recipient_id=order.user_id,
+                        title="SuperCoins Credited!",
+                        message=f"Congratulations! You earned {coins_to_add} SuperCoins from your order #{order.id}.",
+                        shop_id=shop_id
+                    )
+                    db.session.add(notif)
+        
+        order.status = status
+        
+    if tracking_info is not None:
+        order.tracking_info = tracking_info
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated order #{order.id} status to '{order.status}'")
+    
+    return jsonify(order.serialize()), 200
+
+@admin_bp.route('/orders/<int:order_id>/return', methods=['PUT'])
+@role_required(['admin'])
+def resolve_return_request(order_id):
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    data = request.get_json() or {}
+    decision = data.get('decision') # Approved, Rejected
+    if decision not in ['Approved', 'Rejected']:
+        return jsonify({"error": "Decision must be 'Approved' or 'Rejected'"}), 400
+
+    if order.return_request_status != 'Pending':
+        return jsonify({"error": "No pending return request for this order"}), 400
+
+    order.return_request_status = decision
+    if decision == 'Approved':
+        order.status = 'Returned'
+        # Refund super coins if any were spent
+        if order.super_coins_used > 0:
+            order.user.super_coins += order.super_coins_used
+            
+        # Deduct super coins that were earned
+        if order.super_coins_earned > 0:
+            order.user.super_coins = max(0, order.user.super_coins - order.super_coins_earned)
+            
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Approved return request for order #{order.id}")
+    else:
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Rejected return request for order #{order.id}")
+
+    db.session.commit()
+    
+    # Notify User
+    notif = Notification(
+        recipient_type='user',
+        recipient_id=order.user_id,
+        title=f"Return Request {decision}",
+        message=f"Your return request for order #{order.id} was {decision.lower()}.",
+        shop_id=shop_id
+    )
+    db.session.add(notif)
+    db.session.commit()
+    
+    return jsonify(order.serialize()), 200
+
+# POPUP ADS PUSHING
+@admin_bp.route('/popup-ads', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_popup_ads():
+    shop_id = request.user['shop_id']
+
+    if request.method == 'GET':
+        ads = PopupAd.query.filter_by(shop_id=shop_id).all()
+        return jsonify([ad.serialize() for ad in ads]), 200
+
+    data = request.get_json() or {}
+    title = data.get('title')
+    image_url = data.get('image_url')
+
+    if not title or not image_url:
+        return jsonify({"error": "Title and image_url are required"}), 400
+
+    ad = PopupAd(
+        title=title,
+        image_url=image_url,
+        target_url=data.get('target_url', ''),
+        show_before_login=bool(data.get('show_before_login', True)),
+        show_after_login=bool(data.get('show_after_login', True)),
+        is_active=bool(data.get('is_active', True)),
+        shop_id=shop_id
+    )
+    db.session.add(ad)
+    db.session.commit()
+
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created popup ad campaign '{title}'")
+    return jsonify(ad.serialize()), 201
+
+@admin_bp.route('/popup-ads/<int:ad_id>', methods=['PUT', 'DELETE'])
+@role_required(['admin'])
+def modify_popup_ad(ad_id):
+    shop_id = request.user['shop_id']
+    ad = PopupAd.query.filter_by(id=ad_id, shop_id=shop_id).first()
+    if not ad:
+        return jsonify({"error": "Popup ad not found"}), 404
+
+    if request.method == 'DELETE':
+        title = ad.title
+        db.session.delete(ad)
+        db.session.commit()
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted popup ad '{title}'")
+        return jsonify({"message": "Popup ad deleted successfully"}), 200
+
+    data = request.get_json() or {}
+    if 'title' in data:
+        ad.title = data['title']
+    if 'image_url' in data:
+        ad.image_url = data['image_url']
+    if 'target_url' in data:
+        ad.target_url = data['target_url']
+    if 'show_before_login' in data:
+        ad.show_before_login = bool(data['show_before_login'])
+    if 'show_after_login' in data:
+        ad.show_after_login = bool(data['show_after_login'])
+    if 'is_active' in data:
+        ad.is_active = bool(data['is_active'])
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated popup ad campaign '{ad.title}'")
+    return jsonify(ad.serialize()), 200
+
+# COUPONS MANAGEMENT
+@admin_bp.route('/coupons', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_coupons():
+    shop_id = request.user['shop_id']
+
+    if request.method == 'GET':
+        coupons = Coupon.query.filter_by(shop_id=shop_id).all()
+        return jsonify([c.serialize() for c in coupons]), 200
+
+    data = request.get_json() or {}
+    code = data.get('code')
+    discount_percentage = data.get('discount_percentage')
+
+    if not code or discount_percentage is None:
+        return jsonify({"error": "Coupon code and discount percentage are required"}), 400
+
+    # Prevent duplicate coupon code for same shop
+    existing = Coupon.query.filter_by(code=code, shop_id=shop_id).first()
+    if existing:
+        return jsonify({"error": f"Coupon code '{code}' already exists for this shop"}), 400
+
+    c = Coupon(
+        code=code.upper(),
+        discount_percentage=float(discount_percentage),
+        max_discount=float(data.get('max_discount', 1000.0)),
+        min_purchase=float(data.get('min_purchase', 0.0)),
+        is_active=bool(data.get('is_active', True)),
+        shop_id=shop_id
+    )
+    db.session.add(c)
+    db.session.commit()
+
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created discount coupon '{c.code}'")
+    return jsonify(c.serialize()), 201
+
+@admin_bp.route('/coupons/<int:coupon_id>', methods=['PUT', 'DELETE'])
+@role_required(['admin'])
+def modify_coupon(coupon_id):
+    shop_id = request.user['shop_id']
+    c = Coupon.query.filter_by(id=coupon_id, shop_id=shop_id).first()
+    if not c:
+        return jsonify({"error": "Coupon not found"}), 404
+
+    if request.method == 'DELETE':
+        code = c.code
+        db.session.delete(c)
+        db.session.commit()
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted coupon '{code}'")
+        return jsonify({"message": "Coupon deleted successfully"}), 200
+
+    data = request.get_json() or {}
+    if 'code' in data:
+        c.code = data['code'].upper()
+    if 'discount_percentage' in data:
+        c.discount_percentage = float(data['discount_percentage'])
+    if 'max_discount' in data:
+        c.max_discount = float(data['max_discount'])
+    if 'min_purchase' in data:
+        c.min_purchase = float(data['min_purchase'])
+    if 'is_active' in data:
+        c.is_active = bool(data['is_active'])
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated coupon code '{c.code}' settings")
+    return jsonify(c.serialize()), 200
+
+# GST TAXATION REPORTS
+@admin_bp.route('/gst-report', methods=['GET'])
+@role_required(['admin'])
+def gst_report():
+    shop_id = request.user['shop_id']
+    # Calculate tax aggregates from successful sales
+    orders = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
+    
+    total_sales_value = sum([o.final_amount for o in orders])
+    total_gst_amount = sum([o.gst_amount for o in orders])
+    
+    # 18% standard aggregate reporting
+    net_sales = total_sales_value - total_gst_amount
+    
+    return jsonify({
+        "shop_id": shop_id,
+        "reporting_period": "All Time",
+        "net_sales": round(net_sales, 2),
+        "gst_rate_applied": "18% Standard GST",
+        "total_gst_collected": round(total_gst_amount, 2),
+        "gross_revenue": round(total_sales_value, 2),
+        "total_orders_count": len(orders)
+    }), 200
+
+# IN-APP NOTIFICATION BROADCASTS
+@admin_bp.route('/notifications', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_notifications():
+    shop_id = request.user['shop_id']
+
+    if request.method == 'GET':
+        notifications = Notification.query.filter_by(shop_id=shop_id, recipient_type='admin').order_by(Notification.created_at.desc()).all()
+        return jsonify([n.serialize() for n in notifications]), 200
+
+    data = request.get_json() or {}
+    title = data.get('title')
+    message = data.get('message')
+
+    if not title or not message:
+        return jsonify({"error": "Title and message are required"}), 400
+
+    # Broadcast notification to all Users
+    notif = Notification(
+        recipient_type='user',
+        recipient_id=None, # None indicates broadcast
+        title=title,
+        message=message,
+        shop_id=shop_id
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Broadcasted notification alert: '{title}'")
+    return jsonify(notif.serialize()), 201
+
+# SUPPORT TICKETS HELP CENTER MANAGEMENT
+@admin_bp.route('/help-tickets', methods=['GET', 'PUT'])
+@role_required(['admin'])
+def manage_help_tickets():
+    from models import HelpTicket
+    shop_id = request.user['shop_id']
+
+    if request.method == 'GET':
+        tickets = HelpTicket.query.filter_by(shop_id=shop_id).order_by(HelpTicket.created_at.desc()).all()
+        return jsonify([t.serialize() for t in tickets]), 200
+
+    # PUT request - reply to a ticket
+    data = request.get_json() or {}
+    ticket_id = data.get('ticket_id')
+    reply = data.get('reply')
+
+    if not ticket_id or not reply:
+        return jsonify({"error": "Ticket ID and reply content are required"}), 400
+
+    ticket = HelpTicket.query.filter_by(id=ticket_id, shop_id=shop_id).first()
+    if not ticket:
+        return jsonify({"error": "Help ticket not found"}), 404
+
+    ticket.reply = reply
+    ticket.status = 'Resolved'
+    db.session.commit()
+
+    # Notify user of reply
+    notif = Notification(
+        recipient_type='user',
+        recipient_id=ticket.user_id,
+        title="Help Ticket Replied!",
+        message=f"Admin replied to your ticket '{ticket.subject}': {reply[:40]}...",
+        shop_id=shop_id
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Resolved help ticket #{ticket.id} ('{ticket.subject}')")
+    return jsonify(ticket.serialize()), 200
+
+# MOCK FAST2SMS AND WHATSAPP CAMPAIGNS LOGGING
+@admin_bp.route('/sms-whatsapp-logs', methods=['GET', 'POST'])
+@role_required(['admin'])
+def manage_messaging():
+    shop_id = request.user['shop_id']
+    
+    if request.method == 'GET':
+        # Let's read system logs related to sms / messaging
+        logs = SystemLog.query.filter_by(shop_id=shop_id).filter(SystemLog.action.like('%[Message]%')).order_by(SystemLog.created_at.desc()).all()
+        
+        # Return a list of mock SMS/WhatsApp campaigns
+        res = []
+        for log in logs:
+            parts = log.action.split('|')
+            platform = "Fast2SMS" if "SMS" in log.action else "WhatsApp Gateway"
+            res.append({
+                "id": log.id,
+                "timestamp": log.created_at.isoformat(),
+                "platform": platform,
+                "recipient": parts[1] if len(parts) > 1 else "All Customers",
+                "message": parts[2] if len(parts) > 2 else parts[0],
+                "status": "Delivered successfully (100% Rate)"
+            })
+        return jsonify(res), 200
+
+    # POST - send SMS / WhatsApp campaign
+    data = request.get_json() or {}
+    platform = data.get('platform') # SMS, WhatsApp
+    recipient = data.get('recipient', 'All Customers')
+    message = data.get('message')
+
+    if not platform or not message:
+        return jsonify({"error": "Platform and message content are required"}), 400
+
+    action_str = f"[Message] | {recipient} | {message}"
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, action_str)
+
+    return jsonify({
+        "status": "Success",
+        "message": f"{platform} campaign successfully dispatched through API key. 100% delivery rate.",
+        "details": {
+            "platform": platform,
+            "recipient": recipient,
+            "char_count": len(message),
+            "cost_per_message": "0.00" if platform == "WhatsApp" else "0.20 Rupees"
+        }
+    }), 200
