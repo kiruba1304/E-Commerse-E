@@ -669,6 +669,8 @@ export default function App() {
   const [adminCustomers, setAdminCustomers] = useState([]);
   const [adminInventory, setAdminInventory] = useState(null);
   const [adminRevenue, setAdminRevenue] = useState(null);
+  const [hoveredBarIndex, setHoveredBarIndex] = useState(null);
+  const [hoveredCategoryIndex, setHoveredCategoryIndex] = useState(null);
   const [adminPopupAds, setAdminPopupAds] = useState([]);
   const [adminCoupons, setAdminCoupons] = useState([]);
   const [adminHelpTickets, setAdminHelpTickets] = useState([]);
@@ -6599,7 +6601,19 @@ export default function App() {
                                       <img 
                                         src={item.product_image} 
                                         alt={item.product_name} 
-                                        style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.15)' }}
+                                        style={{ 
+                                          width: '32px', 
+                                          height: '32px', 
+                                          objectFit: 'cover', 
+                                          borderRadius: '4px', 
+                                          border: '1px solid rgba(154, 132, 200, 0.15)',
+                                          cursor: 'pointer',
+                                          transition: 'transform 0.2s'
+                                        }}
+                                        onClick={() => setExpandedImage(item.product_image)}
+                                        title="Click to view full image"
+                                        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                                        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                                       />
                                     ) : (
                                       <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
@@ -6844,7 +6858,19 @@ export default function App() {
                                         <img 
                                           src={item.product_image} 
                                           alt={item.product_name} 
-                                          style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.15)' }}
+                                          style={{ 
+                                            width: '36px', 
+                                            height: '36px', 
+                                            objectFit: 'cover', 
+                                            borderRadius: '4px', 
+                                            border: '1px solid rgba(154, 132, 200, 0.15)',
+                                            cursor: 'pointer',
+                                            transition: 'transform 0.2s'
+                                          }}
+                                          onClick={() => setExpandedImage(item.product_image)}
+                                          title="Click to view full image"
+                                          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                                          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                                         />
                                       ) : (
                                         <div style={{ width: '36px', height: '36px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
@@ -6967,85 +6993,421 @@ export default function App() {
             )}
 
             {/* Graphical Revenue Report panel */}
-            {activePanel === 'revenue' && adminRevenue && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                
-                {/* Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>NET SALES REVENUE</span>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-success)', marginTop: '4px' }}>₹{adminRevenue.summary.total_revenue}</h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GST TAX COLLECTED</span>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.gst_collected}</h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ORDER VOLUME</span>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>{adminRevenue.summary.order_count} Sales</h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>AVERAGE ORDER VALUE</span>
-                    <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.average_order_value}</h3>
-                  </div>
-                </div>
+            {activePanel === 'revenue' && adminRevenue && (() => {
+              // Helper calculations for Bar Chart
+              const dailySales = adminRevenue.charts.daily_sales || [];
+              const maxBarValue = dailySales.length > 0
+                ? Math.max(...dailySales.map(x => x.revenue), 1000) * 1.15
+                : 1000;
 
-                {/* Premium Custom SVG bar chart rendering */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+              const svgW = 500;
+              const svgH = 280;
+              const padLeft = 55;
+              const padRight = 15;
+              const padTop = 20;
+              const padBottom = 35;
+              const chartW = svgW - padLeft - padRight;
+              const chartH = svgH - padTop - padBottom;
+
+              const formatYLabel = (val) => {
+                if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+                if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`;
+                return `₹${val.toFixed(0)}`;
+              };
+
+              const getBarPath = (x, y, w, h, r) => {
+                if (h <= 0) return '';
+                const radius = Math.min(r, h, w / 2);
+                const bottom = padTop + chartH;
+                return `
+                  M ${x},${bottom}
+                  V ${y + radius}
+                  A ${radius},${radius} 0 0,1 ${x + radius},${y}
+                  H ${x + w - radius}
+                  A ${radius},${radius} 0 0,1 ${x + w},${y + radius}
+                  V ${bottom}
+                  Z
+                `.replace(/\s+/g, ' ').trim();
+              };
+
+              // Helper calculations for Donut Chart
+              const categorySales = adminRevenue.charts.category_sales || [];
+              const totalCatRevenue = categorySales.reduce((sum, item) => sum + item.value, 0) || 1;
+
+              const donutRadius = 80;
+              const donutCenter = 110;
+              const strokeW = 18;
+              const circumference = 2 * Math.PI * donutRadius; // 502.65
+
+              const categoryGradients = [
+                { start: '#9a84c8', end: '#b9a4ea' }, // Lavender
+                { start: '#e84e7e', end: '#f48fb1' }, // Red-Pink
+                { start: '#f59e0b', end: '#fbbf24' }, // Warm Gold
+                { start: '#10b981', end: '#34d399' }, // Emerald Teal
+                { start: '#3b82f6', end: '#60a5fa' }, // Blue
+                { start: '#6366f1', end: '#818cf8' }, // Indigo
+                { start: '#ec4899', end: '#f472b6' }  // Magenta
+              ];
+
+              let accumulatedPercent = 0;
+
+              return (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                   
-                  {/* Daily sales progress */}
-                  <div className="glass-panel" style={{ padding: '24px' }}>
-                    <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Daily Sales Progress (past week)</h4>
-                    <div className="chart-container">
-                      {adminRevenue.charts.daily_sales.length > 0 ? (
-                        adminRevenue.charts.daily_sales.map((item, idx) => {
-                          const maxVal = Math.max(...adminRevenue.charts.daily_sales.map(x => x.revenue)) || 1;
-                          const heightPct = (item.revenue / maxVal) * 80; // scale max to 80% height
-                          return (
-                            <div key={idx} className="chart-bar-wrapper">
-                              <div className="chart-bar" style={{ height: `${heightPct}%` }}>
-                                <div className="chart-tooltip">₹{item.revenue}</div>
-                              </div>
-                              <span className="chart-label">{item.date.split('-').slice(1).join('/')}</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <p style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No daily sales recorded yet.</p>
-                      )}
+                  {/* Stats */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>NET SALES REVENUE</span>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-success)', marginTop: '4px' }}>₹{adminRevenue.summary.total_revenue}</h3>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>GST TAX COLLECTED</span>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.gst_collected}</h3>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>ORDER VOLUME</span>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>{adminRevenue.summary.order_count} Sales</h3>
+                    </div>
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>AVERAGE ORDER VALUE</span>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.6rem', marginTop: '4px' }}>₹{adminRevenue.summary.average_order_value}</h3>
                     </div>
                   </div>
 
-                  {/* Category distribution */}
-                  <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-                    <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Revenue share by category</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flexGrow: 1, justifyContent: 'center' }}>
-                      {adminRevenue.charts.category_sales.length > 0 ? (
-                        adminRevenue.charts.category_sales.map((item, idx) => {
-                          const sum = adminRevenue.charts.category_sales.reduce((a, b) => a + b.value, 0) || 1;
-                          const pct = Math.round((item.value / sum) * 100);
-                          return (
-                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                <span>{item.name}</span>
-                                <strong>₹{item.value} ({pct}%)</strong>
+                  {/* Charts Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+                    
+                    {/* Daily sales progress */}
+                    <div className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
+                      <h4 style={{ fontWeight: 800, marginBottom: '16px', letterSpacing: '0.5px' }}>Daily Sales Progress (past week)</h4>
+                      
+                      {dailySales.length > 0 ? (
+                        <div style={{ position: 'relative', width: '100%', height: '280px' }}>
+                          <svg viewBox={`0 0 ${svgW} ${svgH}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
+                            <defs>
+                              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#9a84c8" />
+                                <stop offset="100%" stopColor="#b9a4ea" />
+                              </linearGradient>
+                            </defs>
+
+                            {/* Y Grid Lines & Y Labels */}
+                            {[0, 1, 2, 3, 4].map((i) => {
+                              const yVal = (i / 4) * maxBarValue;
+                              const yPos = padTop + chartH - (i / 4) * chartH;
+                              return (
+                                <g key={i}>
+                                  <line 
+                                    x1={padLeft} 
+                                    y1={yPos} 
+                                    x2={svgW - padRight} 
+                                    y2={yPos} 
+                                    stroke="rgba(154, 132, 200, 0.08)" 
+                                    strokeDasharray="4 4" 
+                                  />
+                                  <text
+                                    x={padLeft - 8}
+                                    y={yPos + 4}
+                                    textAnchor="end"
+                                    fill="var(--text-muted)"
+                                    style={{ fontSize: '10px', fontFamily: "'Jost', sans-serif", fontWeight: 500 }}
+                                  >
+                                    {formatYLabel(yVal)}
+                                  </text>
+                                </g>
+                              );
+                            })}
+
+                            {/* Bars & Hover Tooltip logic */}
+                            {dailySales.map((item, idx) => {
+                              const step = chartW / dailySales.length;
+                              const barW = Math.max(step * 0.55, 14);
+                              const barH = (item.revenue / maxBarValue) * chartH;
+                              const xPos = padLeft + idx * step + (step - barW) / 2;
+                              const yPos = padTop + chartH - barH;
+                              const pathD = getBarPath(xPos, yPos, barW, barH, 5);
+
+                              return (
+                                <g key={idx}>
+                                  {/* Bar Path */}
+                                  <path
+                                    d={pathD}
+                                    fill={hoveredBarIndex === idx ? 'var(--accent-primary)' : 'url(#barGrad)'}
+                                    style={{
+                                      transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                                      cursor: 'pointer',
+                                      filter: hoveredBarIndex === idx ? 'drop-shadow(0px 4px 10px rgba(154, 132, 200, 0.3))' : 'none'
+                                    }}
+                                    onMouseEnter={() => setHoveredBarIndex(idx)}
+                                    onMouseLeave={() => setHoveredBarIndex(null)}
+                                  />
+
+                                  {/* Invisible wider interaction area for easier hovering */}
+                                  <rect
+                                    x={padLeft + idx * step}
+                                    y={padTop}
+                                    width={step}
+                                    height={chartH + padBottom}
+                                    fill="transparent"
+                                    style={{ cursor: 'pointer' }}
+                                    onMouseEnter={() => setHoveredBarIndex(idx)}
+                                    onMouseLeave={() => setHoveredBarIndex(null)}
+                                  />
+
+                                  {/* X Axis Date Label */}
+                                  <text
+                                    x={xPos + barW / 2}
+                                    y={padTop + chartH + 18}
+                                    textAnchor="middle"
+                                    fill="var(--text-muted)"
+                                    style={{ fontSize: '10.5px', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}
+                                  >
+                                    {item.date.split('-').slice(1).join('/')}
+                                  </text>
+                                </g>
+                              );
+                            })}
+                          </svg>
+
+                          {/* HTML Floating Tooltip */}
+                          {hoveredBarIndex !== null && (() => {
+                            const step = chartW / dailySales.length;
+                            const barW = Math.max(step * 0.55, 14);
+                            const item = dailySales[hoveredBarIndex];
+                            const barH = (item.revenue / maxBarValue) * chartH;
+                            const xPos = padLeft + hoveredBarIndex * step + (step - barW) / 2 + barW / 2;
+                            const yPos = padTop + chartH - barH;
+
+                            const tooltipLeftPct = (xPos / svgW) * 100;
+                            const tooltipTopPct = (yPos / svgH) * 100;
+
+                            return (
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  left: `${tooltipLeftPct}%`,
+                                  top: `${tooltipTopPct}%`,
+                                  transform: 'translate(-50%, -120%)',
+                                  background: 'rgba(255, 255, 255, 0.95)',
+                                  border: '1px solid rgba(154, 132, 200, 0.3)',
+                                  borderRadius: '5px',
+                                  padding: '8px 12px',
+                                  boxShadow: '0 8px 24px rgba(154, 132, 200, 0.15)',
+                                  zIndex: 10,
+                                  pointerEvents: 'none',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  whiteSpace: 'nowrap',
+                                  backdropFilter: 'blur(4px)'
+                                }}
+                              >
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                  {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                                <span style={{ fontSize: '0.85rem', color: '#7a4ea5', fontWeight: 800 }}>
+                                  ₹{item.revenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
                               </div>
-                              <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent-secondary)', borderRadius: '4px' }} />
-                              </div>
-                            </div>
-                          );
-                        })
+                            );
+                          })()}
+                        </div>
                       ) : (
-                        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>No categories registered.</p>
+                        <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No daily sales recorded yet.</p>
+                        </div>
                       )}
                     </div>
+
+                    {/* Category distribution */}
+                    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ fontWeight: 800, marginBottom: '16px', letterSpacing: '0.5px' }}>Revenue share by category</h4>
+                      
+                      {categorySales.length > 0 ? (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexDirection: 'row', 
+                          gap: '24px', 
+                          flexWrap: 'wrap', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          flexGrow: 1 
+                        }}>
+                          {/* Donut Chart Container */}
+                          <div style={{ position: 'relative', width: '220px', height: '220px', flexShrink: 0 }}>
+                            <svg viewBox="0 0 220 220" width="100%" height="100%">
+                              <defs>
+                                {categoryGradients.map((g, idx) => (
+                                  <linearGradient key={idx} id={`catGrad-${idx}`} x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stopColor={g.start} />
+                                    <stop offset="100%" stopColor={g.end} />
+                                  </linearGradient>
+                                ))}
+                              </defs>
+
+                              {/* Base Track */}
+                              <circle
+                                cx={donutCenter}
+                                cy={donutCenter}
+                                r={donutRadius}
+                                fill="none"
+                                stroke="rgba(154, 132, 200, 0.04)"
+                                strokeWidth={strokeW}
+                              />
+
+                              {/* Concentric Arc Segments */}
+                              {categorySales.map((item, idx) => {
+                                const pct = item.value / totalCatRevenue;
+                                const strokeDashOffset = 0;
+                                const strokeDashArray = `${circumference * pct} ${circumference}`;
+                                const rotation = (accumulatedPercent * 360) - 90;
+                                
+                                // Accumulate percent for next segments
+                                accumulatedPercent += pct;
+
+                                return (
+                                  <circle
+                                    key={idx}
+                                    cx={donutCenter}
+                                    cy={donutCenter}
+                                    r={donutRadius}
+                                    fill="none"
+                                    stroke={`url(#catGrad-${idx % categoryGradients.length})`}
+                                    strokeWidth={hoveredCategoryIndex === idx ? strokeW + 4 : strokeW}
+                                    strokeDasharray={strokeDashArray}
+                                    strokeDashoffset={strokeDashOffset}
+                                    transform={`rotate(${rotation} ${donutCenter} ${donutCenter})`}
+                                    style={{
+                                      transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                                      cursor: 'pointer',
+                                      opacity: hoveredCategoryIndex === null || hoveredCategoryIndex === idx ? 1 : 0.4
+                                    }}
+                                    onMouseEnter={() => setHoveredCategoryIndex(idx)}
+                                    onMouseLeave={() => setHoveredCategoryIndex(null)}
+                                  />
+                                );
+                              })}
+
+                              {/* Center Readout Text */}
+                              <g style={{ pointerEvents: 'none' }}>
+                                <text
+                                  x={donutCenter}
+                                  y={donutCenter - 8}
+                                  textAnchor="middle"
+                                  fill="var(--text-muted)"
+                                  style={{ 
+                                    fontSize: '9px', 
+                                    fontWeight: 700, 
+                                    letterSpacing: '1.2px', 
+                                    fontFamily: "'Jost', sans-serif" 
+                                  }}
+                                >
+                                  {hoveredCategoryIndex !== null 
+                                    ? categorySales[hoveredCategoryIndex].name.toUpperCase()
+                                    : 'TOTAL REVENUE'}
+                                </text>
+                                <text
+                                  x={donutCenter}
+                                  y={donutCenter + 14}
+                                  textAnchor="middle"
+                                  fill="#2b0b57"
+                                  style={{ 
+                                    fontSize: '18px', 
+                                    fontWeight: 800, 
+                                    fontFamily: "'Jost', sans-serif" 
+                                  }}
+                                >
+                                  ₹{hoveredCategoryIndex !== null
+                                    ? categorySales[hoveredCategoryIndex].value.toLocaleString('en-IN')
+                                    : totalCatRevenue.toLocaleString('en-IN')}
+                                </text>
+                                {hoveredCategoryIndex !== null && (
+                                  <text
+                                    x={donutCenter}
+                                    y={donutCenter + 28}
+                                    textAnchor="middle"
+                                    fill="var(--accent-secondary)"
+                                    style={{ 
+                                      fontSize: '10.5px', 
+                                      fontWeight: 700, 
+                                      fontFamily: "'Jost', sans-serif" 
+                                    }}
+                                  >
+                                    {Math.round((categorySales[hoveredCategoryIndex].value / totalCatRevenue) * 100)}% share
+                                  </text>
+                                )}
+                              </g>
+                            </svg>
+                          </div>
+
+                          {/* Legend Column */}
+                          <div style={{ 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '10px', 
+                            flexGrow: 1, 
+                            minWidth: '180px' 
+                          }}>
+                            {categorySales.map((item, idx) => {
+                              const pct = Math.round((item.value / totalCatRevenue) * 100);
+                              const colors = categoryGradients[idx % categoryGradients.length];
+                              const isHovered = hoveredCategoryIndex === idx;
+
+                              return (
+                                <div 
+                                  key={idx}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '6px 10px',
+                                    borderRadius: '5px',
+                                    background: isHovered ? 'rgba(154, 132, 200, 0.05)' : 'transparent',
+                                    border: isHovered ? '1px solid rgba(154, 132, 200, 0.15)' : '1px solid transparent',
+                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer'
+                                  }}
+                                  onMouseEnter={() => setHoveredCategoryIndex(idx)}
+                                  onMouseLeave={() => setHoveredCategoryIndex(null)}
+                                >
+                                  {/* Gradient Indicator Dot */}
+                                  <div style={{
+                                    width: '12px',
+                                    height: '12px',
+                                    borderRadius: '50%',
+                                    background: `linear-gradient(135deg, ${colors.start}, ${colors.end})`,
+                                    boxShadow: isHovered ? '0 0 6px rgba(154, 132, 200, 0.6)' : 'none',
+                                    flexShrink: 0
+                                  }} />
+
+                                  {/* Label and Value */}
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '0.8rem', alignItems: 'center' }}>
+                                    <span style={{ 
+                                      fontWeight: isHovered ? 700 : 500, 
+                                      color: isHovered ? '#2b0b57' : 'var(--text-main)' 
+                                    }}>{item.name}</span>
+                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
+                                      <strong style={{ color: isHovered ? '#7a4ea5' : 'var(--text-main)' }}>₹{item.value.toLocaleString('en-IN')}</strong>
+                                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{pct}% share</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No categories registered.</p>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
 
                 </div>
-
-              </div>
-            )}
+              );
+            })()}
 
             {/* Popup Ads panel */}
             {activePanel === 'popup_ads' && (
