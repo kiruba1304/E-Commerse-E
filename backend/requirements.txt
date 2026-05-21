@@ -4,3 +4,4 @@ flask-sqlalchemy
 bcrypt
 pyjwt
 razorpay
+python-dotenv

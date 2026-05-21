@@ -4,13 +4,17 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection
+from dotenv import load_dotenv
+
+import razorpay
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Import blueprints
 from super_admin import super_admin_bp
 from admin import admin_bp
 from user import user_bp
-
-import razorpay
 
 app = Flask(__name__)
 CORS(app)
@@ -23,7 +27,6 @@ RAZORPAY_KEY_SECRET = 'YOUR_RAZORPAY_KEY_SECRET'
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # Database Configuration
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'ecommerce.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 

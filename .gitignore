@@ -1,0 +1,11 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Optional per-folder env files
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example

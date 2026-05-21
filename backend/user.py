@@ -1,10 +1,20 @@
+import json
+import os
+import secrets
+import urllib.error
+import urllib.parse
+import urllib.request
+
 from flask import Blueprint, request, jsonify
 from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog
 from auth_middleware import generate_token, token_required, role_required
 from datetime import datetime, timezone
-import json
 
 user_bp = Blueprint('user', __name__)
+
+
+def _get_google_client_id():
+    return os.getenv("GOOGLE_CLIENT_ID", "")
 
 def log_user_action(user_id, username, action, shop_id=None):
     try:
@@ -20,6 +30,36 @@ def log_user_action(user_id, username, action, shop_id=None):
     except Exception as e:
         print("Log error:", e)
         db.session.rollback()
+
+
+def _build_google_username(email, name=None):
+    base = (name or email.split("@")[0] or "google_user").lower()
+    safe = "".join(ch if ch.isalnum() else "_" for ch in base).strip("_") or "google_user"
+    candidate = safe[:80]
+    suffix = 1
+
+    while User.query.filter_by(username=candidate).first():
+        suffix_text = f"_{suffix}"
+        candidate = f"{safe[:80 - len(suffix_text)]}{suffix_text}"
+        suffix += 1
+
+    return candidate
+
+
+def _verify_google_credential(credential):
+    url = f"https://oauth2.googleapis.com/tokeninfo?id_token={urllib.parse.quote(credential)}"
+    with urllib.request.urlopen(url, timeout=10) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    google_client_id = _get_google_client_id()
+
+    if google_client_id and payload.get("aud") != google_client_id:
+        raise ValueError("Google token audience does not match the configured client ID")
+
+    if payload.get("email_verified") not in (True, "true", "True"):
+        raise ValueError("Google account email is not verified")
+
+    return payload
 
 # REGISTRATION & LOGIN
 @user_bp.route('/register', methods=['POST'])
@@ -80,6 +120,64 @@ def login():
         "message": "Login successful",
         "token": token,
         "user": user.serialize()
+    }), 200
+
+
+@user_bp.route('/google-login', methods=['POST'])
+def google_login():
+    data = request.get_json() or {}
+    credential = data.get('credential') or data.get('id_token')
+
+    if not credential:
+        return jsonify({"error": "Google credential is required"}), 400
+
+    if not _get_google_client_id():
+        return jsonify({"error": "Google login is not configured on the server"}), 500
+
+    try:
+        google_payload = _verify_google_credential(credential)
+    except (urllib.error.HTTPError, urllib.error.URLError, ValueError) as exc:
+        return jsonify({"error": f"Invalid Google credential: {exc}"}), 401
+
+    email = google_payload.get('email')
+    if not email:
+        return jsonify({"error": "Google account email was not returned"}), 400
+
+    name = google_payload.get('name') or google_payload.get('given_name') or email.split('@')[0]
+    picture = google_payload.get('picture')
+
+    user = User.query.filter_by(email=email).first()
+    if user:
+        user.name = user.name or name
+        if not user.username:
+            user.username = _build_google_username(email, name)
+        log_message = "User logged in with Google"
+    else:
+        username = _build_google_username(email, name)
+        user = User(
+            username=username,
+            email=email,
+            name=name,
+            contact_phone='',
+            super_coins=50
+        )
+        user.set_password(secrets.token_urlsafe(32))
+        db.session.add(user)
+        log_message = "Registered new customer account via Google"
+
+    db.session.commit()
+
+    log_user_action(user.id, user.username, log_message)
+
+    token = generate_token(user.id, user.username, 'user')
+    user_data = user.serialize()
+    if picture:
+        user_data['picture'] = picture
+
+    return jsonify({
+        "message": "Google login successful",
+        "token": token,
+        "user": user_data
     }), 200
 
 @user_bp.route('/logout', methods=['POST'])
