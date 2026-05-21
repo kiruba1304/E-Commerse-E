@@ -308,9 +308,9 @@ def create_order():
             discounted_amount -= coins_to_use
             user.super_coins -= coins_to_use
 
-    # Calculate 18% standard GST included or added
-    # Let's calculate standard GST: final_amount * 0.18
-    gst_amount = discounted_amount * 0.18
+    # Calculate shop-configured GST percentage (defaults to 18.0%)
+    gst_rate = getattr(shop, 'gst_percentage', 18.0) / 100.0
+    gst_amount = discounted_amount * gst_rate
     final_amount = discounted_amount + gst_amount
 
     # Deduct stock and clear cart items

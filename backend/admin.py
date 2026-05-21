@@ -104,6 +104,11 @@ def manage_shop():
         shop.razorpay_key_id = data['razorpay_key_id']
     if 'razorpay_key_secret' in data:
         shop.razorpay_key_secret = data['razorpay_key_secret']
+    if 'gst_percentage' in data:
+        try:
+            shop.gst_percentage = float(data['gst_percentage'])
+        except ValueError:
+            return jsonify({"error": "Invalid GST percentage value"}), 400
     if 'saree_models' in data:
         shop.saree_models = data['saree_models']
 
@@ -671,20 +676,21 @@ def modify_coupon(coupon_id):
 @role_required(['admin'])
 def gst_report():
     shop_id = request.user['shop_id']
+    shop = Shop.query.get(shop_id)
     # Calculate tax aggregates from successful sales
     orders = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
     
     total_sales_value = sum([o.final_amount for o in orders])
     total_gst_amount = sum([o.gst_amount for o in orders])
     
-    # 18% standard aggregate reporting
     net_sales = total_sales_value - total_gst_amount
+    gst_rate = getattr(shop, 'gst_percentage', 18.0)
     
     return jsonify({
         "shop_id": shop_id,
         "reporting_period": "All Time",
         "net_sales": round(net_sales, 2),
-        "gst_rate_applied": "18% Standard GST",
+        "gst_rate_applied": f"{gst_rate}% Configured GST",
         "total_gst_collected": round(total_gst_amount, 2),
         "gross_revenue": round(total_sales_value, 2),
         "total_orders_count": len(orders)
