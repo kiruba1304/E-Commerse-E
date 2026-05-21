@@ -327,6 +327,11 @@ def create_order():
         db.session.delete(ci)
 
     # Create Order
+    razorpay_pay_id = data.get('razorpay_payment_id')
+    if payment_method == 'UPI' and not razorpay_pay_id:
+        import uuid
+        razorpay_pay_id = f"pay_mock_{uuid.uuid4().hex[:14]}"
+
     order = Order(
         user_id=user_id,
         shop_id=shop_id,
@@ -339,7 +344,8 @@ def create_order():
         billing_phone=billing_phone or user.contact_phone,
         super_coins_used=super_coins_used,
         gst_amount=round(gst_amount, 2),
-        discount_amount=round(discount_amount + super_coins_used, 2)
+        discount_amount=round(discount_amount + super_coins_used, 2),
+        razorpay_payment_id=razorpay_pay_id
     )
     
     for item in order_items:
@@ -398,11 +404,13 @@ def request_order_return(order_id):
 
     data = request.get_json() or {}
     reason = data.get('reason')
+    return_image_url = data.get('return_image_url')
     if not reason:
         return jsonify({"error": "Return reason is required"}), 400
 
     order.return_request_status = 'Pending'
     order.return_reason = reason
+    order.return_image_url = return_image_url
     db.session.commit()
 
     log_user_action(user_id, request.user['username'], f"Requested return for order #{order.id}. Reason: {reason}", order.shop_id)

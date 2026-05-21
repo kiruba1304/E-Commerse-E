@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, Menu, ArrowLeft, Send, Sparkles, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
-  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download
 } from 'lucide-react';
 
 const API_BASE = "/api";
@@ -576,6 +576,14 @@ export default function App() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [ribbonImageIndexes, setRibbonImageIndexes] = useState([0, 2, 4, 6, 8]);
 
+  // Return requests modal and states
+  const [activeReturnOrder, setActiveReturnOrder] = useState(null);
+  const [returnReason, setReturnReason] = useState("");
+  const [returnImageUrl, setReturnImageUrl] = useState("");
+  const [uploadingReturnImage, setUploadingReturnImage] = useState(false);
+  const [expandedImage, setExpandedImage] = useState(null);
+  const [activeTransactionOrder, setActiveTransactionOrder] = useState(null);
+
   const opacBanners = [
     {
       id: 1,
@@ -667,6 +675,33 @@ export default function App() {
   const [adminLogs, setAdminLogs] = useState([]);
   const [adminSmsLogs, setAdminSmsLogs] = useState([]);
   const [gstReport, setGstReport] = useState(null);
+  const [adminProductSearch, setAdminProductSearch] = useState("");
+  const [adminProductCategoryFilter, setAdminProductCategoryFilter] = useState("");
+  const [adminStartDate, setAdminStartDate] = useState("");
+  const [adminEndDate, setAdminEndDate] = useState("");
+  const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
+
+  const filteredAdminOrders = adminOrders.filter(o => {
+    if (!o.created_at) return true;
+    const orderDate = new Date(o.created_at);
+    if (adminStartDate) {
+      const start = new Date(adminStartDate + 'T00:00:00');
+      if (orderDate < start) return false;
+    }
+    if (adminEndDate) {
+      const end = new Date(adminEndDate + 'T23:59:59');
+      if (orderDate > end) return false;
+    }
+    return true;
+  });
+  
+  const filteredAdminProducts = adminProducts.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(adminProductSearch.toLowerCase()) || 
+                          p.id.toString().includes(adminProductSearch);
+    const matchesCategory = !adminProductCategoryFilter || 
+                            p.category_id?.toString() === adminProductCategoryFilter.toString();
+    return matchesSearch && matchesCategory;
+  });
   
   // Admin edits/creations
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
@@ -1324,12 +1359,12 @@ export default function App() {
   };
 
   // File Return Request
-  const handleRequestReturn = async (orderId, reason) => {
+  const handleRequestReturn = async (orderId, reason, return_image_url) => {
     try {
       const res = await fetch(`${API_BASE}/user/orders/${orderId}/return`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ reason })
+        body: JSON.stringify({ reason, return_image_url })
       });
       const data = await res.json();
       if (res.ok) {
@@ -1352,11 +1387,14 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
+        if (data.order.payment_method === 'COD') {
+          addToast("Order Confirmed", "Your purchase is successful. Invoice will be generated after admin accepts the order.", "success");
+        } else {
+          addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
+          // Show invoice immediately!
+          setInvoiceOrder(data.order);
+        }
         setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false });
-        
-        // Show invoice immediately!
-        setInvoiceOrder(data.order);
         
         // Route to orders list
         setActivePanel("orders");
@@ -1372,7 +1410,7 @@ export default function App() {
       if (activePanel === 'shop_config') loadAdminShop();
       if (activePanel === 'categories') loadAdminCategories();
       if (activePanel === 'collections') { loadAdminCollections(); loadAdminCategories(); }
-      if (activePanel === 'products') loadAdminProducts();
+      if (activePanel === 'products') { loadAdminProducts(); loadAdminCategories(); }
       if (activePanel === 'orders') loadAdminOrders();
       if (activePanel === 'inventory') loadAdminInventory();
       if (activePanel === 'revenue') loadAdminRevenue();
@@ -1554,6 +1592,49 @@ export default function App() {
     } catch (e) {}
   };
 
+  const handleDownloadProductsReport = () => {
+    const headers = [
+      "Product ID",
+      "Product Name",
+      "Category",
+      "Price (INR)",
+      "Original Price (INR)",
+      "Stock",
+      "Alert Threshold",
+      "Promo Code",
+      "Promo Discount (INR)",
+      "Bulk Price (INR)",
+      "Min Bulk Qty"
+    ];
+    
+    const rows = filteredAdminProducts.map(p => [
+      p.id,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${(p.category_name || '').replace(/"/g, '""')}"`,
+      p.price,
+      p.original_price,
+      p.stock,
+      p.alert_threshold,
+      p.promo_code || "None",
+      p.promo_discount || 0,
+      p.bulk_sale_price || "",
+      p.min_quantity || ""
+    ]);
+    
+    const csvString = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `store_products_report_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const loadAdminOrders = async () => {
     try {
       const res = await fetch(`${API_BASE}/admin/orders`, { headers: getHeaders() });
@@ -1564,10 +1645,14 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
+      const payload = { status: newStatus };
+      if (newStatus === 'Dispatched') {
+        payload.tracking_info = `Dispatched via Hub Courier. Track ID: ${Math.floor(Math.random() * 90000) + 10000}`;
+      }
       const res = await fetch(`${API_BASE}/admin/orders/${orderId}`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify({ status: newStatus, tracking_info: `Dispatched via Hub Courier. Track ID: ${Math.floor(Math.random() * 90000) + 10000}` })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         addToast("Status Transition", `Order status set to '${newStatus}'.`, "success");
@@ -1588,6 +1673,60 @@ export default function App() {
         loadAdminOrders();
       }
     } catch (e) {}
+  };
+
+  const handleShowCustomerHistory = (userId, userName) => {
+    const customerOrders = adminOrders.filter(o => o.user_id === userId);
+    setSelectedCustomerHistory({
+      userId,
+      userName,
+      orders: customerOrders
+    });
+  };
+
+  const exportOrdersCSV = () => {
+    const headers = [
+      "Order ID", 
+      "Customer Name", 
+      "Order Date", 
+      "Shipping Address", 
+      "Billing Phone",
+      "Gross Total (INR)", 
+      "Payment Method", 
+      "Ship Status", 
+      "Items Ordered"
+    ];
+    
+    const rows = filteredAdminOrders.map(o => {
+      const itemsStr = o.items ? o.items.map(item => 
+        `${item.product_name} (ID: ${item.product_id}, Qty: ${item.quantity}, Cat: ${item.category_name || 'Uncategorized'}, Price: INR ${item.price})`
+      ).join(" | ") : "";
+      
+      return [
+        `#${o.id}`,
+        `"${(o.user_name || '').replace(/"/g, '""')}"`,
+        `"${o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}"`,
+        `"${(o.shipping_address || '').replace(/"/g, '""')}"`,
+        `"${(o.billing_phone || '').replace(/"/g, '""')}"`,
+        o.final_amount,
+        `"${(o.payment_method || '').replace(/"/g, '""')}"`,
+        `"${(o.status || '').replace(/"/g, '""')}"`,
+        `"${itemsStr.replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvString = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `store_orders_report_${timestamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const loadAdminInventory = async () => {
@@ -2177,6 +2316,206 @@ export default function App() {
         </div>
       )}
 
+      {/* CUSTOMER RETURN REQUEST MODAL */}
+      {activeReturnOrder && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 11000 }} onClick={() => {
+          setActiveReturnOrder(null);
+          setReturnReason("");
+          setReturnImageUrl("");
+        }}>
+          <div className="ad-modal-body glass-panel" onClick={e => e.stopPropagation()} style={{ background: 'white', color: '#1e293b', width: '90%', maxWidth: '650px', padding: '28px', overflowY: 'auto', maxHeight: '90vh', border: 'none', borderRadius: '16px' }}>
+            <button className="ad-modal-close" onClick={() => {
+              setActiveReturnOrder(null);
+              setReturnReason("");
+              setReturnImageUrl("");
+            }} style={{ background: 'var(--accent-secondary)' }}>
+              <X size={18} />
+            </button>
+
+            <h3 style={{ 
+              fontFamily: "'Playfair Display', serif", 
+              fontSize: '1.8rem', 
+              fontWeight: 700, 
+              color: '#2b0b57', 
+              marginBottom: '16px',
+              borderBottom: '2px solid rgba(154, 132, 200, 0.2)',
+              paddingBottom: '12px'
+            }}>
+              File Return Request
+            </h3>
+
+            {/* Product Details Section */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                Items to Return:
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(122, 78, 165, 0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(122, 78, 165, 0.1)' }}>
+                {activeReturnOrder.items && activeReturnOrder.items.map(item => (
+                  <div key={item.id} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <img 
+                      src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=100"} 
+                      alt={item.product_name} 
+                      style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-subtle)' }} 
+                    />
+                    <div style={{ flex: 1 }}>
+                      <h5 style={{ fontWeight: 700, margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{item.product_name}</h5>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        ID: #{item.product_id} | Category: {item.category_name}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>Qty: {item.quantity}</span>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>₹{item.price.toFixed(2)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reason Textarea */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Reason for Return <span style={{ color: 'red' }}>*</span>
+              </label>
+              <textarea
+                placeholder="Please describe the issue or reason for returning the product(s)..."
+                value={returnReason}
+                onChange={e => setReturnReason(e.target.value)}
+                style={{ width: '100%', minHeight: '80px', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-subtle)', resize: 'vertical', fontSize: '0.9rem' }}
+              />
+            </div>
+
+            {/* Upload Verification Image Section */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Upload Verification Image <span style={{ color: 'red' }}>*</span>
+              </label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
+                Please upload a clear photo of the product showing the issue to verify the request.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', border: '2px dashed rgba(122, 78, 165, 0.3)', borderRadius: '8px', background: 'rgba(122, 78, 165, 0.01)', alignItems: 'center', justifyContent: 'center' }}>
+                {returnImageUrl ? (
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img 
+                      src={returnImageUrl} 
+                      alt="Verification preview" 
+                      style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setReturnImageUrl("")} 
+                      style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'var(--accent-danger)', border: 'none', color: 'white', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      id="return-image-file-input"
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setUploadingReturnImage(true);
+                          handleUploadFile(file, (url) => {
+                            setReturnImageUrl(url);
+                            setUploadingReturnImage(false);
+                          });
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="return-image-file-input" 
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        cursor: 'pointer',
+                        color: 'var(--accent-secondary)',
+                        fontWeight: 600,
+                        fontSize: '0.85rem'
+                      }}
+                    >
+                      {uploadingReturnImage ? (
+                        <span style={{ color: 'var(--text-muted)' }}>Uploading image...</span>
+                      ) : (
+                        <>
+                          <Plus size={24} />
+                          <span>Select Verification Image</span>
+                        </>
+                      )}
+                    </label>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  setActiveReturnOrder(null);
+                  setReturnReason("");
+                  setReturnImageUrl("");
+                }} 
+                className="btn-secondary" 
+                style={{ padding: '10px 20px' }}
+              >
+                Cancel
+              </button>
+              <button 
+                disabled={!returnReason || !returnImageUrl || uploadingReturnImage}
+                onClick={async () => {
+                  if (returnReason && returnImageUrl) {
+                    await handleRequestReturn(activeReturnOrder.id, returnReason, returnImageUrl);
+                    setActiveReturnOrder(null);
+                    setReturnReason("");
+                    setReturnImageUrl("");
+                  }
+                }} 
+                className="btn-danger" 
+                style={{ 
+                  padding: '10px 20px',
+                  opacity: (!returnReason || !returnImageUrl || uploadingReturnImage) ? 0.6 : 1,
+                  cursor: (!returnReason || !returnImageUrl || uploadingReturnImage) ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Submit Return
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LIGHTBOX MODAL */}
+      {expandedImage && (
+        <div 
+          className="ad-modal-backdrop" 
+          style={{ zIndex: 12000, backgroundColor: 'rgba(0,0,0,0.85)' }} 
+          onClick={() => setExpandedImage(null)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90vh' }}>
+            <button 
+              onClick={() => setExpandedImage(null)} 
+              style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              <X size={20} /> Close
+            </button>
+            <img 
+              src={expandedImage} 
+              alt="Verification full preview" 
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
       {/* PRINTABLE INVOICE MODAL POPUP */}
       {invoiceOrder && (
         <div className="ad-modal-backdrop" style={{ zIndex: 11000 }} onClick={() => setInvoiceOrder(null)}>
@@ -2265,6 +2604,115 @@ export default function App() {
             <button onClick={() => window.print()} className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '24px' }}>
               Print Tax Document <FileText size={18} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* TRANSACTION DETAILS MODAL POPUP */}
+      {activeTransactionOrder && (
+        <div 
+          className="ad-modal-backdrop" 
+          style={{ zIndex: 11000 }} 
+          onClick={() => setActiveTransactionOrder(null)}
+        >
+          <div 
+            className="ad-modal-body glass-panel" 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              background: 'white', 
+              color: '#1e293b', 
+              width: '90%', 
+              maxWidth: '550px', 
+              padding: '30px', 
+              overflowY: 'auto', 
+              maxHeight: '90vh', 
+              border: 'none',
+              borderRadius: '12px',
+              boxShadow: '0 20px 40px rgba(43, 11, 87, 0.15)'
+            }}
+          >
+            <button 
+              className="ad-modal-close" 
+              onClick={() => setActiveTransactionOrder(null)} 
+              style={{ background: '#7a4ea5' }}
+            >
+              <X size={18} />
+            </button>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ textAlign: 'center', borderBottom: '2px solid #f3e6ff', paddingBottom: '16px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', borderRadius: '50%', background: '#f0fdf4', color: '#15803d', marginBottom: '10px' }}>
+                  <ShieldCheck size={28} />
+                </div>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", fontWeight: 800, fontSize: '1.5rem', color: '#2b0b57', margin: '0 0 4px 0' }}>
+                  Transaction Receipt
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', wordBreak: 'break-all', fontWeight: 600 }}>
+                  Razorpay ID: {activeTransactionOrder.razorpay_payment_id}
+                </span>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Store / Merchant:</span>
+                  <span style={{ fontWeight: 700, color: '#2b0b57' }}>{activeTransactionOrder.shop_name}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Order ID Ref:</span>
+                  <span style={{ fontWeight: 700, color: '#1e293b' }}>#{activeTransactionOrder.id}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Customer Name:</span>
+                  <span style={{ fontWeight: 600 }}>{activeTransactionOrder.user_name}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Billing Contact:</span>
+                  <span>{activeTransactionOrder.billing_phone || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Transaction Time:</span>
+                  <span style={{ fontSize: '0.85rem' }}>
+                    {activeTransactionOrder.created_at ? new Date(activeTransactionOrder.created_at).toLocaleString() : 'N/A'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Payment Mode:</span>
+                  <span style={{ fontWeight: 600, color: '#4f46e5' }}>UPI (Razorpay Gateway)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Payment Status:</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontWeight: 'bold' }}>
+                    <Check size={14} /> CAPTURED
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #2b0b57', paddingBottom: '8px', marginTop: '4px' }}>
+                  <span style={{ fontWeight: 800, color: '#2b0b57' }}>Total Charged Amount:</span>
+                  <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.1rem' }}>₹{activeTransactionOrder.final_amount.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              <div>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                  Settled Items Summary
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', background: '#f8fafc', padding: '12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  {activeTransactionOrder.items && activeTransactionOrder.items.map((item, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', gap: '10px' }}>
+                      <span style={{ color: '#334155', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.product_name} <span style={{ color: '#64748b' }}>x{item.quantity}</span>
+                      </span>
+                      <span style={{ fontWeight: 600, color: '#1e293b', flexShrink: 0 }}>
+                        ₹{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'center', marginTop: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+                Secured by Razorpay. Settlement status is verified.
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -4763,7 +5211,7 @@ export default function App() {
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>STATUS</span>
                           <div>
                             <span className={`badge ${
-                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
                             }`}>
                               {o.status}
                             </span>
@@ -4783,35 +5231,39 @@ export default function App() {
 
                       {/* Return filing clause */}
                       {o.status === 'Customer Received' && o.return_request_status === 'None' && (
-                        <div className="return-box" style={{ margin: 0 }}>
-                          <h5 style={{ fontWeight: 800, color: 'var(--accent-danger)', marginBottom: '8px' }}>Need to return this product?</h5>
-                          <div style={{ display: 'flex', gap: '12px' }}>
-                            <input 
-                              type="text" 
-                              placeholder="Describe reason for returning product..." 
-                              id={`return-reason-${o.id}`}
-                              style={{ flexGrow: 1, padding: '8px' }} 
-                            />
-                            <button 
-                              onClick={() => {
-                                const input = document.getElementById(`return-reason-${o.id}`);
-                                if (input && input.value) {
-                                  handleRequestReturn(o.id, input.value);
-                                }
-                              }} 
-                              className="btn-danger" 
-                              style={{ padding: '8px 16px', fontSize: '0.8rem' }}
-                            >
-                              File Return
-                            </button>
+                        <div className="return-box" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <h5 style={{ fontWeight: 800, color: 'var(--accent-danger)', marginBottom: '4px' }}>Need to return this product?</h5>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>You can request a return and refund for this order.</p>
                           </div>
+                          <button 
+                            onClick={() => setActiveReturnOrder(o)} 
+                            className="btn-danger" 
+                            style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600 }}
+                          >
+                            File Return Request
+                          </button>
                         </div>
                       )}
 
                       {o.return_request_status !== 'None' && (
-                        <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                          Return Request Status: <strong style={{ textTransform: 'uppercase' }}>{o.return_request_status}</strong>
-                          {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>Reason: "{o.return_reason}"</p>}
+                        <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            Return Request Status: <strong style={{ textTransform: 'uppercase' }}>{o.return_request_status}</strong>
+                            {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', marginBottom: 0 }}>Reason: "{o.return_reason}"</p>}
+                          </div>
+                          {o.return_image_url && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verification Photo</span>
+                              <img 
+                                src={o.return_image_url} 
+                                alt="Verification" 
+                                style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                                onClick={() => setExpandedImage(o.return_image_url)}
+                                title="Click to expand"
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -4821,10 +5273,20 @@ export default function App() {
                         </div>
                       )}
 
-                      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                        <button onClick={() => setInvoiceOrder(o)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                          <FileText size={16} /> View Tax Invoice
-                        </button>
+                      <div style={{ display: 'flex', gap: '12px', marginTop: '8px', alignItems: 'center' }}>
+                        {o.payment_method === 'COD' && o.status === 'Pending' ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.05)', padding: '6px 12px', borderRadius: '4px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                            <FileText size={15} style={{ color: '#f59e0b' }} /> Invoice pending admin acceptance
+                          </span>
+                        ) : o.payment_method === 'COD' && o.status === 'Rejected' ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 12px', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <FileText size={15} style={{ color: 'var(--accent-danger)' }} /> Order Rejected
+                          </span>
+                        ) : (
+                          <button onClick={() => setInvoiceOrder(o)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                            <FileText size={16} /> View Tax Invoice
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -5469,26 +5931,25 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Associate Categories</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto', padding: '10px', border: '1px solid var(--border-subtle)', borderRadius: '4px', background: 'rgba(255,255,255,0.02)' }}>
+                    <div className="modern-pill-container">
                       {adminCategories.map(c => {
                         const isChecked = collectionForm.category_ids.includes(c.id);
                         return (
-                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setCollectionForm(prev => {
-                                  const updatedCategoryIds = checked 
-                                    ? [...prev.category_ids, c.id]
-                                    : prev.category_ids.filter(id => id !== c.id);
-                                  return { ...prev, category_ids: updatedCategoryIds };
-                                });
-                              }}
-                            />
+                          <div 
+                            key={c.id} 
+                            className={`modern-select-pill ${isChecked ? 'active' : ''}`}
+                            onClick={() => {
+                              setCollectionForm(prev => {
+                                const updatedCategoryIds = prev.category_ids.includes(c.id)
+                                  ? prev.category_ids.filter(id => id !== c.id)
+                                  : [...prev.category_ids, c.id];
+                                return { ...prev, category_ids: updatedCategoryIds };
+                              });
+                            }}
+                          >
+                            <span className="pill-dot" />
                             <span>{c.name}</span>
-                          </label>
+                          </div>
                         );
                       })}
                     </div>
@@ -5799,7 +6260,38 @@ export default function App() {
 
                 {/* Products Table list */}
                 <div>
-                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Current Store Products</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+                    <h3 style={{ fontWeight: 800, margin: 0 }}>Current Store Products</h3>
+                    
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input 
+                        type="text" 
+                        placeholder="Search products by ID or Name..." 
+                        value={adminProductSearch}
+                        onChange={e => setAdminProductSearch(e.target.value)}
+                        style={{ width: '220px', padding: '8px 12px', fontSize: '0.85rem' }}
+                      />
+                      
+                      <select
+                        value={adminProductCategoryFilter}
+                        onChange={e => setAdminProductCategoryFilter(e.target.value)}
+                        style={{ width: '180px', padding: '8px 12px', fontSize: '0.85rem', cursor: 'pointer' }}
+                      >
+                        <option value="">All Categories</option>
+                        {adminCategories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
+                      
+                      <button 
+                        onClick={handleDownloadProductsReport} 
+                        className="btn-secondary" 
+                        style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Download size={14} /> Download Report
+                      </button>
+                    </div>
+                  </div>
                   <div className="responsive-table-container glass-panel">
                     <table>
                       <thead>
@@ -5816,7 +6308,7 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {adminProducts.map(p => (
+                        {filteredAdminProducts.map(p => (
                           <tr key={p.id}>
                             <td>
                               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -5878,8 +6370,11 @@ export default function App() {
                       <thead>
                         <tr>
                           <th>Order ID</th>
+                          <th>Ordered Date</th>
                           <th>Buyer</th>
+                          <th>Returned Products</th>
                           <th>Return Reason</th>
+                          <th>Verification Photo</th>
                           <th>Refund Value</th>
                           <th style={{ textAlign: 'right' }}>Decide Resolution</th>
                         </tr>
@@ -5888,8 +6383,65 @@ export default function App() {
                         {adminOrders.filter(o => o.return_request_status === 'Pending').map(o => (
                           <tr key={o.id}>
                             <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                            <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
+                            </td>
                             <td>{o.user_name}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {o.items && o.items.map(item => (
+                                  <div key={item.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <img 
+                                      src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50"} 
+                                      alt={item.product_name} 
+                                      style={{ 
+                                        width: '55px', 
+                                        height: '55px', 
+                                        objectFit: 'cover', 
+                                        borderRadius: '6px', 
+                                        border: '1px solid var(--border-subtle)',
+                                        cursor: 'pointer',
+                                        transition: 'transform 0.2s'
+                                      }} 
+                                      onClick={() => setExpandedImage(item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50")}
+                                      title="Click to view product photo"
+                                      onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                                      onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', lineHeight: '1.2', textAlign: 'left' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.product_name}</span>
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                        ID: #{item.product_id} | Qty: {item.quantity} | Cat: {item.category_name}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
                             <td>"{o.return_reason}"</td>
+                            <td>
+                              {o.return_image_url ? (
+                                <img 
+                                  src={o.return_image_url} 
+                                  alt="Verification" 
+                                  style={{ 
+                                    width: '70px', 
+                                    height: '70px', 
+                                    objectFit: 'cover', 
+                                    borderRadius: '8px', 
+                                    border: '1px solid var(--border-subtle)',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s'
+                                  }}
+                                  onClick={() => setExpandedImage(o.return_image_url)}
+                                  title="Click to view full verification photo"
+                                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                  onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                />
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No image provided</span>
+                              )}
+                            </td>
                             <td style={{ fontWeight: 'bold', color: '#10b981' }}>₹{o.final_amount}</td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -5905,7 +6457,7 @@ export default function App() {
                         ))}
                         {adminOrders.filter(o => o.return_request_status === 'Pending').length === 0 && (
                           <tr>
-                            <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }}>No pending return claims currently registered.</td>
+                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No pending return claims currently registered.</td>
                           </tr>
                         )}
                       </tbody>
@@ -5913,15 +6465,75 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Orders list */}
+                {/* Orders list with Filters & Export */}
                 <div>
-                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Store Sales Transactions</h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+                    <h3 style={{ fontWeight: 800, margin: 0 }}>Store Sales Transactions</h3>
+                    
+                    {/* Date filters and CSV export action container */}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
+                        <input 
+                          type="date" 
+                          value={adminStartDate} 
+                          onChange={(e) => setAdminStartDate(e.target.value)} 
+                          style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: '6px', 
+                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                            background: 'rgba(255, 255, 255, 0.8)',
+                            color: 'var(--text-main)',
+                            fontSize: '0.8rem',
+                            outline: 'none'
+                          }} 
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
+                        <input 
+                          type="date" 
+                          value={adminEndDate} 
+                          onChange={(e) => setAdminEndDate(e.target.value)} 
+                          style={{ 
+                            padding: '8px 12px', 
+                            borderRadius: '6px', 
+                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                            background: 'rgba(255, 255, 255, 0.8)',
+                            color: 'var(--text-main)',
+                            fontSize: '0.8rem',
+                            outline: 'none'
+                          }} 
+                        />
+                      </div>
+                      
+                      {(adminStartDate || adminEndDate) && (
+                        <button 
+                          onClick={() => { setAdminStartDate(''); setAdminEndDate(''); }} 
+                          className="btn-secondary" 
+                          style={{ padding: '8px 12px', fontSize: '0.75rem', height: '36px' }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                      
+                      <button 
+                        onClick={exportOrdersCSV} 
+                        className="btn-primary" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '0.8rem', height: '36px' }}
+                      >
+                        <Download size={14} /> Export CSV Report
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="responsive-table-container glass-panel">
                     <table>
                       <thead>
                         <tr>
-                          <th>Order ID</th>
+                          <th>Order ID & Date</th>
                           <th>Buyer</th>
+                          <th>Items Ordered</th>
                           <th>Shipping Location</th>
                           <th>Gross Total</th>
                           <th>Method</th>
@@ -5930,23 +6542,158 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {adminOrders.map(o => (
+                        {filteredAdminOrders.map(o => (
                           <tr key={o.id}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
-                            <td>{o.user_name}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+                              <div>#{o.id}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
+                                {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
+                              </div>
+                              {!(o.payment_method === 'COD' && (o.status === 'Pending' || o.status === 'Rejected')) && (
+                                <button
+                                  onClick={() => setInvoiceOrder(o)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#7a4ea5',
+                                    textDecoration: 'underline',
+                                    cursor: 'pointer',
+                                    fontSize: '0.7rem',
+                                    padding: 0,
+                                    marginTop: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    fontWeight: 600
+                                  }}
+                                  title="Click to view tax invoice receipt"
+                                >
+                                  <FileText size={12} style={{ color: '#7a4ea5' }} /> View Invoice
+                                </button>
+                              )}
+                            </td>
+                            <td>
+                              <button 
+                                onClick={() => handleShowCustomerHistory(o.user_id, o.user_name)} 
+                                style={{ 
+                                  background: 'none', 
+                                  border: 'none', 
+                                  color: '#7a4ea5', 
+                                  textDecoration: 'underline', 
+                                  cursor: 'pointer', 
+                                  fontWeight: 600,
+                                  padding: 0,
+                                  textAlign: 'left',
+                                  fontSize: '0.85rem'
+                                }}
+                                title="Click to view full purchase history"
+                              >
+                                {o.user_name}
+                              </button>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '220px', maxWidth: '320px' }}>
+                                {o.items && o.items.map((item, idx) => (
+                                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.4)', padding: '4px 6px', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
+                                    {item.product_image ? (
+                                      <img 
+                                        src={item.product_image} 
+                                        alt={item.product_name} 
+                                        style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.15)' }}
+                                      />
+                                    ) : (
+                                      <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
+                                        No img
+                                      </div>
+                                    )}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.product_name}>
+                                        {item.product_name}
+                                      </div>
+                                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', display: 'flex', gap: '6px' }}>
+                                        <span>ID: {item.product_id}</span>
+                                        <span>•</span>
+                                        <span>{item.category_name || 'Uncategorized'}</span>
+                                      </div>
+                                    </div>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#7a4ea5', flexShrink: 0 }}>
+                                      x{item.quantity} (₹{item.price})
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
                             <td>{o.shipping_address}</td>
                             <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{o.final_amount}</td>
-                            <td><span className="badge badge-info">{o.payment_method}</span></td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                <span className="badge badge-info">{o.payment_method}</span>
+                                {o.payment_method === 'UPI' && o.razorpay_payment_id && (
+                                  <button
+                                    onClick={() => setActiveTransactionOrder(o)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#7a4ea5',
+                                      textDecoration: 'underline',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem',
+                                      padding: 0,
+                                      textAlign: 'left',
+                                      fontWeight: 600,
+                                      marginTop: '4px'
+                                    }}
+                                    title="Click to view transaction details"
+                                  >
+                                    {o.razorpay_payment_id}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
                             <td>
                               <span className={`badge ${
-                                o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                                o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
                               }`}>
                                 {o.status}
                               </span>
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               {o.status === 'Pending' && (
-                                <button onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                                <>
+                                  {o.payment_method === 'COD' ? (
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                      <button 
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
+                                        className="btn-primary" 
+                                        style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                      >
+                                        Accept
+                                      </button>
+                                      <button 
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
+                                        className="btn-danger" 
+                                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                      >
+                                        Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button 
+                                      onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
+                                      className="btn-primary" 
+                                      style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                    >
+                                      Dispatch Order
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {o.status === 'Accepted' && (
+                                <button 
+                                  onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
+                                  className="btn-primary" 
+                                  style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                >
                                   Dispatch Order
                                 </button>
                               )}
@@ -5961,13 +6708,189 @@ export default function App() {
                               {o.status === 'Returned' && (
                                 <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
                               )}
+                              {o.status === 'Rejected' && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
+                              )}
                             </td>
                           </tr>
                         ))}
+                        {filteredAdminOrders.length === 0 && (
+                          <tr>
+                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No matching transactions found.</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
+
+                {/* Customer Purchase History Modal */}
+                {selectedCustomerHistory && (
+                  <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(6px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px'
+                  }}>
+                    <div className="glass-panel" style={{
+                      width: '100%',
+                      maxWidth: '750px',
+                      maxHeight: '85vh',
+                      overflowY: 'auto',
+                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                      padding: '28px',
+                      position: 'relative',
+                      boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
+                      border: '1px solid rgba(154, 132, 200, 0.3)',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '20px'
+                    }}>
+                      <button 
+                        onClick={() => setSelectedCustomerHistory(null)}
+                        style={{
+                          position: 'absolute',
+                          top: '20px',
+                          right: '20px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          padding: '4px'
+                        }}
+                      >
+                        <X size={20} />
+                      </button>
+                      
+                      <div>
+                        <h3 style={{ 
+                          fontFamily: "'Playfair Display', serif", 
+                          fontSize: '1.8rem', 
+                          fontWeight: 700, 
+                          color: '#2b0b57',
+                          marginBottom: '6px'
+                        }}>
+                          Customer Purchase History
+                        </h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                          Showing all purchase records for: <strong>{selectedCustomerHistory.userName}</strong> (User ID: #{selectedCustomerHistory.userId})
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {selectedCustomerHistory.orders.length === 0 ? (
+                          <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No orders found for this customer.</p>
+                        ) : (
+                          selectedCustomerHistory.orders.map((o) => (
+                            <div key={o.id} style={{
+                              padding: '16px',
+                              border: '1px solid rgba(154, 132, 200, 0.15)',
+                              borderRadius: '10px',
+                              background: 'rgba(243, 230, 255, 0.15)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '12px'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                <div>
+                                  <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>Order #{o.id}</strong>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '12px' }}>
+                                    {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                  {!(o.payment_method === 'COD' && (o.status === 'Pending' || o.status === 'Rejected')) && (
+                                    <button
+                                      onClick={() => setInvoiceOrder(o)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#7a4ea5',
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                        padding: 0,
+                                        marginLeft: '12px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontWeight: 600
+                                      }}
+                                    >
+                                      <FileText size={12} style={{ color: '#7a4ea5' }} /> View Invoice
+                                    </button>
+                                  )}
+                                </div>
+                                <span className={`badge ${
+                                  o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                }`}>
+                                  {o.status}
+                                </span>
+                              </div>
+
+                              <div style={{ borderTop: '1px dashed rgba(154, 132, 200, 0.2)', paddingTop: '10px' }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#2b0b57', marginBottom: '8px' }}>Items Ordered:</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                                  {o.items && o.items.map((item, idx) => (
+                                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.6)', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
+                                      {item.product_image ? (
+                                        <img 
+                                          src={item.product_image} 
+                                          alt={item.product_name} 
+                                          style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.15)' }}
+                                        />
+                                      ) : (
+                                        <div style={{ width: '36px', height: '36px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
+                                          No img
+                                        </div>
+                                      )}
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.product_name}>
+                                          {item.product_name}
+                                        </div>
+                                        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', display: 'flex', gap: '4px' }}>
+                                          <span>ID: {item.product_id}</span>
+                                          <span>•</span>
+                                          <span>{item.category_name || 'Uncategorized'}</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', color: '#7a4ea5', fontWeight: 500, marginTop: '2px' }}>
+                                          Qty: {item.quantity} • ₹{item.price}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(154, 132, 200, 0.15)', paddingTop: '10px', fontSize: '0.85rem' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Method: <strong>{o.payment_method}</strong></span>
+                                <span style={{ color: 'var(--text-muted)' }}>Phone: <strong>{o.billing_phone || 'N/A'}</strong></span>
+                                <strong style={{ color: '#2b0b57', fontSize: '0.95rem' }}>Total: ₹{o.final_amount}</strong>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                        <button 
+                          onClick={() => setSelectedCustomerHistory(null)}
+                          className="btn-secondary" 
+                          style={{ padding: '8px 24px', fontSize: '0.85rem' }}
+                        >
+                          Close History
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               </div>
             )}
@@ -6846,7 +7769,7 @@ export default function App() {
                           <td>{new Date(o.created_at).toLocaleString()}</td>
                           <td>
                             <span className={`badge ${
-                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : 'badge-warning'
+                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
                             }`}>
                               {o.status}
                             </span>

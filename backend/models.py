@@ -275,7 +275,7 @@ class Order(db.Model):
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     total_amount = db.Column(db.Float, nullable=False)
     final_amount = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(50), default='Pending') # Pending, Dispatched, Customer Received, Returned
+    status = db.Column(db.String(50), default='Pending') # Pending, Accepted, Rejected, Dispatched, Customer Received, Returned
     payment_method = db.Column(db.String(50), default='COD') # COD, UPI
     payment_status = db.Column(db.String(50), default='Pending') # Pending, Paid
     tracking_info = db.Column(db.String(255), nullable=True)
@@ -290,6 +290,8 @@ class Order(db.Model):
     # Return features
     return_request_status = db.Column(db.String(50), default='None') # None, Pending, Approved, Rejected
     return_reason = db.Column(db.Text, nullable=True)
+    return_image_url = db.Column(db.Text, nullable=True)
+    razorpay_payment_id = db.Column(db.String(100), nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -316,6 +318,8 @@ class Order(db.Model):
             "discount_amount": self.discount_amount,
             "return_request_status": self.return_request_status,
             "return_reason": self.return_reason,
+            "return_image_url": self.return_image_url,
+            "razorpay_payment_id": self.razorpay_payment_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "items": [item.serialize() for item in self.items]
         }
@@ -329,14 +333,23 @@ class OrderItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
 
+    product = db.relationship('Product', backref='order_items_rel', lazy=True)
+
     def serialize(self):
+        product_image = None
+        category_name = "Uncategorized"
+        if self.product:
+            product_image = self.product.images[0] if self.product.images else None
+            category_name = self.product.category.name if self.product.category else "Uncategorized"
         return {
             "id": self.id,
             "order_id": self.order_id,
             "product_id": self.product_id,
             "product_name": self.product_name,
             "price": self.price,
-            "quantity": self.quantity
+            "quantity": self.quantity,
+            "product_image": product_image,
+            "category_name": category_name
         }
 
 class CartItem(db.Model):

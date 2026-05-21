@@ -453,12 +453,14 @@ def update_order_status(order_id):
     tracking_info = data.get('tracking_info')
 
     if status:
-        valid_statuses = ['Pending', 'Dispatched', 'Customer Received', 'Returned']
+        valid_statuses = ['Pending', 'Accepted', 'Rejected', 'Dispatched', 'Customer Received', 'Returned']
         if status not in valid_statuses:
             return jsonify({"error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
         
         # Handle SuperCoin additions if transitioned to Customer Received
         if status == 'Customer Received' and order.status != 'Customer Received':
+            if order.payment_method == 'COD':
+                order.payment_status = 'Paid'
             # Add supercoins to user profile
             shop = Shop.query.get(shop_id)
             if shop and shop.super_coin_enabled:
