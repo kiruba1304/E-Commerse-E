@@ -447,6 +447,7 @@ def create_order():
         billing_phone=billing_phone or user.contact_phone,
         super_coins_used=super_coins_used,
         gst_amount=round(gst_amount, 2),
+        gst_inclusive=gst_inclusive,
         discount_amount=round(discount_amount + super_coins_used, 2),
         razorpay_payment_id=razorpay_pay_id
     )

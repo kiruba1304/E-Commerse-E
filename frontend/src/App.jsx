@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
-  Award, FileText, ChevronRight, Menu, ArrowLeft, Send, Sparkles, 
+  Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download
 } from 'lucide-react';
@@ -702,11 +702,17 @@ export default function App() {
   const [adminLogs, setAdminLogs] = useState([]);
   const [adminSmsLogs, setAdminSmsLogs] = useState([]);
   const [gstReport, setGstReport] = useState(null);
+  const [gstFilterDate, setGstFilterDate] = useState("");
+  const [gstFilterMonth, setGstFilterMonth] = useState("");
+  const [gstFilterYear, setGstFilterYear] = useState("");
   const [adminProductSearch, setAdminProductSearch] = useState("");
   const [adminProductCategoryFilter, setAdminProductCategoryFilter] = useState("");
   const [adminStartDate, setAdminStartDate] = useState("");
   const [adminEndDate, setAdminEndDate] = useState("");
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
+  const [adminOrderSearch, setAdminOrderSearch] = useState("");
+  const [adminReturnsCollapsed, setAdminReturnsCollapsed] = useState(false);
+  const [adminOrdersCollapsed, setAdminOrdersCollapsed] = useState(false);
 
   const filteredAdminOrders = adminOrders.filter(o => {
     if (!o.created_at) return true;
@@ -718,6 +724,20 @@ export default function App() {
     if (adminEndDate) {
       const end = new Date(adminEndDate + 'T23:59:59');
       if (orderDate > end) return false;
+    }
+    if (adminOrderSearch) {
+      const query = adminOrderSearch.toLowerCase();
+      const matchId = o.id.toString().includes(query);
+      const matchBuyer = o.user_name ? o.user_name.toLowerCase().includes(query) : false;
+      const matchAddress = o.shipping_address ? o.shipping_address.toLowerCase().includes(query) : false;
+      const matchMethod = o.payment_method ? o.payment_method.toLowerCase().includes(query) : false;
+      const matchStatus = o.status ? o.status.toLowerCase().includes(query) : false;
+      const matchRP = o.razorpay_payment_id ? o.razorpay_payment_id.toLowerCase().includes(query) : false;
+      const matchItems = o.items ? o.items.some(item => item.product_name && item.product_name.toLowerCase().includes(query)) : false;
+      
+      if (!matchId && !matchBuyer && !matchAddress && !matchMethod && !matchStatus && !matchRP && !matchItems) {
+        return false;
+      }
     }
     return true;
   });
@@ -1516,10 +1536,10 @@ export default function App() {
       if (activePanel === 'help_center') loadAdminHelpTickets();
       if (activePanel === 'logs') loadAdminLogs();
       if (activePanel === 'messaging') loadAdminSmsLogs();
-      if (activePanel === 'gst_report') loadGstReport();
+      if (activePanel === 'gst_report') loadGstReport(gstFilterDate, gstFilterMonth, gstFilterYear);
       if (activePanel === 'customers') loadAdminCustomers();
     }
-  }, [role, currentView, activePanel]);
+  }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear]);
 
   const loadAdminShop = async () => {
     try {
@@ -1989,12 +2009,24 @@ export default function App() {
     } catch (e) {}
   };
 
-  const loadGstReport = async () => {
+  const loadGstReport = async (dateVal = gstFilterDate, monthVal = gstFilterMonth, yearVal = gstFilterYear) => {
     try {
-      const res = await fetch(`${API_BASE}/admin/gst-report`, { headers: getHeaders() });
+      const queryParams = [];
+      if (dateVal) queryParams.push(`date=${encodeURIComponent(dateVal)}`);
+      if (monthVal) queryParams.push(`month=${encodeURIComponent(monthVal)}`);
+      if (yearVal) queryParams.push(`year=${encodeURIComponent(yearVal)}`);
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const res = await fetch(`${API_BASE}/admin/gst-report${queryString}`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setGstReport(data);
     } catch (e) {}
+  };
+
+  const clearGstFilters = () => {
+    setGstFilterDate("");
+    setGstFilterMonth("");
+    setGstFilterYear("");
+    loadGstReport("", "", "");
   };
 
   const loadAdminCustomers = async () => {
@@ -5140,7 +5172,7 @@ export default function App() {
       {currentView === 'user_dashboard' && role === 'user' && (
         <div className="dashboard-grid">
           <aside className="sidebar">
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+            <div className="sidebar-header" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
               <User style={{ color: 'var(--accent-primary)' }} />
               <div>
                 <h5 style={{ fontWeight: 800 }}>{user.name}</h5>
@@ -6568,333 +6600,464 @@ export default function App() {
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                 
                 {/* Returns management */}
-                <div>
-                  <h3 style={{ fontWeight: 800, marginBottom: '16px', color: 'var(--accent-danger)' }}>Pending Customer Return Requests</h3>
-                  <div className="responsive-table-container glass-panel">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Order ID</th>
-                          <th>Ordered Date</th>
-                          <th>Buyer</th>
-                          <th>Returned Products</th>
-                          <th>Return Reason</th>
-                          <th>Verification Photo</th>
-                          <th>Refund Value</th>
-                          <th style={{ textAlign: 'right' }}>Decide Resolution</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminOrders.filter(o => o.return_request_status === 'Pending').map(o => (
-                          <tr key={o.id}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
-                            <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                              {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
-                            </td>
-                            <td>{o.user_name}</td>
-                            <td>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {o.items && o.items.map(item => (
-                                  <div key={item.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <img 
-                                      src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50"} 
-                                      alt={item.product_name} 
-                                      style={{ 
-                                        width: '55px', 
-                                        height: '55px', 
-                                        objectFit: 'cover', 
-                                        borderRadius: '6px', 
-                                        border: '1px solid var(--border-subtle)',
-                                        cursor: 'pointer',
-                                        transition: 'transform 0.2s'
-                                      }} 
-                                      onClick={() => setExpandedImage(item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50")}
-                                      title="Click to view product photo"
-                                      onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
-                                      onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                    />
-                                    <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', lineHeight: '1.2', textAlign: 'left' }}>
-                                      <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.product_name}</span>
-                                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                        ID: #{item.product_id} | Qty: {item.quantity} | Cat: {item.category_name}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td>"{o.return_reason}"</td>
-                            <td>
-                              {o.return_image_url ? (
-                                <img 
-                                  src={o.return_image_url} 
-                                  alt="Verification" 
-                                  style={{ 
-                                    width: '70px', 
-                                    height: '70px', 
-                                    objectFit: 'cover', 
-                                    borderRadius: '8px', 
-                                    border: '1px solid var(--border-subtle)',
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s'
-                                  }}
-                                  onClick={() => setExpandedImage(o.return_image_url)}
-                                  title="Click to view full verification photo"
-                                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                                  onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                                />
-                              ) : (
-                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No image provided</span>
-                              )}
-                            </td>
-                            <td style={{ fontWeight: 'bold', color: '#10b981' }}>₹{o.final_amount}</td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => handleResolveReturn(o.id, 'Approved')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--accent-success)' }}>
-                                  Approve & Refund
-                                </button>
-                                <button onClick={() => handleResolveReturn(o.id, 'Rejected')} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
-                                  Reject request
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {adminOrders.filter(o => o.return_request_status === 'Pending').length === 0 && (
-                          <tr>
-                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No pending return claims currently registered.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Orders list with Filters & Export */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
-                    <h3 style={{ fontWeight: 800, margin: 0 }}>Store Sales Transactions</h3>
-                    
-                    {/* Date filters and CSV export action container */}
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
-                        <input 
-                          type="date" 
-                          value={adminStartDate} 
-                          onChange={(e) => setAdminStartDate(e.target.value)} 
-                          style={{ 
-                            padding: '8px 12px', 
-                            borderRadius: '6px', 
-                            border: '1px solid rgba(154, 132, 200, 0.3)', 
-                            background: 'rgba(255, 255, 255, 0.8)',
-                            color: 'var(--text-main)',
-                            fontSize: '0.8rem',
-                            outline: 'none'
-                          }} 
-                        />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
-                        <input 
-                          type="date" 
-                          value={adminEndDate} 
-                          onChange={(e) => setAdminEndDate(e.target.value)} 
-                          style={{ 
-                            padding: '8px 12px', 
-                            borderRadius: '6px', 
-                            border: '1px solid rgba(154, 132, 200, 0.3)', 
-                            background: 'rgba(255, 255, 255, 0.8)',
-                            color: 'var(--text-main)',
-                            fontSize: '0.8rem',
-                            outline: 'none'
-                          }} 
-                        />
-                      </div>
-                      
-                      {(adminStartDate || adminEndDate) && (
-                        <button 
-                          onClick={() => { setAdminStartDate(''); setAdminEndDate(''); }} 
-                          className="btn-secondary" 
-                          style={{ padding: '8px 12px', fontSize: '0.75rem', height: '36px' }}
-                        >
-                          Clear
-                        </button>
-                      )}
-                      
-                      <button 
-                        onClick={exportOrdersCSV} 
-                        className="btn-primary" 
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '0.8rem', height: '36px' }}
-                      >
-                        <Download size={14} /> Export CSV Report
-                      </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div 
+                    onClick={() => setAdminReturnsCollapsed(!adminReturnsCollapsed)}
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      cursor: 'pointer',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      transition: 'all 0.3s ease',
+                      userSelect: 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ fontWeight: 800, margin: 0, color: 'var(--accent-danger)', fontSize: '1.2rem' }}>
+                        Pending Customer Return Requests
+                      </h3>
+                      <span style={{ 
+                        background: 'var(--accent-danger)', 
+                        color: 'white', 
+                        fontSize: '0.75rem', 
+                        padding: '2px 8px', 
+                        borderRadius: '20px',
+                        fontWeight: 'bold' 
+                      }}>
+                        {adminOrders.filter(o => o.return_request_status === 'Pending').length} Pending
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-danger)' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                        {adminReturnsCollapsed ? 'Show' : 'Hide'}
+                      </span>
+                      {adminReturnsCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
                     </div>
                   </div>
 
-                  <div className="responsive-table-container glass-panel">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Order ID & Date</th>
-                          <th>Buyer</th>
-                          <th>Items Ordered</th>
-                          <th>Shipping Location</th>
-                          <th>Gross Total</th>
-                          <th>Method</th>
-                          <th>Ship State</th>
-                          <th style={{ textAlign: 'right' }}>Logistics dispatch</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredAdminOrders.map(o => (
-                          <tr key={o.id}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
-                              <div>#{o.id}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
+                  {!adminReturnsCollapsed && (
+                    <div className="responsive-table-container glass-panel animate-fade-in">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Order ID</th>
+                            <th>Ordered Date</th>
+                            <th>Buyer</th>
+                            <th>Returned Products</th>
+                            <th>Return Reason</th>
+                            <th>Verification Photo</th>
+                            <th>Refund Value</th>
+                            <th style={{ textAlign: 'right' }}>Decide Resolution</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adminOrders.filter(o => o.return_request_status === 'Pending').map(o => (
+                            <tr key={o.id}>
+                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                              <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                 {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
-                              </div>
-                              {!(o.payment_method === 'COD' && (o.status === 'Pending' || o.status === 'Rejected')) && (
-                                <button
-                                  onClick={() => setInvoiceOrder(o)}
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#7a4ea5',
-                                    textDecoration: 'underline',
-                                    cursor: 'pointer',
-                                    fontSize: '0.7rem',
-                                    padding: 0,
-                                    marginTop: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    fontWeight: 600
-                                  }}
-                                  title="Click to view tax invoice receipt"
-                                >
-                                  <FileText size={12} style={{ color: '#7a4ea5' }} /> View Invoice
-                                </button>
-                              )}
-                            </td>
-                            <td>
-                              <button 
-                                onClick={() => handleShowCustomerHistory(o.user_id, o.user_name)} 
-                                style={{ 
-                                  background: 'none', 
-                                  border: 'none', 
-                                  color: '#7a4ea5', 
-                                  textDecoration: 'underline', 
-                                  cursor: 'pointer', 
-                                  fontWeight: 600,
-                                  padding: 0,
-                                  textAlign: 'left',
-                                  fontSize: '0.85rem'
-                                }}
-                                title="Click to view full purchase history"
-                              >
-                                {o.user_name}
-                              </button>
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '220px', maxWidth: '320px' }}>
-                                {o.items && o.items.map((item, idx) => (
-                                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.4)', padding: '4px 6px', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
-                                    {item.product_image ? (
+                              </td>
+                              <td>{o.user_name}</td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {o.items && o.items.map(item => (
+                                    <div key={item.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                       <img 
-                                        src={item.product_image} 
+                                        src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50"} 
                                         alt={item.product_name} 
                                         style={{ 
-                                          width: '32px', 
-                                          height: '32px', 
+                                          width: '55px', 
+                                          height: '55px', 
                                           objectFit: 'cover', 
-                                          borderRadius: '4px', 
-                                          border: '1px solid rgba(154, 132, 200, 0.15)',
+                                          borderRadius: '6px', 
+                                          border: '1px solid var(--border-subtle)',
                                           cursor: 'pointer',
                                           transition: 'transform 0.2s'
-                                        }}
-                                        onClick={() => setExpandedImage(item.product_image)}
-                                        title="Click to view full image"
+                                        }} 
+                                        onClick={() => setExpandedImage(item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50")}
+                                        title="Click to view product photo"
                                         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
                                         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
                                       />
-                                    ) : (
-                                      <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
-                                        No img
-                                      </div>
-                                    )}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.product_name}>
-                                        {item.product_name}
-                                      </div>
-                                      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', display: 'flex', gap: '6px' }}>
-                                        <span>ID: {item.product_id}</span>
-                                        <span>•</span>
-                                        <span>{item.category_name || 'Uncategorized'}</span>
+                                      <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', lineHeight: '1.2', textAlign: 'left' }}>
+                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{item.product_name}</span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                          ID: #{item.product_id} | Qty: {item.quantity} | Cat: {item.category_name}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#7a4ea5', flexShrink: 0 }}>
-                                      x{item.quantity} (₹{item.price})
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td>{o.shipping_address}</td>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{o.final_amount}</td>
-                            <td>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
-                                <span className="badge badge-info">{o.payment_method}</span>
-                                {o.payment_method === 'UPI' && o.razorpay_payment_id && (
-                                  <button
-                                    onClick={() => setActiveTransactionOrder(o)}
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      color: '#7a4ea5',
-                                      textDecoration: 'underline',
+                                  ))}
+                                </div>
+                              </td>
+                              <td>"{o.return_reason}"</td>
+                              <td>
+                                {o.return_image_url ? (
+                                  <img 
+                                    src={o.return_image_url} 
+                                    alt="Verification" 
+                                    style={{ 
+                                      width: '70px', 
+                                      height: '70px', 
+                                      objectFit: 'cover', 
+                                      borderRadius: '8px', 
+                                      border: '1px solid var(--border-subtle)',
                                       cursor: 'pointer',
-                                      fontSize: '0.75rem',
+                                      transition: 'transform 0.2s'
+                                    }}
+                                    onClick={() => setExpandedImage(o.return_image_url)}
+                                    title="Click to view full verification photo"
+                                    onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                  />
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No image provided</span>
+                                )}
+                              </td>
+                              <td style={{ fontWeight: 'bold', color: '#10b981' }}>₹{o.final_amount}</td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  <button onClick={() => handleResolveReturn(o.id, 'Approved')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--accent-success)' }}>
+                                    Approve & Refund
+                                  </button>
+                                  <button onClick={() => handleResolveReturn(o.id, 'Rejected')} className="btn-danger" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>
+                                    Reject request
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {adminOrders.filter(o => o.return_request_status === 'Pending').length === 0 && (
+                            <tr>
+                              <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No pending return claims currently registered.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Orders list with Filters & Export */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div 
+                    onClick={() => setAdminOrdersCollapsed(!adminOrdersCollapsed)}
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      cursor: 'pointer',
+                      padding: '12px 18px',
+                      borderRadius: '12px',
+                      background: 'rgba(122, 78, 165, 0.06)',
+                      border: '1px solid rgba(122, 78, 165, 0.15)',
+                      transition: 'all 0.3s ease',
+                      userSelect: 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(122, 78, 165, 0.1)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(122, 78, 165, 0.06)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ fontWeight: 800, margin: 0, color: '#2b0b57', fontSize: '1.2rem' }}>
+                        Store Sales Transactions
+                      </h3>
+                      <span style={{ 
+                        background: '#7a4ea5', 
+                        color: 'white', 
+                        fontSize: '0.75rem', 
+                        padding: '2px 8px', 
+                        borderRadius: '20px',
+                        fontWeight: 'bold' 
+                      }}>
+                        {filteredAdminOrders.length} {filteredAdminOrders.length === 1 ? 'Transaction' : 'Transactions'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7a4ea5' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                        {adminOrdersCollapsed ? 'Show' : 'Hide'}
+                      </span>
+                      {adminOrdersCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                    </div>
+                  </div>
+
+                  {!adminOrdersCollapsed && (
+                    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                        
+                        {/* Date filters and CSV export action container */}
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Search Orders</label>
+                            <div style={{ position: 'relative' }}>
+                              <input 
+                                type="text" 
+                                placeholder="ID, Buyer, Item, Status..." 
+                                value={adminOrderSearch} 
+                                onChange={(e) => setAdminOrderSearch(e.target.value)} 
+                                style={{ 
+                                  padding: '8px 12px 8px 32px', 
+                                  borderRadius: '6px', 
+                                  border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                  background: 'rgba(255, 255, 255, 0.8)',
+                                  color: 'var(--text-main)',
+                                  fontSize: '0.8rem',
+                                  width: '220px',
+                                  outline: 'none',
+                                  transition: 'all 0.2s ease'
+                                }} 
+                                onFocus={(e) => e.target.style.borderColor = '#7a4ea5'}
+                                onBlur={(e) => e.target.style.borderColor = 'rgba(154, 132, 200, 0.3)'}
+                              />
+                              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
+                            <input 
+                              type="date" 
+                              value={adminStartDate} 
+                              onChange={(e) => setAdminStartDate(e.target.value)} 
+                              style={{ 
+                                padding: '8px 12px', 
+                                borderRadius: '6px', 
+                                border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                background: 'rgba(255, 255, 255, 0.8)',
+                                color: 'var(--text-main)',
+                                fontSize: '0.8rem',
+                                outline: 'none'
+                              }} 
+                            />
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
+                            <input 
+                              type="date" 
+                              value={adminEndDate} 
+                              onChange={(e) => setAdminEndDate(e.target.value)} 
+                              style={{ 
+                                padding: '8px 12px', 
+                                borderRadius: '6px', 
+                                border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                background: 'rgba(255, 255, 255, 0.8)',
+                                color: 'var(--text-main)',
+                                fontSize: '0.8rem',
+                                outline: 'none'
+                              }} 
+                            />
+                          </div>
+                          
+                          {(adminStartDate || adminEndDate || adminOrderSearch) && (
+                            <button 
+                              onClick={() => { setAdminStartDate(''); setAdminEndDate(''); setAdminOrderSearch(''); }} 
+                              className="btn-secondary" 
+                              style={{ padding: '8px 12px', fontSize: '0.75rem', height: '36px' }}
+                            >
+                              Clear
+                            </button>
+                          )}
+                          
+                          <button 
+                            onClick={exportOrdersCSV} 
+                            className="btn-primary" 
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '0.8rem', height: '36px' }}
+                          >
+                            <Download size={14} /> Export CSV Report
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="responsive-table-container glass-panel">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Order ID & Date</th>
+                              <th>Buyer</th>
+                              <th>Items Ordered</th>
+                              <th>Shipping Location</th>
+                              <th>Gross Total</th>
+                              <th>Method</th>
+                              <th>Ship State</th>
+                              <th style={{ textAlign: 'right' }}>Logistics dispatch</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredAdminOrders.map(o => (
+                              <tr key={o.id}>
+                                <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
+                                  <div>#{o.id}</div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
+                                    {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
+                                  </div>
+                                  {!(o.payment_method === 'COD' && (o.status === 'Pending' || o.status === 'Rejected')) && (
+                                    <button
+                                      onClick={() => setInvoiceOrder(o)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: '#7a4ea5',
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer',
+                                        fontSize: '0.7rem',
+                                        padding: 0,
+                                        marginTop: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        fontWeight: 600
+                                      }}
+                                      title="Click to view tax invoice receipt"
+                                    >
+                                      <FileText size={12} style={{ color: '#7a4ea5' }} /> View Invoice
+                                    </button>
+                                  )}
+                                </td>
+                                <td>
+                                  <button 
+                                    onClick={() => handleShowCustomerHistory(o.user_id, o.user_name)} 
+                                    style={{ 
+                                      background: 'none', 
+                                      border: 'none', 
+                                      color: '#7a4ea5', 
+                                      textDecoration: 'underline', 
+                                      cursor: 'pointer', 
+                                      fontWeight: 600,
                                       padding: 0,
                                       textAlign: 'left',
-                                      fontWeight: 600,
-                                      marginTop: '4px'
+                                      fontSize: '0.85rem'
                                     }}
-                                    title="Click to view transaction details"
+                                    title="Click to view full purchase history"
                                   >
-                                    {o.razorpay_payment_id}
+                                    {o.user_name}
                                   </button>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <span className={`badge ${
-                                o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                              }`}>
-                                {o.status}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              {o.status === 'Pending' && (
-                                <>
-                                  {o.payment_method === 'COD' ? (
-                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                      <button 
-                                        onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
-                                        className="btn-primary" 
-                                        style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '220px', maxWidth: '320px' }}>
+                                    {o.items && o.items.map((item, idx) => (
+                                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.4)', padding: '4px 6px', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
+                                        {item.product_image ? (
+                                          <img 
+                                            src={item.product_image} 
+                                            alt={item.product_name} 
+                                            style={{ 
+                                              width: '32px', 
+                                              height: '32px', 
+                                              objectFit: 'cover', 
+                                              borderRadius: '4px', 
+                                              border: '1px solid rgba(154, 132, 200, 0.15)',
+                                              cursor: 'pointer',
+                                              transition: 'transform 0.2s'
+                                            }}
+                                            onClick={() => setExpandedImage(item.product_image)}
+                                            title="Click to view full image"
+                                            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                                            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                                          />
+                                        ) : (
+                                          <div style={{ width: '32px', height: '32px', borderRadius: '4px', background: '#f3e6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#9a84c8' }}>
+                                            No img
+                                          </div>
+                                        )}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', flex: 1, minWidth: 0 }}>
+                                          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.product_name}>
+                                            {item.product_name}
+                                          </div>
+                                          <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', display: 'flex', gap: '6px' }}>
+                                            <span>ID: {item.product_id}</span>
+                                            <span>•</span>
+                                            <span>{item.category_name || 'Uncategorized'}</span>
+                                          </div>
+                                        </div>
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#7a4ea5', flexShrink: 0 }}>
+                                          x{item.quantity} (₹{item.price})
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td>{o.shipping_address}</td>
+                                <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{o.final_amount}</td>
+                                <td>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                    <span className="badge badge-info">{o.payment_method}</span>
+                                    {o.payment_method === 'UPI' && o.razorpay_payment_id && (
+                                      <button
+                                        onClick={() => setActiveTransactionOrder(o)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: '#7a4ea5',
+                                          textDecoration: 'underline',
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          padding: 0,
+                                          textAlign: 'left',
+                                          fontWeight: 600,
+                                          marginTop: '4px'
+                                        }}
+                                        title="Click to view transaction details"
                                       >
-                                        Accept
+                                        {o.razorpay_payment_id}
                                       </button>
-                                      <button 
-                                        onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
-                                        className="btn-danger" 
-                                        style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                      >
-                                        Reject
-                                      </button>
-                                    </div>
-                                  ) : (
+                                    )}
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`badge ${
+                                    o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                  }`}>
+                                    {o.status}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: 'right' }}>
+                                  {o.status === 'Pending' && (
+                                    <>
+                                      {o.payment_method === 'COD' ? (
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                          <button 
+                                            onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
+                                            className="btn-primary" 
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                          >
+                                            Accept
+                                          </button>
+                                          <button 
+                                            onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
+                                            className="btn-danger" 
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button 
+                                          onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
+                                          className="btn-primary" 
+                                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                        >
+                                          Dispatch Order
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                  {o.status === 'Accepted' && (
                                     <button 
                                       onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
                                       className="btn-primary" 
@@ -6903,42 +7066,33 @@ export default function App() {
                                       Dispatch Order
                                     </button>
                                   )}
-                                </>
-                              )}
-                              {o.status === 'Accepted' && (
-                                <button 
-                                  onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
-                                  className="btn-primary" 
-                                  style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                >
-                                  Dispatch Order
-                                </button>
-                              )}
-                              {o.status === 'Dispatched' && (
-                                <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399' }}>
-                                  Confirm Delivery
-                                </button>
-                              )}
-                              {o.status === 'Customer Received' && (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
-                              )}
-                              {o.status === 'Returned' && (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
-                              )}
-                              {o.status === 'Rejected' && (
-                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {filteredAdminOrders.length === 0 && (
-                          <tr>
-                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No matching transactions found.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                                  {o.status === 'Dispatched' && (
+                                    <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399' }}>
+                                      Confirm Delivery
+                                    </button>
+                                  )}
+                                  {o.status === 'Customer Received' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
+                                  )}
+                                  {o.status === 'Returned' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
+                                  )}
+                                  {o.status === 'Rejected' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {filteredAdminOrders.length === 0 && (
+                              <tr>
+                                <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No matching transactions found.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Customer Purchase History Modal */}
@@ -7960,9 +8114,137 @@ export default function App() {
 
             {/* GST Accounting panel */}
             {activePanel === 'gst_report' && gstReport && (
-              <div className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>GST Tax Accounting Report</h2>
-                
+              <div className="glass-panel animate-fade-in" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>GST Tax Accounting Report</h2>
+                  <span className="badge badge-info" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+                    {gstReport.reporting_period}
+                  </span>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+                    <Search size={16} style={{ color: 'var(--accent-secondary)' }} /> Search & Filter GST Report
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', alignItems: 'end' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Date</label>
+                      <input
+                        type="date"
+                        value={gstFilterDate}
+                        onChange={e => {
+                          setGstFilterDate(e.target.value);
+                          if (e.target.value) {
+                            setGstFilterMonth("");
+                            setGstFilterYear("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Month</label>
+                      <select
+                        value={gstFilterMonth}
+                        onChange={e => {
+                          setGstFilterMonth(e.target.value);
+                          if (e.target.value) {
+                            setGstFilterDate("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">All Months</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Year</label>
+                      <select
+                        value={gstFilterYear}
+                        onChange={e => {
+                          setGstFilterYear(e.target.value);
+                          if (e.target.value) {
+                            setGstFilterDate("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">All Years</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      {(gstFilterDate || gstFilterMonth || gstFilterYear) && (
+                        <button
+                          onClick={clearGstFilters}
+                          className="btn-secondary"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            color: 'var(--accent-secondary)',
+                            borderColor: 'var(--accent-secondary)',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          <X size={14} /> Clear Filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Aggregates Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                   <div className="glass-panel" style={{ padding: '20px' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gross Store Volume</span>
@@ -7977,7 +8259,62 @@ export default function App() {
                     <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-secondary)', marginTop: '4px' }}>₹{gstReport.total_gst_collected.toFixed(2)}</h3>
                   </div>
                 </div>
-                
+
+                {/* Detailed transactions table */}
+                <div>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '12px' }}>Detailed GST Transactions</h3>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date & Time</th>
+                          <th>Customer</th>
+                          <th>Tax Type</th>
+                          <th style={{ textAlign: 'right' }}>Gross Amount</th>
+                          <th style={{ textAlign: 'right' }}>Net Sales</th>
+                          <th style={{ textAlign: 'right' }}>GST Collected</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gstReport.orders && gstReport.orders.map(o => {
+                          const orderNetSales = o.final_amount - o.gst_amount;
+                          return (
+                            <tr key={o.id}>
+                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                              <td>{o.created_at ? new Date(o.created_at).toLocaleString() : 'N/A'}</td>
+                              <td>{o.user_name || 'N/A'}</td>
+                              <td>
+                                <span className={`badge ${o.gst_inclusive ? 'badge-info' : 'badge-warning'}`}>
+                                  {o.gst_inclusive ? 'Inclusive' : 'Exclusive'}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: 'bold', textAlign: 'right' }}>₹{o.final_amount.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right' }}>₹{orderNetSales.toFixed(2)}</td>
+                              <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)', textAlign: 'right' }}>₹{o.gst_amount.toFixed(2)}</td>
+                              <td>
+                                <span className={`badge ${
+                                  o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                }`}>
+                                  {o.status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {(!gstReport.orders || gstReport.orders.length === 0) && (
+                          <tr>
+                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                              No GST transactions found for the selected reporting period.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', fontSize: '0.85rem' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '8px' }}>Reporting Aggregates Info</h4>
                   <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Active reporting schedule: <strong>{gstReport.reporting_period}</strong></p>
@@ -8062,7 +8399,7 @@ export default function App() {
       {currentView === 'super_admin_dashboard' && role === 'super_admin' && (
         <div className="dashboard-grid">
           <aside className="sidebar">
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
+            <div className="sidebar-header" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
               <ShieldAlert style={{ color: 'var(--accent-danger)' }} />
               <div>
                 <h5 style={{ fontWeight: 800 }}>Super Admin</h5>

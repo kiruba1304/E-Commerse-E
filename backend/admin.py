@@ -679,23 +679,60 @@ def modify_coupon(coupon_id):
 def gst_report():
     shop_id = request.user['shop_id']
     shop = Shop.query.get(shop_id)
+    
+    date_val = request.args.get('date') # YYYY-MM-DD
+    month_val = request.args.get('month') # 1-12
+    year_val = request.args.get('year') # YYYY
+    
     # Calculate tax aggregates from successful sales
     orders = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
     
-    total_sales_value = sum([o.final_amount for o in orders])
-    total_gst_amount = sum([o.gst_amount for o in orders])
+    filtered_orders = []
+    for o in orders:
+        if not o.created_at:
+            continue
+        # Apply date filter (YYYY-MM-DD)
+        if date_val and o.created_at.strftime('%Y-%m-%d') != date_val:
+            continue
+        # Apply month filter (1-12)
+        if month_val and o.created_at.month != int(month_val):
+            continue
+        # Apply year filter (YYYY)
+        if year_val and o.created_at.year != int(year_val):
+            continue
+        filtered_orders.append(o)
+        
+    total_sales_value = sum([o.final_amount for o in filtered_orders])
+    total_gst_amount = sum([o.gst_amount for o in filtered_orders])
     
     net_sales = total_sales_value - total_gst_amount
     gst_rate = getattr(shop, 'gst_percentage', 18.0)
     
+    reporting_period = "All Time"
+    months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    
+    if date_val:
+        reporting_period = f"Date: {date_val}"
+    elif month_val and year_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"{m_name} {year_val}"
+    elif month_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"Month: {m_name}"
+    elif year_val:
+        reporting_period = f"Year: {year_val}"
+        
     return jsonify({
         "shop_id": shop_id,
-        "reporting_period": "All Time",
+        "reporting_period": reporting_period,
         "net_sales": round(net_sales, 2),
         "gst_rate_applied": f"{gst_rate}% Configured GST",
         "total_gst_collected": round(total_gst_amount, 2),
         "gross_revenue": round(total_sales_value, 2),
-        "total_orders_count": len(orders)
+        "total_orders_count": len(filtered_orders),
+        "orders": [o.serialize() for o in filtered_orders]
     }), 200
 
 # IN-APP NOTIFICATION BROADCASTS

@@ -675,20 +675,65 @@ tr:hover td {
     overflow: visible;
   }
 
-  .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border-subtle);
-    flex-direction: row;
-    overflow-x: auto;
-    overflow-y: visible;
-    padding: 14px;
-    gap: 8px;
-    height: auto;
+  .sidebar-header {
+    display: none !important;
   }
 
-  .sidebar-link {
-    white-space: nowrap;
-    padding: 10px 16px;
+  body .dashboard-grid .sidebar {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(154, 132, 200, 0.15) !important;
+    border-top: 1px solid rgba(154, 132, 200, 0.05) !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px 16px !important;
+    gap: 10px !important;
+    height: auto !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    box-shadow: 0 4px 20px rgba(154, 132, 200, 0.05) !important;
+  }
+
+  body .dashboard-grid .sidebar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body .dashboard-grid .sidebar-link {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    white-space: nowrap !important;
+    padding: 8px 16px !important;
+    border-radius: 24px !important;
+    background: rgba(154, 132, 200, 0.04) !important;
+    border: 1px solid rgba(154, 132, 200, 0.08) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    border-left: none !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  body .dashboard-grid .sidebar-link:hover {
+    background: rgba(154, 132, 200, 0.08) !important;
+    color: var(--accent-primary) !important;
+    border-left-color: transparent !important;
+    padding-left: 16px !important;
+  }
+
+  body .dashboard-grid .sidebar-link.active {
+    background: linear-gradient(135deg, var(--accent-primary) 0%, #7a4ea5 100%) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-primary) !important;
+    border-left-color: transparent !important;
+    padding-left: 16px !important;
+    box-shadow: 0 4px 12px rgba(154, 132, 200, 0.25) !important;
+    font-weight: 600 !important;
   }
 
   .main-content {

@@ -314,6 +314,7 @@ class Order(db.Model):
     super_coins_earned = db.Column(db.Integer, default=0)
     super_coins_used = db.Column(db.Integer, default=0)
     gst_amount = db.Column(db.Float, default=0.0) # standard calculations
+    gst_inclusive = db.Column(db.Boolean, default=False)
     discount_amount = db.Column(db.Float, default=0.0)
     
     # Return features
@@ -344,6 +345,7 @@ class Order(db.Model):
             "super_coins_earned": self.super_coins_earned,
             "super_coins_used": self.super_coins_used,
             "gst_amount": self.gst_amount,
+            "gst_inclusive": self.gst_inclusive,
             "discount_amount": self.discount_amount,
             "return_request_status": self.return_request_status,
             "return_reason": self.return_reason,
