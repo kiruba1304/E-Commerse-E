@@ -10605,23 +10605,25 @@ export default function App() {
           }}
         >
           <ShoppingBag size={20} />
-          <span style={{
-            position: 'absolute',
-            top: '-4px',
-            right: '2px',
-            background: '#7a4ea5',
-            color: '#ffffff',
-            fontSize: '0.6rem',
-            fontWeight: 700,
-            borderRadius: '50%',
-            width: '15px',
-            height: '15px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            {cart.reduce((sum, item) => sum + item.quantity, 0) || 3}
-          </span>
+          {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: '-4px',
+              right: '2px',
+              background: '#7a4ea5',
+              color: '#ffffff',
+              fontSize: '0.6rem',
+              fontWeight: 700,
+              borderRadius: '50%',
+              width: '15px',
+              height: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            </span>
+          )}
           <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Cart</span>
         </button>
 

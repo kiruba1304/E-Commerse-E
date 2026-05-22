@@ -690,6 +690,8 @@ class Collection(db.Model):
 class OTPVerification(db.Model):
     __tablename__ = 'otp_verifications'
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), nullable=False)
     otp_code = db.Column(db.String(10), nullable=False)
