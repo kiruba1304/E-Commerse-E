@@ -8,6 +8,9 @@ db = SQLAlchemy()
 
 class SuperAdmin(db.Model):
     __tablename__ = 'super_admins'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -27,6 +30,9 @@ class SuperAdmin(db.Model):
 
 class Shop(db.Model):
     __tablename__ = 'shops'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     logo_url = db.Column(db.Text, nullable=True)
@@ -48,7 +54,7 @@ class Shop(db.Model):
     
     saree_models_json = db.Column(db.Text, nullable=True)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships
     admins = db.relationship('Admin', backref='shop', lazy=True, cascade="all, delete-orphan")
@@ -113,6 +119,9 @@ class Shop(db.Model):
 
 class Admin(db.Model):
     __tablename__ = 'admins'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -140,6 +149,9 @@ class Admin(db.Model):
 
 class User(db.Model):
     __tablename__ = 'users'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -147,14 +159,14 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=True)
     contact_phone = db.Column(db.String(50), nullable=True)
     super_coins = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships
-    orders = db.relationship('Order', backref='user', lazy=True)
+    orders = db.relationship('Order', backref='user', lazy=True, cascade="all, delete-orphan")
     cart_items = db.relationship('CartItem', backref='user', lazy=True, cascade="all, delete-orphan")
     wishlist_items = db.relationship('WishlistItem', backref='user', lazy=True, cascade="all, delete-orphan")
-    reviews = db.relationship('Review', backref='user', lazy=True)
-    help_tickets = db.relationship('HelpTicket', backref='user', lazy=True)
+    reviews = db.relationship('Review', backref='user', lazy=True, cascade="all, delete-orphan")
+    help_tickets = db.relationship('HelpTicket', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -176,6 +188,9 @@ class User(db.Model):
 
 class Category(db.Model):
     __tablename__ = 'categories'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -195,6 +210,9 @@ class Category(db.Model):
 
 class Product(db.Model):
     __tablename__ = 'products'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
@@ -209,7 +227,7 @@ class Product(db.Model):
     min_quantity = db.Column(db.Integer, nullable=True)   # minimum units for bulk pricing
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
     cart_items = db.relationship('CartItem', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -250,6 +268,9 @@ class Product(db.Model):
 
 class PopupAd(db.Model):
     __tablename__ = 'popup_ads'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=False)
     image_url = db.Column(db.Text, nullable=True)
@@ -273,6 +294,9 @@ class PopupAd(db.Model):
 
 class Order(db.Model):
     __tablename__ = 'orders'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
@@ -296,7 +320,7 @@ class Order(db.Model):
     return_image_url = db.Column(db.Text, nullable=True)
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
     
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
 
@@ -329,6 +353,9 @@ class Order(db.Model):
 
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
@@ -357,6 +384,9 @@ class OrderItem(db.Model):
 
 class CartItem(db.Model):
     __tablename__ = 'cart_items'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
@@ -373,6 +403,9 @@ class CartItem(db.Model):
 
 class WishlistItem(db.Model):
     __tablename__ = 'wishlist_items'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
@@ -387,12 +420,15 @@ class WishlistItem(db.Model):
 
 class Review(db.Model):
     __tablename__ = 'reviews'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def serialize(self):
         return {
@@ -407,6 +443,9 @@ class Review(db.Model):
 
 class Coupon(db.Model):
     __tablename__ = 'coupons'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), nullable=False)
     discount_percentage = db.Column(db.Float, default=0.0) # discount percentage
@@ -428,6 +467,9 @@ class Coupon(db.Model):
 
 class HelpTicket(db.Model):
     __tablename__ = 'help_tickets'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
@@ -435,7 +477,7 @@ class HelpTicket(db.Model):
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default='Open') # Open, Resolved
     reply = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def serialize(self):
         return {
@@ -452,6 +494,9 @@ class HelpTicket(db.Model):
 
 class SystemLog(db.Model):
     __tablename__ = 'system_logs'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     actor_type = db.Column(db.String(50), nullable=False) # super_admin, admin, user
     actor_id = db.Column(db.Integer, nullable=True)
@@ -459,7 +504,7 @@ class SystemLog(db.Model):
     action = db.Column(db.String(255), nullable=False)
     ip_address = db.Column(db.String(50), nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=True) # None for super admin
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def serialize(self):
         return {
@@ -475,6 +520,9 @@ class SystemLog(db.Model):
 
 class Notification(db.Model):
     __tablename__ = 'notifications'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     recipient_type = db.Column(db.String(50), nullable=False) # user, admin
     recipient_id = db.Column(db.Integer, nullable=True) # user_id or admin_id, or null for broadcast
@@ -482,7 +530,7 @@ class Notification(db.Model):
     message = db.Column(db.Text, nullable=False)
     is_read = db.Column(db.Boolean, default=False)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
     def serialize(self):
         return {
@@ -498,6 +546,9 @@ class Notification(db.Model):
 
 class Collection(db.Model):
     __tablename__ = 'collections'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)

@@ -745,6 +745,8 @@ export default function App() {
   const [superAdmins, setSuperAdmins] = useState([]);
   const [superLogs, setSuperLogs] = useState([]);
   const [superOrders, setSuperOrders] = useState([]);
+  const [superCustomers, setSuperCustomers] = useState([]);
+  const [superCustomerSearch, setSuperCustomerSearch] = useState("");
   
   // Super Admin forms
   const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 });
@@ -2020,6 +2022,9 @@ export default function App() {
         loadSuperShops();
         loadSuperOrders();
       }
+      if (activePanel === 'customers') {
+        loadSuperCustomers();
+      }
     }
   }, [role, currentView, activePanel]);
 
@@ -2053,6 +2058,33 @@ export default function App() {
       const data = await res.json();
       if (res.ok) setSuperOrders(data);
     } catch (e) {}
+  };
+
+  const loadSuperCustomers = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/customers`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setSuperCustomers(data);
+    } catch (e) {}
+  };
+
+  const handleDeleteCustomer = async (userId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this customer? This action will delete all their orders, cart items, wishlist, reviews, and related information.")) return;
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/customers/${userId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Customer Deleted", "Customer account deleted successfully.", "success");
+        loadSuperCustomers();
+      } else {
+        const data = await res.json();
+        addToast("Delete Failed", data.error || "Could not delete customer.", "danger");
+      }
+    } catch (e) {
+      addToast("Delete Failed", "Server error while deleting customer.", "danger");
+    }
   };
 
   const handleCreateShop = async (e) => {
@@ -8024,6 +8056,9 @@ export default function App() {
             <span className={`sidebar-link ${activePanel === 'admin_creation' ? 'active' : ''}`} onClick={() => setActivePanel("admin_creation")}>
               <User size={18} /> Admin Accounts Allocation
             </span>
+            <span className={`sidebar-link ${activePanel === 'customers' ? 'active' : ''}`} onClick={() => setActivePanel("customers")}>
+              <User size={18} /> Customer Accounts
+            </span>
             <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
               <ShoppingBag size={18} /> System Orders
             </span>
@@ -8365,6 +8400,92 @@ export default function App() {
                           <td>{l.action}</td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Customer accounts list */}
+            {activePanel === 'customers' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Customer Directory</h2>
+                  <div className="search-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--bg-glass)', borderRadius: '24px', border: '1px solid var(--border-subtle)', width: '320px' }}>
+                    <Search size={16} style={{ color: 'var(--text-muted)' }} />
+                    <input 
+                      type="text" 
+                      placeholder="Search by name, email, phone, ID..." 
+                      style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.85rem', color: 'var(--text-main)' }} 
+                      value={superCustomerSearch}
+                      onChange={e => setSuperCustomerSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Display Name</th>
+                        <th>Email Address</th>
+                        <th>Contact Phone</th>
+                        <th>Super Coins</th>
+                        <th>Date Registered</th>
+                        <th style={{ textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {superCustomers.filter(c => {
+                        const q = superCustomerSearch.toLowerCase();
+                        return (c.username || "").toLowerCase().includes(q) ||
+                               (c.name || "").toLowerCase().includes(q) ||
+                               (c.email || "").toLowerCase().includes(q) ||
+                               (c.contact_phone || "").toLowerCase().includes(q) ||
+                               c.id.toString().includes(q);
+                      }).length > 0 ? (
+                        superCustomers.filter(c => {
+                          const q = superCustomerSearch.toLowerCase();
+                          return (c.username || "").toLowerCase().includes(q) ||
+                                 (c.name || "").toLowerCase().includes(q) ||
+                                 (c.email || "").toLowerCase().includes(q) ||
+                                 (c.contact_phone || "").toLowerCase().includes(q) ||
+                                 c.id.toString().includes(q);
+                        }).map(c => (
+                          <tr key={c.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{c.id}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{c.username}</td>
+                            <td>{c.name || <em style={{ color: 'var(--text-muted)' }}>Not Set</em>}</td>
+                            <td>{c.email}</td>
+                            <td>{c.contact_phone || <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A</span>}</td>
+                            <td>
+                              <span className="badge badge-success" style={{ fontWeight: 'bold' }}>
+                                {c.super_coins} Coins
+                              </span>
+                            </td>
+                            <td>{c.created_at ? new Date(c.created_at).toLocaleString() : 'N/A'}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleDeleteCustomer(c.id)} 
+                                className="btn-danger" 
+                                style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                                title="Delete Customer Account"
+                              >
+                                <Trash2 size={12} /> Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                            No customer accounts found matching your search.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

@@ -301,3 +301,25 @@ def get_all_orders():
         
     orders = query.order_by(Order.created_at.desc()).all()
     return jsonify([o.serialize() for o in orders]), 200
+
+# CUSTOMER MANAGEMENT
+@super_admin_bp.route('/customers', methods=['GET'])
+@role_required(['super_admin'])
+def list_customers():
+    users = User.query.order_by(User.created_at.desc()).all()
+    return jsonify([u.serialize() for u in users]), 200
+
+@super_admin_bp.route('/customers/<int:user_id>', methods=['DELETE'])
+@role_required(['super_admin'])
+def delete_customer(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Customer account not found"}), 404
+
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Deleted customer '{username}' (ID: {user_id})")
+
+    return jsonify({"message": "Customer account and all associated data deleted successfully"}), 200
