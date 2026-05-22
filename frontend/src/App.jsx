@@ -2632,7 +2632,7 @@ export default function App() {
             </button>
 
             {/* LEFT SIDE (LAVENDER BOUTIQUE PANEL WITH CONVEX ARCH) */}
-            <div style={{
+            <div className="login-modal-left" style={{
               background: 'linear-gradient(135deg, #f5edff 0%, #ecdffa 100%)',
               width: '44%',
               padding: '30px',
@@ -2681,7 +2681,7 @@ export default function App() {
             </div>
 
             {/* RIGHT SIDE (SLEEK FORM PANEL) */}
-            <div style={{
+            <div className="login-modal-right" style={{
               width: '56%',
               padding: '35px 50px',
               display: 'flex',
@@ -6550,6 +6550,9 @@ export default function App() {
             <span className={`sidebar-link ${activePanel === 'logs' ? 'active' : ''}`} onClick={() => setActivePanel("logs")}>
               <FileText size={18} /> Store Audit Trail
             </span>
+            <span className="sidebar-link logout-btn" onClick={handleLogout}>
+              <LogOut size={18} /> Logout
+            </span>
           </aside>
 
           <main className="main-content">
@@ -9781,6 +9784,9 @@ export default function App() {
             </span>
             <span className={`sidebar-link ${activePanel === 'audit_logs' ? 'active' : ''}`} onClick={() => setActivePanel("audit_logs")}>
               <FileText size={18} /> Absolute Audit Logs
+            </span>
+            <span className="sidebar-link logout-btn" onClick={handleLogout}>
+              <LogOut size={18} /> Logout
             </span>
           </aside>
 
