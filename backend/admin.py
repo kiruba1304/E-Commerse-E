@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection
 from auth_middleware import generate_token, token_required, role_required
 from datetime import datetime, timezone
@@ -96,6 +96,8 @@ def manage_shop():
         shop.contact_phone = data['contact_phone']
     if 'privacy_policy' in data:
         shop.privacy_policy = data['privacy_policy']
+    if 'address' in data:
+        shop.address = data['address']
     if 'sms_api_key' in data:
         shop.sms_api_key = data['sms_api_key']
     if 'whatsapp_api_key' in data:
@@ -113,6 +115,8 @@ def manage_shop():
         shop.gst_inclusive = bool(data['gst_inclusive'])
     if 'saree_models' in data:
         shop.saree_models = data['saree_models']
+    if 'banners' in data:
+        shop.banners = data['banners']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -734,6 +738,232 @@ def gst_report():
         "total_orders_count": len(filtered_orders),
         "orders": [o.serialize() for o in filtered_orders]
     }), 200
+
+@admin_bp.route('/gst-report/export', methods=['GET'])
+@role_required(['admin'])
+def export_gst_report():
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    shop_id = request.user['shop_id']
+    shop = Shop.query.get(shop_id)
+
+    date_val = request.args.get('date') # YYYY-MM-DD
+    month_val = request.args.get('month') # 1-12
+    year_val = request.args.get('year') # YYYY
+
+    # Calculate tax aggregates from successful sales
+    orders = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
+
+    filtered_orders = []
+    for o in orders:
+        if not o.created_at:
+            continue
+        # Apply date filter (YYYY-MM-DD)
+        if date_val and o.created_at.strftime('%Y-%m-%d') != date_val:
+            continue
+        # Apply month filter (1-12)
+        if month_val and o.created_at.month != int(month_val):
+            continue
+        # Apply year filter (YYYY)
+        if year_val and o.created_at.year != int(year_val):
+            continue
+        filtered_orders.append(o)
+
+    reporting_period = "All Time"
+    months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+    if date_val:
+        reporting_period = f"Date: {date_val}"
+    elif month_val and year_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"{m_name} {year_val}"
+    elif month_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"Month: {m_name}"
+    elif year_val:
+        reporting_period = f"Year: {year_val}"
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "GST Report"
+
+    # Explicitly enable grid lines
+    ws.views.sheetView[0].showGridLines = True
+
+    # Typography & styles
+    font_title = Font(name='Segoe UI', size=16, bold=True, color='2B0B57')
+    font_bold = Font(name='Segoe UI', size=11, bold=True)
+    font_header = Font(name='Segoe UI', size=11, bold=True, color='FFFFFF')
+    font_regular = Font(name='Segoe UI', size=11)
+
+    fill_header = PatternFill(start_color='2B0B57', end_color='2B0B57', fill_type='solid') # Deep purple
+    fill_zebra = PatternFill(start_color='F5EEF9', end_color='F5EEF9', fill_type='solid') # Zebra striping purple tint
+
+    align_center = Alignment(horizontal='center', vertical='center')
+    align_left = Alignment(horizontal='left', vertical='center')
+    align_right = Alignment(horizontal='right', vertical='center')
+
+    border_thin_side = Side(border_style="thin", color="DDDDDD")
+    border_thin = Border(left=border_thin_side, right=border_thin_side, top=border_thin_side, bottom=border_thin_side)
+
+    border_double_bottom = Side(border_style="double", color="2B0B57")
+    border_thin_top = Side(border_style="thin", color="2B0B57")
+    border_total = Border(top=border_thin_top, bottom=border_double_bottom)
+
+    # Title Banner Row
+    ws.merge_cells('A1:H1')
+    ws['A1'] = "NOBARAA FASHION - GST TAX ACCOUNTING REPORT"
+    ws['A1'].font = font_title
+    ws['A1'].alignment = Alignment(horizontal='left', vertical='center')
+    ws.row_dimensions[1].height = 40
+
+    # Information row
+    ws['A2'] = "Shop Name:"
+    ws['A2'].font = font_bold
+    ws['B2'] = shop.name if shop else "Nobaraa Fashion"
+    ws['B2'].font = font_regular
+
+    ws['D2'] = "Reporting Period:"
+    ws['D2'].font = font_bold
+    ws['E2'] = reporting_period
+    ws['E2'].font = font_regular
+
+    ws['G2'] = "GST Rate:"
+    ws['G2'].font = font_bold
+    ws['H2'] = f"{getattr(shop, 'gst_percentage', 18.0)}% Configured"
+    ws['H2'].font = font_regular
+
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 15 # blank space
+
+    # Headers definition
+    headers = [
+        "Order ID",
+        "Date & Time",
+        "Customer",
+        "Tax Type",
+        "Gross Amount (INR)",
+        "Net Sales (INR)",
+        "GST Collected (INR)",
+        "Status"
+    ]
+
+    header_row = 4
+    for col_idx, text in enumerate(headers, 1):
+        cell = ws.cell(row=header_row, column=col_idx, value=text)
+        cell.font = font_header
+        cell.fill = fill_header
+        cell.alignment = align_center if col_idx not in [3, 5, 6, 7] else (align_left if col_idx == 3 else align_right)
+        cell.border = border_thin
+
+    ws.row_dimensions[header_row].height = 28
+
+    # Populate Data
+    current_row = 5
+    total_gross = 0.0
+    total_net = 0.0
+    total_gst = 0.0
+
+    for o in filtered_orders:
+        order_gross = o.final_amount
+        order_gst = o.gst_amount
+        order_net = order_gross - order_gst
+
+        total_gross += order_gross
+        total_net += order_net
+        total_gst += order_gst
+
+        created_time = o.created_at.strftime('%Y-%m-%d %I:%M:%S %p') if o.created_at else 'N/A'
+
+        row_data = [
+            f"#{o.id}",
+            created_time,
+            o.user.name if o.user else 'Unknown User',
+            "Inclusive" if o.gst_inclusive else "Exclusive",
+            order_gross,
+            order_net,
+            order_gst,
+            o.status
+        ]
+
+        row_fill = fill_zebra if current_row % 2 == 1 else None
+
+        for col_idx, val in enumerate(row_data, 1):
+            cell = ws.cell(row=current_row, column=col_idx, value=val)
+            cell.font = font_regular
+            if row_fill:
+                cell.fill = row_fill
+            cell.border = border_thin
+
+            if col_idx in [1, 4, 8]:
+                cell.alignment = align_center
+            elif col_idx in [2, 3]:
+                cell.alignment = align_left
+            else:
+                cell.alignment = align_right
+
+            if col_idx in [5, 6, 7]:
+                cell.number_format = '₹#,##0.00'
+
+        ws.row_dimensions[current_row].height = 22
+        current_row += 1
+
+    # Add Totals Row
+    ws.cell(row=current_row, column=1, value="Total Summary").font = font_bold
+    ws.cell(row=current_row, column=1).alignment = align_left
+    ws.cell(row=current_row, column=1).border = border_total
+
+    for col_idx in range(2, 9):
+        ws.cell(row=current_row, column=col_idx).border = border_total
+
+    cell_tot_gross = ws.cell(row=current_row, column=5, value=total_gross)
+    cell_tot_gross.font = font_bold
+    cell_tot_gross.alignment = align_right
+    cell_tot_gross.number_format = '₹#,##0.00'
+
+    cell_tot_net = ws.cell(row=current_row, column=6, value=total_net)
+    cell_tot_net.font = font_bold
+    cell_tot_net.alignment = align_right
+    cell_tot_net.number_format = '₹#,##0.00'
+
+    cell_tot_gst = ws.cell(row=current_row, column=7, value=total_gst)
+    cell_tot_gst.font = font_bold
+    cell_tot_gst.alignment = align_right
+    cell_tot_gst.number_format = '₹#,##0.00'
+
+    ws.row_dimensions[current_row].height = 26
+
+    # Adjust column widths
+    for col in ws.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            if cell.row == 1:
+                continue
+            val_str = str(cell.value or '')
+            if cell.number_format and '₹' in cell.number_format and isinstance(cell.value, (int, float)):
+                val_str = f"Rs. {cell.value:,.2f}"
+            max_len = max(max_len, len(val_str))
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    filename_period = reporting_period.replace(' ', '_').replace(':', '')
+    filename = f"GST_Tax_Report_{filename_period}.xlsx"
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 # IN-APP NOTIFICATION BROADCASTS
 @admin_bp.route('/notifications', methods=['GET', 'POST'])

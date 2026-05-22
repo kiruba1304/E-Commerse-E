@@ -39,6 +39,7 @@ class Shop(db.Model):
     contact_email = db.Column(db.String(100), nullable=True)
     contact_phone = db.Column(db.String(50), nullable=True)
     privacy_policy = db.Column(db.Text, nullable=True)
+    address = db.Column(db.Text, nullable=True)
     
     # API credentials
     sms_api_key = db.Column(db.String(255), nullable=True)
@@ -54,6 +55,7 @@ class Shop(db.Model):
     gst_inclusive = db.Column(db.Boolean, default=False)
     
     saree_models_json = db.Column(db.Text, nullable=True)
+    banners_json = db.Column(db.Text, nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -99,6 +101,41 @@ class Shop(db.Model):
     def saree_models(self, value):
         self.saree_models_json = json.dumps(value)
 
+    @property
+    def banners(self):
+        if not self.banners_json:
+            return [
+                {
+                    "id": 1,
+                    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80",
+                    "title": "THE HEIRLOOM HERITAGE",
+                    "subtitle": "Meticulous Handloom Artistry, Exquisite Silk Weaves & Royal Zari Borders.",
+                    "actionText": "Explore Pure Silks"
+                },
+                {
+                    "id": 2,
+                    "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=1200&auto=format&fit=crop&q=80",
+                    "title": "FESTIVE SOIRÉE DRESSES",
+                    "subtitle": "Drape Yourself in Timeless Grace with Contemporary Designer Georgettes.",
+                    "actionText": "Shop Georgettes"
+                },
+                {
+                    "id": 3,
+                    "image": "https://images.unsplash.com/photo-1608748010899-18f300247112?w=1200&auto=format&fit=crop&q=80",
+                    "title": "NOBARAA PRIVILEGE FEST",
+                    "subtitle": "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
+                    "actionText": "View Wallet"
+                }
+            ]
+        try:
+            return json.loads(self.banners_json)
+        except Exception:
+            return []
+
+    @banners.setter
+    def banners(self, value):
+        self.banners_json = json.dumps(value)
+
     def serialize(self):
         return {
             "id": self.id,
@@ -107,6 +144,7 @@ class Shop(db.Model):
             "contact_email": self.contact_email,
             "contact_phone": self.contact_phone,
             "privacy_policy": self.privacy_policy,
+            "address": self.address,
             "sms_api_key": self.sms_api_key,
             "whatsapp_api_key": self.whatsapp_api_key,
             "razorpay_key_id": self.razorpay_key_id,
@@ -116,6 +154,7 @@ class Shop(db.Model):
             "gst_percentage": self.gst_percentage,
             "gst_inclusive": self.gst_inclusive,
             "saree_models": self.saree_models,
+            "banners": self.banners,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -162,6 +201,21 @@ class User(db.Model):
     contact_phone = db.Column(db.String(50), nullable=True)
     super_coins = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.now)
+    addresses_json = db.Column(db.Text, nullable=True)
+    last_used_address_id = db.Column(db.Integer, nullable=True)
+
+    @property
+    def addresses(self):
+        if not self.addresses_json:
+            return []
+        try:
+            return json.loads(self.addresses_json)
+        except Exception:
+            return []
+
+    @addresses.setter
+    def addresses(self, value):
+        self.addresses_json = json.dumps(value)
 
     # Relationships
     orders = db.relationship('Order', backref='user', lazy=True, cascade="all, delete-orphan")
@@ -184,6 +238,8 @@ class User(db.Model):
             "name": self.name,
             "contact_phone": self.contact_phone,
             "super_coins": self.super_coins,
+            "addresses": self.addresses,
+            "last_used_address_id": self.last_used_address_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "role": "user"
         }

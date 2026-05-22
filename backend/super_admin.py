@@ -72,6 +72,7 @@ def create_shop():
         contact_email=data.get('contact_email', ''),
         contact_phone=data.get('contact_phone', ''),
         privacy_policy=data.get('privacy_policy', 'Default Privacy Policy'),
+        address=data.get('address', ''),
         sms_api_key=data.get('sms_api_key', ''),
         whatsapp_api_key=data.get('whatsapp_api_key', ''),
         razorpay_key_id=data.get('razorpay_key_id', ''),
@@ -122,6 +123,8 @@ def update_shop(shop_id):
         shop.contact_phone = data['contact_phone']
     if 'privacy_policy' in data:
         shop.privacy_policy = data['privacy_policy']
+    if 'address' in data:
+        shop.address = data['address']
     
     # API credentials updates
     if 'sms_api_key' in data:

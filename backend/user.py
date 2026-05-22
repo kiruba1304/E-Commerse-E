@@ -204,6 +204,10 @@ def manage_profile():
         user.contact_phone = data['contact_phone']
     if 'email' in data:
         user.email = data['email']
+    if 'addresses' in data:
+        user.addresses = data['addresses']
+    if 'last_used_address_id' in data:
+        user.last_used_address_id = data['last_used_address_id']
     if 'password' in data and data['password']:
         user.set_password(data['password'])
 
@@ -454,6 +458,17 @@ def create_order():
     
     for item in order_items:
         order.items.append(item)
+
+    # Set last used address default
+    address_id = data.get('address_id')
+    if address_id:
+        user.last_used_address_id = address_id
+    else:
+        # Match shipping_address and billing_phone to user's saved addresses
+        for addr in user.addresses:
+            if addr.get('address') == shipping_address and addr.get('phone') == billing_phone:
+                user.last_used_address_id = addr.get('id')
+                break
 
     db.session.add(order)
     db.session.commit()
