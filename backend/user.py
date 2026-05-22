@@ -408,8 +408,13 @@ def create_order():
 
     # Calculate shop-configured GST percentage (defaults to 18.0%)
     gst_rate = getattr(shop, 'gst_percentage', 18.0) / 100.0
-    gst_amount = discounted_amount * gst_rate
-    final_amount = discounted_amount + gst_amount
+    gst_inclusive = getattr(shop, 'gst_inclusive', False)
+    if gst_inclusive:
+        final_amount = discounted_amount
+        gst_amount = final_amount * gst_rate / (1 + gst_rate)
+    else:
+        gst_amount = discounted_amount * gst_rate
+        final_amount = discounted_amount + gst_amount
 
     # Deduct stock and clear cart items
     order_items = []

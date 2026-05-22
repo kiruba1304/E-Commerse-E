@@ -109,6 +109,8 @@ def manage_shop():
             shop.gst_percentage = float(data['gst_percentage'])
         except ValueError:
             return jsonify({"error": "Invalid GST percentage value"}), 400
+    if 'gst_inclusive' in data:
+        shop.gst_inclusive = bool(data['gst_inclusive'])
     if 'saree_models' in data:
         shop.saree_models = data['saree_models']
 
@@ -815,3 +817,10 @@ def manage_messaging():
             "cost_per_message": "0.00" if platform == "WhatsApp" else "0.20 Rupees"
         }
     }), 200
+
+@admin_bp.route('/logs', methods=['GET'])
+@role_required(['admin'])
+def get_store_logs():
+    shop_id = request.user['shop_id']
+    logs = SystemLog.query.filter_by(shop_id=shop_id).filter(SystemLog.actor_type != 'super_admin').order_by(SystemLog.created_at.desc()).all()
+    return jsonify([log.serialize() for log in logs]), 200

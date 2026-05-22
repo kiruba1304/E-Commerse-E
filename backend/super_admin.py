@@ -78,7 +78,8 @@ def create_shop():
         razorpay_key_secret=data.get('razorpay_key_secret', ''),
         super_coin_enabled=data.get('super_coin_enabled', True),
         super_coin_ratio=data.get('super_coin_ratio', 10),
-        gst_percentage=float(data.get('gst_percentage', 18.0))
+        gst_percentage=float(data.get('gst_percentage', 18.0)),
+        gst_inclusive=bool(data.get('gst_inclusive', False))
     )
 
     db.session.add(shop)
@@ -139,6 +140,8 @@ def update_shop(shop_id):
         shop.super_coin_ratio = int(data['super_coin_ratio'])
     if 'gst_percentage' in data:
         shop.gst_percentage = float(data['gst_percentage'])
+    if 'gst_inclusive' in data:
+        shop.gst_inclusive = bool(data['gst_inclusive'])
 
     db.session.commit()
 

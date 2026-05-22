@@ -749,7 +749,7 @@ export default function App() {
   const [superCustomerSearch, setSuperCustomerSearch] = useState("");
   
   // Super Admin forms
-  const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 });
+  const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
   const [newAdminForm, setNewAdminForm] = useState({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
 
   // Add a Toast Notification helper
@@ -1958,7 +1958,7 @@ export default function App() {
 
   const loadAdminLogs = async () => {
     try {
-      const res = await fetch(`${API_BASE}/super-admin/logs?shop_id=${user.shop_id}`, { headers: getHeaders() });
+      const res = await fetch(`${API_BASE}/admin/logs`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminLogs(data);
     } catch (e) {}
@@ -2097,7 +2097,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Shop Activated", `Shop '${shopForm.name}' provisioned and set up successfully.`, "success");
-        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 });
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
         loadSuperShops();
       }
     } catch (e) {}
@@ -2113,7 +2113,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Global Settings Overwritten", "Shop details updated.", "success");
-        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 });
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
         loadSuperShops();
       }
     } catch (e) {}
@@ -2184,8 +2184,13 @@ export default function App() {
   const checkoutCouponDiscount = checkoutData.coupon_code ? checkoutSubtotal * 0.05 : 0;
   const checkoutDiscountedAmount = Math.max(0, checkoutSubtotal - checkoutSuperCoinDiscount - checkoutCouponDiscount);
   const checkoutGstRate = currentShop?.gst_percentage ?? 18.0;
-  const checkoutGstAmount = checkoutDiscountedAmount * (checkoutGstRate / 100.0);
-  const checkoutFinalAmount = checkoutDiscountedAmount + checkoutGstAmount;
+  const checkoutGstInclusive = currentShop?.gst_inclusive ?? false;
+  const checkoutGstAmount = checkoutGstInclusive 
+    ? (checkoutDiscountedAmount * (checkoutGstRate / 100.0)) / (1 + (checkoutGstRate / 100.0)) 
+    : checkoutDiscountedAmount * (checkoutGstRate / 100.0);
+  const checkoutFinalAmount = checkoutGstInclusive 
+    ? checkoutDiscountedAmount 
+    : checkoutDiscountedAmount + checkoutGstAmount;
 
   return (
     <div className="app-container">
@@ -3630,7 +3635,7 @@ export default function App() {
                     </div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666' }}>
-                    <span>GST ({checkoutGstRate}%):</span>
+                    <span>GST ({checkoutGstRate}% {checkoutGstInclusive ? 'Inclusive' : 'Exclusive'}):</span>
                     <span>₹{checkoutGstAmount.toFixed(2)}</span>
                   </div>
                 </div>
@@ -5795,6 +5800,19 @@ export default function App() {
                       />
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                         This rate is applied dynamically during user checkout and for GST taxation reporting.
+                      </span>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>GST Type</label>
+                      <select 
+                        value={adminShop.gst_inclusive ? 'inclusive' : 'exclusive'}
+                        onChange={e => setAdminShop(prev => ({ ...prev, gst_inclusive: e.target.value === 'inclusive' }))}
+                      >
+                        <option value="exclusive">Exclusive (Added at checkout)</option>
+                        <option value="inclusive">Inclusive (Calculated automatically from price)</option>
+                      </select>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                        Choose whether GST is added on top of the subtotal or calculated from it.
                       </span>
                     </div>
                   </div>
@@ -8017,7 +8035,8 @@ export default function App() {
                       <tr>
                         <th>Date & Time</th>
                         <th>Actor</th>
-                        <th>Activity description</th>
+                        <th>Store ID</th>
+                        <th>System Activity Description</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -8025,6 +8044,7 @@ export default function App() {
                         <tr key={l.id}>
                           <td>{new Date(l.created_at).toLocaleString()}</td>
                           <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
+                          <td>{l.shop_id || "Global Core"}</td>
                           <td>{l.action}</td>
                         </tr>
                       ))}
@@ -8050,7 +8070,7 @@ export default function App() {
               </div>
             </div>
 
-            <span className={`sidebar-link ${activePanel === 'shop_creation' ? 'active' : ''}`} onClick={() => { setActivePanel("shop_creation"); setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 }); }}>
+            <span className={`sidebar-link ${activePanel === 'shop_creation' ? 'active' : ''}`} onClick={() => { setActivePanel("shop_creation"); setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false }); }}>
               <Plus size={18} /> Shop Provisioning
             </span>
             <span className={`sidebar-link ${activePanel === 'admin_creation' ? 'active' : ''}`} onClick={() => setActivePanel("admin_creation")}>
@@ -8143,7 +8163,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       <input 
                         type="checkbox" 
@@ -8171,6 +8191,16 @@ export default function App() {
                         value={shopForm.gst_percentage !== undefined && shopForm.gst_percentage !== null ? shopForm.gst_percentage : 18.0}
                         onChange={e => setShopForm(prev => ({ ...prev, gst_percentage: parseFloat(e.target.value) || 0.0 }))}
                       />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>GST Tax Type</label>
+                      <select 
+                        value={shopForm.gst_inclusive ? 'inclusive' : 'exclusive'}
+                        onChange={e => setShopForm(prev => ({ ...prev, gst_inclusive: e.target.value === 'inclusive' }))}
+                      >
+                        <option value="exclusive">Exclusive</option>
+                        <option value="inclusive">Inclusive</option>
+                      </select>
                     </div>
                   </div>
 

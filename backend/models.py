@@ -51,6 +51,7 @@ class Shop(db.Model):
     super_coin_ratio = db.Column(db.Integer, default=10) # 1 super coin for every 10 currency units spent
     
     gst_percentage = db.Column(db.Float, default=18.0)
+    gst_inclusive = db.Column(db.Boolean, default=False)
     
     saree_models_json = db.Column(db.Text, nullable=True)
     
@@ -113,6 +114,7 @@ class Shop(db.Model):
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
             "gst_percentage": self.gst_percentage,
+            "gst_inclusive": self.gst_inclusive,
             "saree_models": self.saree_models,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
