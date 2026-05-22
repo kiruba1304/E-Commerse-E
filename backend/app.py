@@ -64,6 +64,58 @@ app.register_blueprint(super_admin_bp, url_prefix='/api/super-admin')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(user_bp, url_prefix='/api/user')
 
+# UNIFIED AUTHENTICATION ENDPOINT
+@app.route('/api/auth/login', methods=['POST'])
+def unified_login():
+    from auth_middleware import generate_token
+    from admin import log_admin_action
+    from super_admin import log_system_action
+    from user import log_user_action
+
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    # 1. Try Super Admin
+    sa = SuperAdmin.query.filter_by(username=username).first()
+    if sa and sa.check_password(password):
+        token = generate_token(sa.id, sa.username, 'super_admin')
+        log_system_action('super_admin', sa.id, sa.username, "Super Admin logged in successfully")
+        return jsonify({
+            "message": "Login successful",
+            "token": token,
+            "user": sa.serialize()
+        }), 200
+
+    # 2. Try Admin
+    admin = Admin.query.filter_by(username=username).first()
+    if admin and admin.check_password(password):
+        if not admin.is_active:
+            return jsonify({"error": "Invalid admin credentials or account is suspended"}), 401
+        token = generate_token(admin.id, admin.username, 'admin', admin.shop_id)
+        log_admin_action(admin.id, admin.username, admin.shop_id, "Admin logged in successfully")
+        return jsonify({
+            "message": "Login successful",
+            "token": token,
+            "user": admin.serialize()
+        }), 200
+
+    # 3. Try User
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        token = generate_token(user.id, user.username, 'user')
+        log_user_action(user.id, user.username, "User logged in successfully")
+        return jsonify({
+            "message": "Login successful",
+            "token": token,
+            "user": user.serialize()
+        }), 200
+
+    return jsonify({"error": "Invalid credentials"}), 401
+
 # OPAC (ONLINE PUBLIC ACCESS CATALOG) PUBLIC ENDPOINTS
 @app.route('/api/opac/shops', methods=['GET'])
 def opac_list_shops():

@@ -281,7 +281,7 @@ function NobaraaHero({ sareeModels = [] }) {
             {modelsToUse.map((model, idx) => (
               <img 
                 key={model.id || idx}
-                src={model.image} 
+                src={model.image || null} 
                 alt={model.name}
                 className={`nobaraa-model-image ${activeModel === idx ? 'active' : 'inactive'}`}
               />
@@ -748,7 +748,7 @@ export default function App() {
   
   // Super Admin forms
   const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0 });
-  const [newAdminForm, setNewAdminForm] = useState({ username: "", password: "", email: "", name: "", shop_id: "" });
+  const [newAdminForm, setNewAdminForm] = useState({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
 
   // Add a Toast Notification helper
   const addToast = (title, message, type = "info") => {
@@ -969,27 +969,14 @@ export default function App() {
   const handleUserLogin = async (e) => {
     e.preventDefault();
     try {
-      const endpoints = ["/user/login", "/admin/login", "/super-admin/login"];
-      let successData = null;
-      let lastError = "Invalid credentials.";
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginForm)
+      });
+      const data = await res.json();
 
-      for (let endpoint of endpoints) {
-        const res = await fetch(`${API_BASE}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(loginForm)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          successData = data;
-          break;
-        } else {
-          if (data.error) lastError = data.error;
-        }
-      }
-
-      if (successData) {
-        const data = successData;
+      if (res.ok) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('role', data.user.role);
@@ -1013,7 +1000,7 @@ export default function App() {
           setActivePanel("shop_creation");
         }
       } else {
-        addToast("Authentication Failed", lastError, "danger");
+        addToast("Authentication Failed", data.error || "Invalid credentials.", "danger");
       }
     } catch (err) {
       addToast("Server Error", "Could not complete login request.", "danger");
@@ -2116,20 +2103,44 @@ export default function App() {
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_BASE}/super-admin/admins`, {
-        method: 'POST',
+      const isEdit = !!newAdminForm.id;
+      const url = isEdit 
+        ? `${API_BASE}/super-admin/admins/${newAdminForm.id}` 
+        : `${API_BASE}/super-admin/admins`;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: getHeaders(),
         body: JSON.stringify(newAdminForm)
       });
       const data = await res.json();
       if (res.ok) {
-        addToast("Admin Created", `Authorized login set up for '${newAdminForm.username}'.`, "success");
-        setNewAdminForm({ username: "", password: "", email: "", name: "", shop_id: "" });
+        addToast(isEdit ? "Admin Updated" : "Admin Created", isEdit ? `Admin details updated for '${newAdminForm.username}'.` : `Authorized login set up for '${newAdminForm.username}'.`, "success");
+        setNewAdminForm({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
         loadSuperAdmins();
       } else {
-        addToast("Creation Error", data.error, "danger");
+        addToast(isEdit ? "Update Error" : "Creation Error", data.error, "danger");
       }
     } catch (e) {}
+  };
+
+  const handleDeleteAdmin = async (adminId) => {
+    if (!window.confirm("Are you sure you want to delete this administrator?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/super-admin/admins/${adminId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (res.ok) {
+        addToast("Admin Deleted", "Administrator removed successfully.", "info");
+        loadSuperAdmins();
+      } else {
+        const data = await res.json();
+        addToast("Delete Error", data.error || "Failed to delete administrator.", "danger");
+      }
+    } catch (e) {
+      addToast("Delete Error", "An error occurred.", "danger");
+    }
   };
 
   const currentShop = shops.find(s => Number(s.id) === Number(activeShopId));
@@ -2171,7 +2182,7 @@ export default function App() {
             <button className="ad-modal-close" onClick={() => setPopupAd(null)}>
               <X size={18} />
             </button>
-            <img className="ad-modal-img" src={popupAd.image_url} alt={popupAd.title} />
+            <img className="ad-modal-img" src={popupAd.image_url || null} alt={popupAd.title} />
             <div className="ad-modal-info">
               <span className="badge badge-info" style={{ width: 'fit-content', margin: '0 auto' }}>Special Event Campaign</span>
               <h3 style={{ fontWeight: 800, fontSize: '1.4rem' }}>{popupAd.title}</h3>
@@ -2614,7 +2625,7 @@ export default function App() {
               <X size={20} /> Close
             </button>
             <img 
-              src={expandedImage} 
+              src={expandedImage || null} 
               alt="Verification full preview" 
               style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
               onClick={e => e.stopPropagation()}
@@ -2858,7 +2869,7 @@ export default function App() {
                   {detailProduct.images.map((img, i) => (
                     <img 
                       key={i} 
-                      src={img} 
+                      src={img || null} 
                       alt="" 
                       onClick={() => setActiveDetailImageIndex(i)}
                       style={{ 
@@ -3531,7 +3542,7 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {cart.map(ci => (
                         <div key={ci.id} style={{ display: 'flex', gap: '16px' }}>
-                          <img src={ci.product.images[0]} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
+                          <img src={ci.product.images[0] || null} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
                           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                             <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>{ci.product.name}</div>
                             <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>₹{ci.product.price.toFixed(2)}</div>
@@ -3643,7 +3654,7 @@ export default function App() {
                         padding: '4px', cursor: 'pointer', borderRadius: '4px'
                       }}
                     >
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={img || null} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     </div>
                   ))}
                 </div>
@@ -3867,7 +3878,7 @@ export default function App() {
                 .map(p => (
                   <div key={p.id} onClick={() => {handleProductSelection(p.id); window.scrollTo(0,0);}} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)'}} onMouseLeave={e => {e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'}}>
                     <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}>
-                      <img src={p.images[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{ fontSize: '1rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px', fontWeight: 600, fontFamily: 'var(--font-serif)' }} title={p.name}>{p.name}</div>
                     <div style={{ color: 'var(--coin-gold)', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 700 }}>{Math.round(Math.random() * 20 + 10)}% Special Discount</div>
@@ -5172,7 +5183,7 @@ export default function App() {
                     {userDashboardData.recommendations && userDashboardData.recommendations.map(p => (
                       <div key={p.id} className="glass-panel product-card" onClick={() => handleProductSelection(p.id)}>
                         <div className="product-image-container">
-                          <img className="product-img" src={p.images[0]} alt="" />
+                          <img className="product-img" src={p.images[0] || null} alt="" />
                         </div>
                         <div className="product-info">
                           <h5 className="product-name">{p.name}</h5>
@@ -5207,7 +5218,7 @@ export default function App() {
                     <div className="glass-panel" style={{ padding: '24px' }}>
                       {cart.map(ci => (
                         <div key={ci.id} className="cart-row">
-                          <img className="cart-img" src={ci.product.images[0]} alt="" />
+                          <img className="cart-img" src={ci.product.images[0] || null} alt="" />
                           <div>
                             <h4 style={{ fontWeight: 800, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{ci.product.name}</h4>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Store ID: {ci.product.shop_id}</span>
@@ -5281,7 +5292,7 @@ export default function App() {
                     wishlist.map(wi => (
                       <div key={wi.id} className="glass-panel product-card">
                         <div className="product-image-container">
-                          <img className="product-img" src={wi.product.images[0]} alt="" />
+                          <img className="product-img" src={wi.product.images[0] || null} alt="" />
                           <button onClick={() => handleRemoveFromWishlist(wi.id)} className="wishlist-btn-overlay active">
                             <Trash2 size={16} />
                           </button>
@@ -6456,7 +6467,7 @@ export default function App() {
                           <tr key={p.id}>
                             <td>
                               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                <img src={p.images[0]} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
+                                <img src={p.images[0] || null} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
                                 <div>
                                   <strong style={{ color: 'var(--text-main)' }}>{p.name}</strong>
                                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {p.id}</span>
@@ -7651,7 +7662,7 @@ export default function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {adminPopupAds.map(ad => (
                       <div key={ad.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                        <img src={ad.image_url} alt="" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
+                        <img src={ad.image_url || null} alt="" style={{ width: '80px', height: '60px', objectFit: 'cover', borderRadius: '6px' }} />
                         <div style={{ flexGrow: 1 }}>
                           <h5 style={{ fontWeight: 800 }}>{ad.title}</h5>
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Target: {ad.target_url || "none"}</span>
@@ -8139,7 +8150,7 @@ export default function App() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {superShops.map(s => (
                       <div key={s.id} className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                        <img src={s.logo_url} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <img src={s.logo_url || null} alt="" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
                         <div style={{ flexGrow: 1 }}>
                           <h4 style={{ fontWeight: 800 }}>{s.name}</h4>
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Email: {s.contact_email} | Phone: {s.contact_phone}</p>
@@ -8165,7 +8176,7 @@ export default function App() {
                 
                 {/* Create Admin form */}
                 <form onSubmit={handleCreateAdmin} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
-                  <h3 style={{ fontWeight: 800 }}>Allocate Store Administrator</h3>
+                  <h3 style={{ fontWeight: 800 }}>{newAdminForm.id ? "Edit Store Administrator" : "Allocate Store Administrator"}</h3>
                   
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Target Shop</label>
@@ -8216,16 +8227,27 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Security Password</label>
                     <input 
                       type="password" 
-                      placeholder="admin123"
+                      placeholder={newAdminForm.id ? "Leave blank to keep current password" : "admin123"}
                       value={newAdminForm.password}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, password: e.target.value }))}
-                      required 
+                      required={!newAdminForm.id} 
                     />
                   </div>
 
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
-                    Authorize Store Administrator <Check size={16} />
+                    {newAdminForm.id ? "Update Store Administrator" : "Authorize Store Administrator"} <Check size={16} />
                   </button>
+
+                  {newAdminForm.id && (
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      onClick={() => setNewAdminForm({ id: null, username: "", password: "", email: "", name: "", shop_id: "" })}
+                      style={{ justifyContent: 'center', marginTop: '4px' }}
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
                 </form>
 
                 {/* Admins list */}
@@ -8238,6 +8260,7 @@ export default function App() {
                           <th>Username</th>
                           <th>Shop Platform</th>
                           <th>Email Address</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -8246,6 +8269,28 @@ export default function App() {
                             <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{a.name} ({a.username})</td>
                             <td><span className="badge badge-info">{a.shop_name}</span></td>
                             <td>{a.email}</td>
+                            <td>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  type="button"
+                                  onClick={() => setNewAdminForm({ id: a.id, username: a.username, password: "", email: a.email, name: a.name || "", shop_id: a.shop_id })} 
+                                  className="btn-secondary" 
+                                  style={{ padding: '6px' }}
+                                  title="Edit Admin"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => handleDeleteAdmin(a.id)} 
+                                  className="btn-danger" 
+                                  style={{ padding: '6px' }}
+                                  title="Delete Admin"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -8372,7 +8417,7 @@ export default function App() {
               {cart.length > 0 ? (
                 cart.map(ci => (
                   <div key={ci.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
-                    <img src={ci.product.images[0]} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
+                    <img src={ci.product.images[0] || null} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
                     <div style={{ flexGrow: 1 }}>
                       <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{ci.product.name}</h4>
                       <span style={{ fontSize: '0.75rem', color: '#888888', display: 'block', marginBottom: '8px' }}>Store: {ci.product.shop_id}</span>
@@ -8467,7 +8512,7 @@ export default function App() {
               {wishlist.length > 0 ? (
                 wishlist.map(wi => (
                   <div key={wi.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
-                    <img src={wi.product.images[0]} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
+                    <img src={wi.product.images[0] || null} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
                     <div style={{ flexGrow: 1 }}>
                       <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wi.product.name}</h4>
                       <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111', display: 'block', marginBottom: '12px' }}>₹{wi.product.price}</span>

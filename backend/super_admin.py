@@ -213,6 +213,67 @@ def list_admins():
         res.append(item)
     return jsonify(res), 200
 
+@super_admin_bp.route('/admins/<int:admin_id>', methods=['PUT'])
+@role_required(['super_admin'])
+def update_admin(admin_id):
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        return jsonify({"error": "Admin not found"}), 404
+
+    data = request.get_json() or {}
+    username = data.get('username')
+    email = data.get('email')
+    name = data.get('name')
+    shop_id = data.get('shop_id')
+    password = data.get('password')
+
+    if not all([username, email, shop_id]):
+        return jsonify({"error": "Username, email, and shop_id are required"}), 400
+
+    # Verify shop exists
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": f"Shop with ID {shop_id} does not exist"}), 404
+
+    # Check duplicate admin username
+    if username != admin.username:
+        existing = Admin.query.filter_by(username=username).first()
+        if existing:
+            return jsonify({"error": "Admin username already exists"}), 400
+
+    admin.username = username
+    admin.email = email
+    admin.name = name if name else username
+    admin.shop_id = shop_id
+    if 'is_active' in data:
+        admin.is_active = bool(data['is_active'])
+
+    if password and password.strip():
+        admin.set_password(password)
+
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Updated Admin '{username}' for shop '{shop.name}'")
+
+    res_data = admin.serialize()
+    res_data['shop_name'] = shop.name
+    return jsonify({"message": "Admin user updated successfully", "admin": res_data}), 200
+
+@super_admin_bp.route('/admins/<int:admin_id>', methods=['DELETE'])
+@role_required(['super_admin'])
+def delete_admin(admin_id):
+    admin = Admin.query.get(admin_id)
+    if not admin:
+        return jsonify({"error": "Admin not found"}), 404
+
+    admin_username = admin.username
+    db.session.delete(admin)
+    db.session.commit()
+
+    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Deleted Admin '{admin_username}'")
+
+    return jsonify({"message": "Admin user deleted successfully"}), 200
+
 # LOGS AUDITING AND USER TRACKING
 @super_admin_bp.route('/logs', methods=['GET'])
 @role_required(['super_admin'])
