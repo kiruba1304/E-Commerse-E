@@ -117,10 +117,78 @@ def manage_shop():
         shop.saree_models = data['saree_models']
     if 'banners' in data:
         shop.banners = data['banners']
+    if 'smtp_host' in data:
+        shop.smtp_host = data['smtp_host']
+    if 'smtp_port' in data:
+        try:
+            shop.smtp_port = int(data['smtp_port']) if data['smtp_port'] else None
+        except ValueError:
+            return jsonify({"error": "Invalid SMTP port value"}), 400
+    if 'smtp_user' in data:
+        shop.smtp_user = data['smtp_user']
+    if 'smtp_password' in data:
+        shop.smtp_password = data['smtp_password']
+    if 'smtp_use_tls' in data:
+        shop.smtp_use_tls = bool(data['smtp_use_tls'])
+    if 'smtp_sender_name' in data:
+        shop.smtp_sender_name = data['smtp_sender_name']
+    if 'email_templates' in data:
+        shop.email_templates = data['email_templates']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
     return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
+
+@admin_bp.route('/shop/test-smtp', methods=['POST'])
+@role_required(['admin'])
+def test_smtp_configuration():
+    shop = Shop.query.get(request.user['shop_id'])
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    data = request.get_json() or {}
+    recipient = data.get('recipient')
+    if not recipient:
+        return jsonify({"error": "Recipient email is required"}), 400
+
+    # Temporarily override with unsaved config details if sent for pre-testing
+    templates_data = data.get('email_templates', None)
+    if templates_data:
+        import json
+        templates_json = json.dumps(templates_data)
+    else:
+        templates_json = shop.email_templates_json
+
+    test_shop = Shop(
+        name=shop.name,
+        smtp_host=data.get('smtp_host', shop.smtp_host),
+        smtp_port=int(data.get('smtp_port')) if data.get('smtp_port') else shop.smtp_port,
+        smtp_user=data.get('smtp_user', shop.smtp_user),
+        smtp_password=data.get('smtp_password', shop.smtp_password),
+        smtp_use_tls=bool(data.get('smtp_use_tls', shop.smtp_use_tls)),
+        smtp_sender_name=data.get('smtp_sender_name', shop.smtp_sender_name),
+        email_templates_json=templates_json
+    )
+
+    from mail_sender import send_shop_email
+    # We will test using a simple test payload
+    placeholders = {
+        "name": "Admin Tester",
+        "otp": "123456",
+        "reset_link": "http://localhost:5173/reset?token=test",
+        "order_id": "9999",
+        "total_amount": "999.00",
+        "items": "1x Test Item",
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    test_template_type = data.get('template_type', 'otp')
+    success = send_shop_email(test_shop, test_template_type, recipient, placeholders)
+    if success:
+        return jsonify({"message": f"Test email sent successfully to {recipient}!"}), 200
+    else:
+        return jsonify({"error": "Failed to send email. Check your SMTP settings and logs."}), 500
+
 
 # CATEGORY MANAGEMENT
 @admin_bp.route('/categories', methods=['GET', 'POST'])

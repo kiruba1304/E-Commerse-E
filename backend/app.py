@@ -108,6 +108,23 @@ def unified_login():
     if user and user.check_password(password):
         token = generate_token(user.id, user.username, 'user')
         log_user_action(user.id, user.username, "User logged in successfully")
+
+        # Send login email alert if shop_id is provided
+        shop_id = data.get('shop_id')
+        if shop_id:
+            shop = Shop.query.get(shop_id)
+            if shop:
+                from mail_sender import send_shop_email
+                from datetime import datetime
+                try:
+                    time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    send_shop_email(shop, "login", user.email, {
+                        "name": user.name or user.username,
+                        "time": time_str
+                    })
+                except Exception as e:
+                    print(f"Error sending login alert email: {e}")
+
         return jsonify({
             "message": "Login successful",
             "token": token,

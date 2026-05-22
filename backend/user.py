@@ -4,11 +4,14 @@ import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
+import random
+from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, request, jsonify
-from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog
+from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog, OTPVerification
 from auth_middleware import generate_token, token_required, role_required
-from datetime import datetime, timezone
+from mail_sender import send_shop_email
+
 
 user_bp = Blueprint('user', __name__)
 
@@ -116,6 +119,20 @@ def login():
     
     log_user_action(user.id, user.username, "User logged in successfully")
 
+    # Send login alert email if shop_id is provided
+    shop_id = data.get('shop_id')
+    if shop_id:
+        shop = Shop.query.get(shop_id)
+        if shop:
+            try:
+                time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                send_shop_email(shop, "login", user.email, {
+                    "name": user.name or user.username,
+                    "time": time_str
+                })
+            except Exception as e:
+                print(f"Error sending login email: {e}")
+
     return jsonify({
         "message": "Login successful",
         "token": token,
@@ -185,6 +202,210 @@ def google_login():
 def logout():
     log_user_action(request.user['user_id'], request.user['username'], "User logged out")
     return jsonify({"message": "Logout successful"}), 200
+
+
+@user_bp.route('/request-otp', methods=['POST'])
+def request_otp():
+    data = request.get_json() or {}
+    email = data.get('email')
+    shop_id = data.get('shop_id')
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    otp_code = str(random.randint(100000, 999999))
+    expires_at = datetime.now() + timedelta(minutes=10)
+
+    # Save to db
+    otp_record = OTPVerification(
+        email=email,
+        otp_code=otp_code,
+        expires_at=expires_at,
+        is_verified=False
+    )
+    db.session.add(otp_record)
+    db.session.commit()
+
+    # Get shop
+    shop = None
+    if shop_id:
+        shop = Shop.query.get(shop_id)
+    if not shop:
+        shop = Shop.query.first()
+
+    if shop:
+        send_shop_email(shop, "otp", email, {
+            "name": email.split('@')[0],
+            "otp": otp_code
+        })
+
+    return jsonify({"message": "OTP sent successfully"}), 200
+
+
+@user_bp.route('/verify-otp', methods=['POST'])
+def verify_otp():
+    data = request.get_json() or {}
+    email = data.get('email')
+    otp_code = data.get('otp_code')
+
+    if not email or not otp_code:
+        return jsonify({"error": "Email and OTP code are required"}), 400
+
+    record = OTPVerification.query.filter(
+        OTPVerification.email == email,
+        OTPVerification.otp_code == otp_code,
+        OTPVerification.is_verified == False,
+        OTPVerification.expires_at > datetime.now()
+    ).order_by(OTPVerification.id.desc()).first()
+
+    if not record:
+        return jsonify({"error": "Invalid or expired OTP"}), 400
+
+    record.is_verified = True
+    db.session.commit()
+
+    return jsonify({"message": "OTP verified successfully"}), 200
+
+
+@user_bp.route('/otp-login', methods=['POST'])
+def otp_login():
+    data = request.get_json() or {}
+    email = data.get('email')
+    otp_code = data.get('otp_code')
+    shop_id = data.get('shop_id')
+
+    if not email or not otp_code:
+        return jsonify({"error": "Email and OTP code are required"}), 400
+
+    # Verify the OTP first
+    record = OTPVerification.query.filter(
+        OTPVerification.email == email,
+        OTPVerification.otp_code == otp_code,
+        OTPVerification.is_verified == False,
+        OTPVerification.expires_at > datetime.now()
+    ).order_by(OTPVerification.id.desc()).first()
+
+    if not record:
+        return jsonify({"error": "Invalid or expired OTP"}), 400
+
+    # Mark as verified
+    record.is_verified = True
+
+    # Find or auto-register user
+    user = User.query.filter_by(email=email).first()
+    is_new_user = False
+    if not user:
+        is_new_user = True
+        base_username = email.split('@')[0]
+        username = base_username
+        suffix = 1
+        while User.query.filter_by(username=username).first():
+            username = f"{base_username}_{suffix}"
+            suffix += 1
+
+        user = User(
+            username=username,
+            email=email,
+            name=base_username,
+            contact_phone='',
+            super_coins=50  # gift 50 super coins on signup!
+        )
+        user.set_password(secrets.token_urlsafe(32))
+        db.session.add(user)
+        db.session.commit()
+        log_user_action(user.id, user.username, "Registered new customer account via OTP")
+    else:
+        db.session.commit()
+        log_user_action(user.id, user.username, "User logged in via OTP")
+
+    # Generate token
+    token = generate_token(user.id, user.username, 'user')
+
+    # Send login alert
+    shop = None
+    if shop_id:
+        shop = Shop.query.get(shop_id)
+    if not shop:
+        shop = Shop.query.first()
+
+    if shop:
+        try:
+            time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            send_shop_email(shop, "login", email, {
+                "name": user.name or user.username,
+                "time": time_str
+            })
+        except Exception as e:
+            print(f"Error sending login email: {e}")
+
+    return jsonify({
+        "message": "OTP Login successful" if not is_new_user else "OTP Signup successful",
+        "token": token,
+        "user": user.serialize()
+    }), 200
+
+
+@user_bp.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.get_json() or {}
+    email = data.get('email')
+    shop_id = data.get('shop_id')
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Return standard response for security
+        return jsonify({"message": "If the email is registered, a reset code has been sent."}), 200
+
+    reset_token = str(random.randint(100000, 999999))
+    user.reset_token = reset_token
+    user.reset_token_expiry = datetime.now() + timedelta(minutes=10)
+    db.session.commit()
+
+    shop = None
+    if shop_id:
+        shop = Shop.query.get(shop_id)
+    if not shop:
+        shop = Shop.query.first()
+
+    if shop:
+        send_shop_email(shop, "forgot_password", email, {
+            "name": user.name or user.username,
+            "reset_link": reset_token
+        })
+
+    return jsonify({"message": "If the email is registered, a reset code has been sent."}), 200
+
+
+@user_bp.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.get_json() or {}
+    email = data.get('email')
+    reset_token = data.get('reset_token')
+    new_password = data.get('new_password')
+
+    if not email or not reset_token or not new_password:
+        return jsonify({"error": "Email, reset token, and new password are required"}), 400
+
+    user = User.query.filter(
+        User.email == email,
+        User.reset_token == reset_token,
+        User.reset_token_expiry > datetime.now()
+    ).first()
+
+    if not user:
+        return jsonify({"error": "Invalid or expired reset token"}), 400
+
+    user.set_password(new_password)
+    user.reset_token = None
+    user.reset_token_expiry = None
+    db.session.commit()
+
+    log_user_action(user.id, user.username, "Reset password successfully")
+
+    return jsonify({"message": "Password reset successfully"}), 200
 
 # PROFILE MANAGEMENT
 @user_bp.route('/profile', methods=['GET', 'PUT'])
@@ -486,6 +707,23 @@ def create_order():
     )
     db.session.add(notif)
     db.session.commit()
+
+    # Construct items summary for email placeholder
+    try:
+        items_summary = []
+        for item in order.items:
+            items_summary.append(f"{item.product_name} x {item.quantity} (${item.price})")
+        items_str = ", ".join(items_summary)
+
+        # Send purchase confirmation email
+        send_shop_email(shop, "purchase", user.email, {
+            "name": user.name or user.username,
+            "order_id": order.id,
+            "total_amount": order.final_amount,
+            "items": items_str
+        })
+    except Exception as e:
+        print(f"Error sending order confirmation email: {e}")
 
     return jsonify({"message": "Order placed successfully", "order": order.serialize()}), 201
 

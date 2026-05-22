@@ -57,6 +57,15 @@ class Shop(db.Model):
     saree_models_json = db.Column(db.Text, nullable=True)
     banners_json = db.Column(db.Text, nullable=True)
     
+    # SMTP details
+    smtp_host = db.Column(db.String(255), nullable=True)
+    smtp_port = db.Column(db.Integer, nullable=True)
+    smtp_user = db.Column(db.String(255), nullable=True)
+    smtp_password = db.Column(db.String(255), nullable=True)
+    smtp_use_tls = db.Column(db.Boolean, default=True)
+    smtp_sender_name = db.Column(db.String(255), nullable=True)
+    email_templates_json = db.Column(db.Text, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships
@@ -136,6 +145,36 @@ class Shop(db.Model):
     def banners(self, value):
         self.banners_json = json.dumps(value)
 
+    @property
+    def email_templates(self):
+        if not self.email_templates_json:
+            return {
+                "otp": {
+                    "subject": "Your OTP Code for {shop_name}",
+                    "body": "Hello {name},\n\nYour One-Time Password (OTP) is: {otp}\n\nThis code will expire in 10 minutes.\n\nBest regards,\n{shop_name}"
+                },
+                "forgot_password": {
+                    "subject": "Reset Password for {shop_name}",
+                    "body": "Hello {name},\n\nYou requested to reset your password. Please use this temporary code to reset it: {reset_link}\n\nIf you did not request this, please ignore this mail.\n\nBest regards,\n{shop_name}"
+                },
+                "purchase": {
+                    "subject": "Order Confirmation #{order_id} - {shop_name}",
+                    "body": "Hello {name},\n\nThank you for your purchase! We have received your order #{order_id}.\n\nOrder Details:\nTotal Amount: {total_amount}\nItems: {items}\n\nWe will update you once your order is shipped.\n\nBest regards,\n{shop_name}"
+                },
+                "login": {
+                    "subject": "New Login Alert - {shop_name}",
+                    "body": "Hello {name},\n\nWe detected a new login to your {shop_name} account on {time}.\n\nIf this was you, no action is needed. Otherwise, please contact support immediately.\n\nBest regards,\n{shop_name}"
+                }
+            }
+        try:
+            return json.loads(self.email_templates_json)
+        except Exception:
+            return {}
+
+    @email_templates.setter
+    def email_templates(self, value):
+        self.email_templates_json = json.dumps(value)
+
     def serialize(self):
         return {
             "id": self.id,
@@ -155,6 +194,13 @@ class Shop(db.Model):
             "gst_inclusive": self.gst_inclusive,
             "saree_models": self.saree_models,
             "banners": self.banners,
+            "smtp_host": self.smtp_host,
+            "smtp_port": self.smtp_port,
+            "smtp_user": self.smtp_user,
+            "smtp_password": self.smtp_password,
+            "smtp_use_tls": self.smtp_use_tls if self.smtp_use_tls is not None else True,
+            "smtp_sender_name": self.smtp_sender_name,
+            "email_templates": self.email_templates,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -203,6 +249,8 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     addresses_json = db.Column(db.Text, nullable=True)
     last_used_address_id = db.Column(db.Integer, nullable=True)
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)
 
     @property
     def addresses(self):
@@ -637,4 +685,22 @@ class Collection(db.Model):
             "category_ids": self.category_ids,
             "separate_categories_mobile": self.separate_categories_mobile or False,
             "show_category_banner": self.show_category_banner if self.show_category_banner is not None else True
+        }
+
+class OTPVerification(db.Model):
+    __tablename__ = 'otp_verifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), nullable=False)
+    otp_code = db.Column(db.String(10), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_verified = db.Column(db.Boolean, default=False)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "otp_code": self.otp_code,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "is_verified": self.is_verified
         }

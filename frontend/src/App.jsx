@@ -698,6 +698,23 @@ export default function App() {
   // Admin Workspace states
   const [adminShop, setAdminShop] = useState(null);
   const [adminProducts, setAdminProducts] = useState([]);
+
+  // SMTP settings and Email Template helper states
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState("otp");
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testTemplateType, setTestTemplateType] = useState("otp");
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+
+  // Forgot Password / OTP Login modal states
+  const [forgotPasswordStep, setForgotPasswordStep] = useState('none'); // 'none', 'request', 'verify'
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotResetCode, setForgotResetCode] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+
+  const [otpLoginStep, setOtpLoginStep] = useState('none'); // 'none', 'request', 'verify'
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [requestingOtp, setRequestingOtp] = useState(false);
   const [adminCategories, setAdminCategories] = useState([]);
   const [adminCollections, setAdminCollections] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
@@ -1643,6 +1660,150 @@ export default function App() {
     } catch (e) {}
   };
 
+  const handleSendTestEmail = async () => {
+    if (!testRecipient) {
+      addToast("Error", "Please enter a recipient email.", "danger");
+      return;
+    }
+    setSendingTestEmail(true);
+    try {
+      const payload = {
+        recipient: testRecipient,
+        smtp_host: adminShop.smtp_host,
+        smtp_port: adminShop.smtp_port,
+        smtp_user: adminShop.smtp_user,
+        smtp_password: adminShop.smtp_password,
+        smtp_use_tls: !!adminShop.smtp_use_tls,
+        smtp_sender_name: adminShop.smtp_sender_name,
+        template_type: testTemplateType,
+        email_templates: adminShop.email_templates
+      };
+      const res = await fetch(`${API_BASE}/admin/shop/test-smtp`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Test Email Sent", data.message || "Test email sent successfully!", "success");
+      } else {
+        addToast("SMTP Test Failed", data.error || "Failed to send test email.", "danger");
+      }
+    } catch (err) {
+      addToast("SMTP Error", "An error occurred while testing SMTP.", "danger");
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
+  const handleTemplateChange = (field, value) => {
+    setAdminShop(prev => {
+      const templates = { ...prev.email_templates };
+      templates[selectedTemplateKey] = {
+        ...templates[selectedTemplateKey],
+        [field]: value
+      };
+      return { ...prev, email_templates: templates };
+    });
+  };
+
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
+    if (!otpEmail) return;
+    setRequestingOtp(true);
+    try {
+      const res = await fetch(`${API_BASE}/user/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, shop_id: activeShopId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("OTP Sent", "OTP code sent to your email.", "success");
+        setOtpLoginStep('verify');
+      } else {
+        addToast("OTP Request Failed", data.error || "Failed to request OTP.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Failed to send OTP request.", "danger");
+    } finally {
+      setRequestingOtp(false);
+    }
+  };
+
+  const handleVerifyOtpLogin = async (e) => {
+    e.preventDefault();
+    if (!otpEmail || !otpCode) return;
+    try {
+      const res = await fetch(`${API_BASE}/user/otp-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, otp_code: otpCode, shop_id: activeShopId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToken(data.token);
+        setUser(data.user);
+        setRole(data.user.role || 'user');
+        localStorage.setItem("userToken", data.token);
+        setShowLoginModal(false);
+        setOtpLoginStep('none');
+        setOtpEmail('');
+        setOtpCode('');
+        addToast("Logged In", data.message || "Successfully logged in via OTP!", "success");
+      } else {
+        addToast("Verification Failed", data.error || "Invalid OTP code.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "OTP Verification failed.", "danger");
+    }
+  };
+
+  const handleRequestForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    try {
+      const res = await fetch(`${API_BASE}/user/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, shop_id: activeShopId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Code Sent", "If the email exists, a password reset code was sent.", "success");
+        setForgotPasswordStep('verify');
+      } else {
+        addToast("Error", data.error || "Failed to request reset.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "An error occurred.", "danger");
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotResetCode || !forgotNewPassword) return;
+    try {
+      const res = await fetch(`${API_BASE}/user/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, reset_token: forgotResetCode, new_password: forgotNewPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Password Reset", "Your password has been reset successfully.", "success");
+        setForgotPasswordStep('none');
+        setForgotEmail('');
+        setForgotResetCode('');
+        setForgotNewPassword('');
+      } else {
+        addToast("Reset Failed", data.error || "Invalid or expired reset code.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Password reset failed.", "danger");
+    }
+  };
+
   const loadAdminCategories = async () => {
     try {
       const res = await fetch(`${API_BASE}/admin/categories`, { headers: getHeaders() });
@@ -2471,7 +2632,207 @@ export default function App() {
               color: '#111',
               zIndex: 5
             }}>
-              {!showRegister ? (
+              {forgotPasswordStep !== 'none' ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Reset Password</h3>
+                    <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '6px auto 0', borderRadius: '2px' }} />
+                    <p style={{ color: '#666666', fontSize: '0.85rem', marginTop: '6px', marginBottom: 0 }}>
+                      {forgotPasswordStep === 'request' ? 'Request a reset code' : 'Enter reset code and new password'}
+                    </p>
+                  </div>
+
+                  {forgotPasswordStep === 'request' ? (
+                    <form onSubmit={handleRequestForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="email" 
+                          placeholder="Email Address"
+                          value={forgotEmail}
+                          onChange={e => setForgotEmail(e.target.value)}
+                          className="nobaraa-login-input"
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" style={{ 
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '10px', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                      }}>
+                        Send Reset Code <ChevronRight size={18} />
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="email" 
+                          placeholder="Email Address"
+                          value={forgotEmail}
+                          disabled
+                          className="nobaraa-login-input"
+                          style={{ opacity: 0.7 }}
+                          required
+                        />
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="text" 
+                          placeholder="6-digit Reset Code"
+                          value={forgotResetCode}
+                          onChange={e => setForgotResetCode(e.target.value)}
+                          className="nobaraa-login-input"
+                          required
+                        />
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="password" 
+                          placeholder="New Password"
+                          value={forgotNewPassword}
+                          onChange={e => setForgotNewPassword(e.target.value)}
+                          className="nobaraa-login-input"
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" style={{ 
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '10px', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                      }}>
+                        Reset Password <ChevronRight size={18} />
+                      </button>
+                    </form>
+                  )}
+
+                  <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.88rem', color: '#666666', margin: '16px 0 0' }}>
+                    Remember password? <span onClick={() => { setForgotPasswordStep('none'); setOtpLoginStep('none'); }} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Back to Login</span>
+                  </p>
+                </>
+              ) : otpLoginStep !== 'none' ? (
+                <>
+                  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Login with OTP</h3>
+                    <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '6px auto 0', borderRadius: '2px' }} />
+                    <p style={{ color: '#666666', fontSize: '0.85rem', marginTop: '6px', marginBottom: 0 }}>
+                      {otpLoginStep === 'request' ? 'Request an OTP verification code' : 'Verify the OTP sent to your email'}
+                    </p>
+                  </div>
+
+                  {otpLoginStep === 'request' ? (
+                    <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="email" 
+                          placeholder="Email Address"
+                          value={otpEmail}
+                          onChange={e => setOtpEmail(e.target.value)}
+                          className="nobaraa-login-input"
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" disabled={requestingOtp} style={{ 
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '10px', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                        opacity: requestingOtp ? 0.7 : 1
+                      }}>
+                        {requestingOtp ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleVerifyOtpLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ position: 'relative' }}>
+                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="email" 
+                          placeholder="Email Address"
+                          value={otpEmail}
+                          disabled
+                          className="nobaraa-login-input"
+                          style={{ opacity: 0.7 }}
+                          required
+                        />
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                        <input 
+                          type="text" 
+                          placeholder="6-digit OTP Code"
+                          value={otpCode}
+                          onChange={e => setOtpCode(e.target.value)}
+                          className="nobaraa-login-input"
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" style={{ 
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
+                        color: 'white', 
+                        border: 'none', 
+                        padding: '12px', 
+                        borderRadius: '10px', 
+                        fontSize: '0.95rem', 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                      }}>
+                        Verify & Login <ChevronRight size={18} />
+                      </button>
+                    </form>
+                  )}
+
+                  <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.88rem', color: '#666666', margin: '16px 0 0' }}>
+                    Or use password? <span onClick={() => { setForgotPasswordStep('none'); setOtpLoginStep('none'); }} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Back to Login</span>
+                  </p>
+                </>
+              ) : !showRegister ? (
                 <>
                   <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                     <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Hello Again!</h3>
@@ -2521,7 +2882,11 @@ export default function App() {
                         />
                         Remember Me
                       </label>
-                      <span style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer' }}>Forgot Password?</span>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <span onClick={() => { setOtpLoginStep('request'); setForgotPasswordStep('none'); setShowRegister(false); }} style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer' }}>Login with OTP</span>
+                        <span style={{ color: '#ccc' }}>|</span>
+                        <span onClick={() => { setForgotPasswordStep('request'); setOtpLoginStep('none'); setShowRegister(false); }} style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer' }}>Forgot Password?</span>
+                      </div>
                     </div>
 
                     <button type="submit" style={{ 
@@ -2555,7 +2920,7 @@ export default function App() {
                   </div>
 
                   <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.88rem', color: '#666666', margin: '16px 0 0' }}>
-                    Don't have an account? <span onClick={() => setShowRegister(true)} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Sign Up</span>
+                    Don't have an account? <span onClick={() => { setShowRegister(true); setForgotPasswordStep('none'); setOtpLoginStep('none'); }} style={{ color: '#7a4ea5', fontWeight: 700, cursor: 'pointer' }}>Sign Up</span>
                   </p>
                 </>
               ) : (
@@ -6674,6 +7039,214 @@ export default function App() {
                   >
                     <Plus size={14} /> Add Hero Banner
                   </button>
+                </div>
+
+                {/* SMTP Email Settings Section */}
+                <div style={{ borderTop: '2px solid rgba(122, 78, 165, 0.15)', paddingTop: '24px', marginTop: '20px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Settings size={20} /> SMTP Mail Server Integration
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+                    Configure the custom SMTP email server for triggering system alerts, transactional checkout receipts, OTP verification codes, and security login notifications.
+                  </p>
+                  
+                  <div className="admin-grid-2col" style={{ marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Host Server</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. smtp.gmail.com or smtp.mailtrap.io"
+                        value={adminShop.smtp_host || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, smtp_host: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Port Number</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g. 587 or 465"
+                        value={adminShop.smtp_port || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, smtp_port: e.target.value ? parseInt(e.target.value) : "" }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-grid-2col" style={{ marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Username / User Email</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. your-email@gmail.com"
+                        value={adminShop.smtp_user || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, smtp_user: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Password / App Secret</label>
+                      <input 
+                        type="password" 
+                        placeholder="••••••••••••••••"
+                        value={adminShop.smtp_password || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, smtp_password: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="admin-grid-2col" style={{ marginBottom: '24px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Default Sender Display Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Nobaraa Customer Support"
+                        value={adminShop.smtp_sender_name || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, smtp_sender_name: e.target.value }))}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '100%' }}>
+                      <label style={{ fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', userSelect: 'none', marginTop: '24px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={!!adminShop.smtp_use_tls}
+                          onChange={e => setAdminShop(prev => ({ ...prev, smtp_use_tls: e.target.checked }))}
+                          style={{ width: '18px', height: '18px', accentColor: '#7a4ea5' }}
+                        />
+                        Secure Server Connection (Use STARTTLS / SSL)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live SMTP Settings Test Utility */}
+                <div style={{ backgroundColor: 'rgba(122, 78, 165, 0.05)', borderRadius: '12px', padding: '16px', border: '1px dashed rgba(122, 78, 165, 0.25)', marginBottom: '30px' }}>
+                  <h5 style={{ fontWeight: 700, marginBottom: '8px', color: '#2b0b57' }}>SMTP Server Integration Tester</h5>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                    Verify credentials and active mail transport. Send a direct sample notification to any target mailbox.
+                  </p>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Recipient Mailbox</label>
+                      <input 
+                        type="email" 
+                        placeholder="recipient@example.com"
+                        value={testRecipient}
+                        onChange={e => setTestRecipient(e.target.value)}
+                        style={{ height: '38px', fontSize: '0.85rem' }}
+                      />
+                    </div>
+                    <div style={{ minWidth: '150px' }}>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Test Template Theme</label>
+                      <select 
+                        value={testTemplateType}
+                        onChange={e => setTestTemplateType(e.target.value)}
+                        style={{ height: '38px', fontSize: '0.85rem', padding: '0 8px' }}
+                      >
+                        <option value="otp">OTP Verification Code</option>
+                        <option value="forgot_password">Password Recovery Code</option>
+                        <option value="purchase">Order Receipt Confirmation</option>
+                        <option value="login">Account Access Alert</option>
+                      </select>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={handleSendTestEmail}
+                      disabled={sendingTestEmail}
+                      className="btn-secondary"
+                      style={{ height: '38px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap', border: '1px solid #7a4ea5', color: '#7a4ea5' }}
+                    >
+                      {sendingTestEmail ? "Sending..." : "Trigger Test Email"} <Send size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email Templates Customization Panel */}
+                <div style={{ borderTop: '2px solid rgba(122, 78, 165, 0.15)', paddingTop: '24px', marginBottom: '30px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={20} /> Customizable Transactional Email Templates
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
+                    Alter layout structures, custom greetings, and brand footnotes for notifications. Insert specified badges inside brackets to replace dynamically.
+                  </p>
+                  
+                  {/* Select template type */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'otp', label: 'OTP Code' },
+                      { key: 'forgot_password', label: 'Forgot Password' },
+                      { key: 'purchase', label: 'Purchase Confirmation' },
+                      { key: 'login', label: 'Login Alert' }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setSelectedTemplateKey(tab.key)}
+                        style={{
+                          padding: '8px 16px',
+                          fontSize: '0.85rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: selectedTemplateKey === tab.key ? '#7a4ea5' : 'rgba(122,78,165,0.06)',
+                          color: selectedTemplateKey === tab.key ? '#fff' : '#7a4ea5',
+                          fontWeight: selectedTemplateKey === tab.key ? 700 : 500,
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Edit Template Form */}
+                  <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.3)' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Subject Line</label>
+                      <input 
+                        type="text" 
+                        value={adminShop.email_templates?.[selectedTemplateKey]?.subject || ""}
+                        onChange={e => handleTemplateChange("subject", e.target.value)}
+                        placeholder="Subject Line"
+                        required
+                      />
+                    </div>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email HTML/Text Body Content</label>
+                      <textarea 
+                        value={adminShop.email_templates?.[selectedTemplateKey]?.body || ""}
+                        onChange={e => handleTemplateChange("body", e.target.value)}
+                        placeholder="Email Body Content"
+                        rows={8}
+                        required
+                        style={{ fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5' }}
+                      />
+                    </div>
+
+                    {/* Placeholder Guide Badges */}
+                    <div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
+                        Supported Dynamic Placeholders:
+                      </span>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#d0bdf4', color: '#2b0b57', borderRadius: '6px', fontWeight: 600 }}>{"{shop_name}"}</span>
+                        <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#d0bdf4', color: '#2b0b57', borderRadius: '6px', fontWeight: 600 }}>{"{name}"}</span>
+                        {selectedTemplateKey === 'otp' && (
+                          <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{otp}"}</span>
+                        )}
+                        {selectedTemplateKey === 'forgot_password' && (
+                          <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{reset_link}"}</span>
+                        )}
+                        {selectedTemplateKey === 'purchase' && (
+                          <>
+                            <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{order_id}"}</span>
+                            <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{total_amount}"}</span>
+                            <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{items}"}</span>
+                          </>
+                        )}
+                        {selectedTemplateKey === 'login' && (
+                          <span style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e8dbfc', color: '#7a4ea5', borderRadius: '6px', fontWeight: 700 }}>{"{time}"}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <button type="submit" className="btn-primary" style={{ width: 'fit-content' }}>
