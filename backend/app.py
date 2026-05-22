@@ -107,7 +107,7 @@ def unified_login():
     user = User.query.filter_by(username=username).first()
     if user and user.check_password(password):
         token = generate_token(user.id, user.username, 'user')
-        log_user_action(user.id, user.username, "User logged in successfully")
+        log_user_action(user.id, user.username, "User logged in successfully", shop_id=data.get('shop_id'))
 
         # Send login email alert if shop_id is provided
         shop_id = data.get('shop_id')
@@ -121,6 +121,10 @@ def unified_login():
                     send_shop_email(shop, "login", user.email, {
                         "name": user.name or user.username,
                         "time": time_str
+                    }, sender_info={
+                        "actor_type": "user",
+                        "actor_id": user.id,
+                        "username": user.username
                     })
                 except Exception as e:
                     print(f"Error sending login alert email: {e}")

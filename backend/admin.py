@@ -160,6 +160,7 @@ def test_smtp_configuration():
         templates_json = shop.email_templates_json
 
     test_shop = Shop(
+        id=shop.id,
         name=shop.name,
         smtp_host=data.get('smtp_host', shop.smtp_host),
         smtp_port=int(data.get('smtp_port')) if data.get('smtp_port') else shop.smtp_port,
@@ -183,7 +184,11 @@ def test_smtp_configuration():
     }
 
     test_template_type = data.get('template_type', 'otp')
-    success = send_shop_email(test_shop, test_template_type, recipient, placeholders)
+    success = send_shop_email(test_shop, test_template_type, recipient, placeholders, sender_info={
+        "actor_type": "admin",
+        "actor_id": request.user['user_id'],
+        "username": request.user['username']
+    })
     if success:
         return jsonify({"message": f"Test email sent successfully to {recipient}!"}), 200
     else:

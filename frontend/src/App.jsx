@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
-  Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, 
+  Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download
 } from 'lucide-react';
@@ -727,6 +727,7 @@ export default function App() {
   const [adminCoupons, setAdminCoupons] = useState([]);
   const [adminHelpTickets, setAdminHelpTickets] = useState([]);
   const [adminLogs, setAdminLogs] = useState([]);
+  const [adminLogTab, setAdminLogTab] = useState('all'); // 'all' | 'system' | 'smtp'
   const [adminSmsLogs, setAdminSmsLogs] = useState([]);
   const [gstReport, setGstReport] = useState(null);
   const [gstFilterDate, setGstFilterDate] = useState("");
@@ -791,6 +792,7 @@ export default function App() {
   const [superShops, setSuperShops] = useState([]);
   const [superAdmins, setSuperAdmins] = useState([]);
   const [superLogs, setSuperLogs] = useState([]);
+  const [superLogTab, setSuperLogTab] = useState('all'); // 'all' | 'system' | 'smtp'
   const [superOrders, setSuperOrders] = useState([]);
   const [superCustomers, setSuperCustomers] = useState([]);
   const [superCustomerSearch, setSuperCustomerSearch] = useState("");
@@ -806,6 +808,61 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4500);
+  };
+
+  const renderLogDescription = (action) => {
+    if (action && action.startsWith('[SMTP]')) {
+      const isSuccess = action.includes('SUCCESS');
+      const typeMatch = action.match(/Type:\s*([^\s|]+)/);
+      const toMatch = action.match(/To:\s*([^\s|()]+)/);
+      const errMatch = action.match(/\(Error:\s*([^)]+)\)/);
+      
+      const type = typeMatch ? typeMatch[1] : 'unknown';
+      const recipient = toMatch ? toMatch[1] : 'unknown';
+      const error = errMatch ? errMatch[1] : null;
+
+      const badgeColor = isSuccess ? 'var(--accent-primary, #9a84c8)' : 'var(--accent-danger, #e84e7e)';
+      const typeLabel = type.toUpperCase().replace('_', ' ');
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ 
+              background: isSuccess ? 'rgba(154, 132, 200, 0.1)' : 'rgba(232, 78, 126, 0.1)', 
+              color: badgeColor, 
+              padding: '2px 8px', 
+              borderRadius: '12px', 
+              fontSize: '0.75rem', 
+              fontWeight: 700 
+            }}>
+              {isSuccess ? 'SENT' : 'FAILED'}
+            </span>
+            <span style={{ 
+              background: '#f3f0f7', 
+              color: '#5c3a85', 
+              padding: '2px 8px', 
+              borderRadius: '4px', 
+              fontSize: '0.75rem', 
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <Mail size={12} /> {typeLabel}
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Recipient: <strong style={{ color: 'var(--text-main)' }}>{recipient}</strong>
+            </span>
+          </div>
+          {!isSuccess && error && (
+            <span style={{ color: 'var(--accent-danger)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontWeight: 600 }}>Error:</span> {error}
+            </span>
+          )}
+        </div>
+      );
+    }
+    return action;
   };
 
   const handleUploadFile = async (file, onUploadComplete) => {
@@ -1060,7 +1117,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginForm)
+        body: JSON.stringify({ ...loginForm, shop_id: activeShopId })
       });
       const data = await res.json();
 
@@ -1101,7 +1158,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/user/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registerForm)
+        body: JSON.stringify({ ...registerForm, shop_id: activeShopId })
       });
       const data = await res.json();
       if (res.ok) {
@@ -1156,7 +1213,7 @@ export default function App() {
           const res = await fetch(`${API_BASE}/user/google-login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ credential: response.credential })
+            body: JSON.stringify({ credential: response.credential, shop_id: activeShopId })
           });
           const data = await res.json();
 
@@ -1216,7 +1273,8 @@ export default function App() {
 
       await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: getHeaders()
+        headers: getHeaders(),
+        body: endpoint === "/user/logout" ? JSON.stringify({ shop_id: activeShopId }) : undefined
       });
     } catch (e) {}
 
@@ -1303,7 +1361,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/user/profile`, {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify(profileForm)
+        body: JSON.stringify({ ...profileForm, shop_id: activeShopId })
       });
       const data = await res.json();
       if (res.ok) {
@@ -1787,7 +1845,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/user/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, reset_token: forgotResetCode, new_password: forgotNewPassword })
+        body: JSON.stringify({ email: forgotEmail, reset_token: forgotResetCode, new_password: forgotNewPassword, shop_id: activeShopId })
       });
       const data = await res.json();
       if (res.ok) {
@@ -9584,33 +9642,114 @@ export default function App() {
             )}
 
             {/* Logs Audit panel */}
-            {activePanel === 'logs' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Store System Logs</h2>
-                <div className="responsive-table-container glass-panel">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date & Time</th>
-                        <th>Actor</th>
-                        <th>Store ID</th>
-                        <th>System Activity Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {adminLogs.map(l => (
-                        <tr key={l.id}>
-                          <td>{new Date(l.created_at).toLocaleString()}</td>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
-                          <td>{l.shop_id || "Global Core"}</td>
-                          <td>{l.action}</td>
+            {activePanel === 'logs' && (() => {
+              const filteredLogs = adminLogs.filter(l => {
+                if (adminLogTab === 'all') return true;
+                const isSmtp = l.action && l.action.startsWith('[SMTP]');
+                if (adminLogTab === 'smtp') return isSmtp;
+                if (adminLogTab === 'system') return !isSmtp;
+                return true;
+              });
+
+              return (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Store System Logs</h2>
+                    
+                    {/* Log Filter Tabs */}
+                    <div style={{ 
+                      display: 'flex', 
+                      background: 'rgba(154, 132, 200, 0.05)', 
+                      padding: '4px', 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-subtle)' 
+                    }}>
+                      <button 
+                        onClick={() => setAdminLogTab('all')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: adminLogTab === 'all' ? 'var(--accent-primary)' : 'transparent',
+                          color: adminLogTab === 'all' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        All Activities
+                      </button>
+                      <button 
+                        onClick={() => setAdminLogTab('system')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: adminLogTab === 'system' ? 'var(--accent-primary)' : 'transparent',
+                          color: adminLogTab === 'system' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        System Activity
+                      </button>
+                      <button 
+                        onClick={() => setAdminLogTab('smtp')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: adminLogTab === 'smtp' ? 'var(--accent-primary)' : 'transparent',
+                          color: adminLogTab === 'smtp' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Mail size={14} /> SMTP Emails
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date & Time</th>
+                          <th>Actor</th>
+                          <th>Store ID</th>
+                          <th>System Activity Description</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {filteredLogs.map(l => (
+                          <tr key={l.id}>
+                            <td>{new Date(l.created_at).toLocaleString()}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
+                            <td>{l.shop_id || "Global Core"}</td>
+                            <td>{renderLogDescription(l.action)}</td>
+                          </tr>
+                        ))}
+                        {filteredLogs.length === 0 && (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                              No log entries found for this category.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
           </main>
         </div>
@@ -9976,33 +10115,114 @@ export default function App() {
             )}
 
             {/* Absolute Audit logs */}
-            {activePanel === 'audit_logs' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Absolute Audit Logs</h2>
-                <div className="responsive-table-container glass-panel">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Date & Time</th>
-                        <th>Actor</th>
-                        <th>Store ID</th>
-                        <th>System Activity Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {superLogs.map(l => (
-                        <tr key={l.id}>
-                          <td>{new Date(l.created_at).toLocaleString()}</td>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
-                          <td>{l.shop_id || "Global Core"}</td>
-                          <td>{l.action}</td>
+            {activePanel === 'audit_logs' && (() => {
+              const filteredLogs = superLogs.filter(l => {
+                if (superLogTab === 'all') return true;
+                const isSmtp = l.action && l.action.startsWith('[SMTP]');
+                if (superLogTab === 'smtp') return isSmtp;
+                if (superLogTab === 'system') return !isSmtp;
+                return true;
+              });
+
+              return (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Absolute Audit Logs</h2>
+
+                    {/* Log Filter Tabs */}
+                    <div style={{ 
+                      display: 'flex', 
+                      background: 'rgba(154, 132, 200, 0.05)', 
+                      padding: '4px', 
+                      borderRadius: '8px', 
+                      border: '1px solid var(--border-subtle)' 
+                    }}>
+                      <button 
+                        onClick={() => setSuperLogTab('all')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: superLogTab === 'all' ? 'var(--accent-primary)' : 'transparent',
+                          color: superLogTab === 'all' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        All Activities
+                      </button>
+                      <button 
+                        onClick={() => setSuperLogTab('system')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: superLogTab === 'system' ? 'var(--accent-primary)' : 'transparent',
+                          color: superLogTab === 'system' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        System Activity
+                      </button>
+                      <button 
+                        onClick={() => setSuperLogTab('smtp')} 
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: superLogTab === 'smtp' ? 'var(--accent-primary)' : 'transparent',
+                          color: superLogTab === 'smtp' ? '#ffffff' : 'var(--text-muted)',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Mail size={14} /> SMTP Emails
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Date & Time</th>
+                          <th>Actor</th>
+                          <th>Store ID</th>
+                          <th>System Activity Description</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {filteredLogs.map(l => (
+                          <tr key={l.id}>
+                            <td>{new Date(l.created_at).toLocaleString()}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{l.username} (<span style={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>{l.actor_type}</span>)</td>
+                            <td>{l.shop_id || "Global Core"}</td>
+                            <td>{renderLogDescription(l.action)}</td>
+                          </tr>
+                        ))}
+                        {filteredLogs.length === 0 && (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                              No log entries found for this category.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Customer accounts list */}
             {activePanel === 'customers' && (

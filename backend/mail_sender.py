@@ -72,18 +72,71 @@ def wrap_in_premium_template(shop, body_html, template_type):
 </html>"""
     return html_layout
 
-def send_shop_email(shop, template_type, recipient_email, placeholders):
+def log_smtp_action(shop, template_type, recipient_email, success, error_msg=None, sender_info=None):
+    try:
+        from models import db, SystemLog, User
+        from flask import request, has_request_context
+
+        actor_type = 'system'
+        actor_id = None
+        username = 'system'
+
+        if sender_info:
+            actor_type = sender_info.get('actor_type', 'system')
+            actor_id = sender_info.get('actor_id')
+            username = sender_info.get('username', 'system')
+        elif has_request_context() and hasattr(request, 'user') and request.user:
+            actor_type = request.user.get('role', 'system')
+            actor_id = request.user.get('user_id')
+            username = request.user.get('username', 'system')
+        else:
+            # Fallback based on template_type
+            if template_type in ['otp', 'forgot_password']:
+                actor_type = 'visitor'
+                username = recipient_email
+            elif template_type == 'purchase':
+                actor_type = 'user'
+                # Attempt to find user
+                usr = User.query.filter_by(email=recipient_email).first()
+                if usr:
+                    actor_id = usr.id
+                    username = usr.username
+                else:
+                    username = recipient_email
+
+        status_str = "SUCCESS" if success else "FAILED"
+        err_suffix = f" (Error: {error_msg})" if error_msg else ""
+        action_msg = f"[SMTP] {status_str} | Type: {template_type} | To: {recipient_email}{err_suffix}"
+
+        log = SystemLog(
+            actor_type=actor_type,
+            actor_id=actor_id,
+            username=username,
+            action=action_msg,
+            shop_id=shop.id
+        )
+        db.session.add(log)
+        db.session.commit()
+        print(f"Logged SMTP action: {action_msg}")
+    except Exception as log_err:
+        print(f"Failed to log SMTP action: {log_err}")
+
+def send_shop_email(shop, template_type, recipient_email, placeholders, sender_info=None):
     """
     Load SMTP settings and template from the shop, replace placeholders, and send via smtplib.
     """
     if not shop.smtp_host or not shop.smtp_port or not shop.smtp_user or not shop.smtp_password:
-        print(f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping email.")
+        msg = f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping email."
+        print(msg)
+        log_smtp_action(shop, template_type, recipient_email, False, "SMTP settings not configured", sender_info)
         return False
 
     templates = shop.email_templates
     template = templates.get(template_type)
     if not template:
-        print(f"Template type '{template_type}' not found for shop {shop.name}.")
+        msg = f"Template type '{template_type}' not found for shop {shop.name}."
+        print(msg)
+        log_smtp_action(shop, template_type, recipient_email, False, msg, sender_info)
         return False
 
     subject_tmpl = template.get("subject", "")
@@ -133,7 +186,10 @@ def send_shop_email(shop, template_type, recipient_email, placeholders):
         server.send_message(msg)
         server.quit()
         print(f"Email type '{template_type}' sent to {recipient_email} via shop {shop.name} SMTP.")
+        log_smtp_action(shop, template_type, recipient_email, True, sender_info=sender_info)
         return True
     except Exception as e:
-        print(f"SMTP error sending email to {recipient_email} via shop {shop.name}: {e}")
+        err_msg = str(e)
+        print(f"SMTP error sending email to {recipient_email} via shop {shop.name}: {err_msg}")
+        log_smtp_action(shop, template_type, recipient_email, False, err_msg, sender_info)
         return False

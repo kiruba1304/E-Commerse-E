@@ -21,6 +21,21 @@ def _get_google_client_id():
 
 def log_user_action(user_id, username, action, shop_id=None):
     try:
+        if shop_id is None:
+            from flask import request, has_request_context
+            if has_request_context():
+                try:
+                    data = request.get_json(silent=True) or {}
+                    shop_id = data.get('shop_id')
+                except Exception:
+                    pass
+                if shop_id is None:
+                    shop_id = request.args.get('shop_id')
+        if shop_id is None:
+            first_shop = Shop.query.first()
+            if first_shop:
+                shop_id = first_shop.id
+
         log = SystemLog(
             actor_type='user',
             actor_id=user_id,
@@ -33,6 +48,7 @@ def log_user_action(user_id, username, action, shop_id=None):
     except Exception as e:
         print("Log error:", e)
         db.session.rollback()
+
 
 
 def _build_google_username(email, name=None):
@@ -92,7 +108,7 @@ def register():
     db.session.add(user)
     db.session.commit()
 
-    log_user_action(user.id, user.username, "Registered new customer account")
+    log_user_action(user.id, user.username, "Registered new customer account", shop_id=data.get('shop_id'))
 
     # Generate token immediately
     token = generate_token(user.id, user.username, 'user')
@@ -117,7 +133,7 @@ def login():
 
     token = generate_token(user.id, user.username, 'user')
     
-    log_user_action(user.id, user.username, "User logged in successfully")
+    log_user_action(user.id, user.username, "User logged in successfully", shop_id=data.get('shop_id'))
 
     # Send login alert email if shop_id is provided
     shop_id = data.get('shop_id')
@@ -129,6 +145,10 @@ def login():
                 send_shop_email(shop, "login", user.email, {
                     "name": user.name or user.username,
                     "time": time_str
+                }, sender_info={
+                    "actor_type": "user",
+                    "actor_id": user.id,
+                    "username": user.username
                 })
             except Exception as e:
                 print(f"Error sending login email: {e}")
@@ -184,7 +204,7 @@ def google_login():
 
     db.session.commit()
 
-    log_user_action(user.id, user.username, log_message)
+    log_user_action(user.id, user.username, log_message, shop_id=data.get('shop_id'))
 
     token = generate_token(user.id, user.username, 'user')
     user_data = user.serialize()
@@ -200,7 +220,8 @@ def google_login():
 @user_bp.route('/logout', methods=['POST'])
 @role_required(['user'])
 def logout():
-    log_user_action(request.user['user_id'], request.user['username'], "User logged out")
+    data = request.get_json(silent=True) or {}
+    log_user_action(request.user['user_id'], request.user['username'], "User logged out", shop_id=data.get('shop_id'))
     return jsonify({"message": "Logout successful"}), 200
 
 
@@ -313,10 +334,10 @@ def otp_login():
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
         db.session.commit()
-        log_user_action(user.id, user.username, "Registered new customer account via OTP")
+        log_user_action(user.id, user.username, "Registered new customer account via OTP", shop_id=shop_id)
     else:
         db.session.commit()
-        log_user_action(user.id, user.username, "User logged in via OTP")
+        log_user_action(user.id, user.username, "User logged in via OTP", shop_id=shop_id)
 
     # Generate token
     token = generate_token(user.id, user.username, 'user')
@@ -334,6 +355,10 @@ def otp_login():
             send_shop_email(shop, "login", email, {
                 "name": user.name or user.username,
                 "time": time_str
+            }, sender_info={
+                "actor_type": "user",
+                "actor_id": user.id,
+                "username": user.username
             })
         except Exception as e:
             print(f"Error sending login email: {e}")
@@ -374,6 +399,10 @@ def forgot_password():
         send_shop_email(shop, "forgot_password", email, {
             "name": user.name or user.username,
             "reset_link": reset_token
+        }, sender_info={
+            "actor_type": "user",
+            "actor_id": user.id,
+            "username": user.username
         })
 
     return jsonify({"message": "If the email is registered, a reset code has been sent."}), 200
@@ -403,7 +432,7 @@ def reset_password():
     user.reset_token_expiry = None
     db.session.commit()
 
-    log_user_action(user.id, user.username, "Reset password successfully")
+    log_user_action(user.id, user.username, "Reset password successfully", shop_id=data.get('shop_id'))
 
     return jsonify({"message": "Password reset successfully"}), 200
 
@@ -433,7 +462,7 @@ def manage_profile():
         user.set_password(data['password'])
 
     db.session.commit()
-    log_user_action(user.id, user.username, "Updated profile info")
+    log_user_action(user.id, user.username, "Updated profile info", shop_id=data.get('shop_id'))
     return jsonify({"message": "Profile updated successfully", "user": user.serialize()}), 200
 
 # PERSONALIZED DASHBOARD
@@ -721,6 +750,10 @@ def create_order():
             "order_id": order.id,
             "total_amount": order.final_amount,
             "items": items_str
+        }, sender_info={
+            "actor_type": "user",
+            "actor_id": user.id,
+            "username": user.username
         })
     except Exception as e:
         print(f"Error sending order confirmation email: {e}")
@@ -828,7 +861,9 @@ def submit_review():
         db.session.add(review)
 
     db.session.commit()
-    log_user_action(user_id, request.user['username'], f"Submitted {rating}-star review on product ID: {product_id}")
+    product = Product.query.get(product_id)
+    shop_id = product.shop_id if product else None
+    log_user_action(user_id, request.user['username'], f"Submitted {rating}-star review on product ID: {product_id}", shop_id=shop_id)
     return jsonify(review.serialize()), 200
 
 # NOTIFICATIONS CENTER FEED
