@@ -937,6 +937,7 @@ def create_customization():
     color_name = data.get('color_name')
     color_hex = data.get('color_hex')
     customization_notes = data.get('customization_notes')
+    quantity = data.get('quantity', 1)
     
     if not all([shop_id, product_id]):
         return jsonify({"error": "shop_id and product_id are required"}), 400
@@ -945,13 +946,25 @@ def create_customization():
     if not prod:
         return jsonify({"error": "Product not found in this shop"}), 404
         
+    shop = Shop.query.get(shop_id)
+    min_qty = shop.customization_min_quantity if (shop and shop.customization_min_quantity is not None) else 1
+    
+    try:
+        quantity = int(quantity)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid quantity value"}), 400
+        
+    if quantity < min_qty:
+        return jsonify({"error": f"Minimum quantity for custom orders is {min_qty}"}), 400
+        
     cust = CustomizationOrder(
         user_id=user_id,
         shop_id=shop_id,
         product_id=product_id,
         selected_color_name=color_name,
         selected_color_hex=color_hex,
-        customization_notes=customization_notes
+        customization_notes=customization_notes,
+        quantity=quantity
     )
     db.session.add(cust)
     db.session.commit()

@@ -66,6 +66,7 @@ class Shop(db.Model):
     smtp_sender_name = db.Column(db.String(255), nullable=True)
     email_templates_json = db.Column(db.Text, nullable=True)
     color_palette_json = db.Column(db.Text, nullable=True)
+    customization_min_quantity = db.Column(db.Integer, default=1, nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -217,6 +218,7 @@ class Shop(db.Model):
             "saree_models": self.saree_models,
             "banners": self.banners,
             "color_palette": self.color_palette,
+            "customization_min_quantity": self.customization_min_quantity if self.customization_min_quantity is not None else 1,
             "smtp_host": self.smtp_host,
             "smtp_port": self.smtp_port,
             "smtp_user": self.smtp_user,
@@ -746,6 +748,7 @@ class CustomizationOrder(db.Model):
     selected_color_name = db.Column(db.String(100), nullable=True)
     selected_color_hex = db.Column(db.String(50), nullable=True)
     customization_notes = db.Column(db.Text, nullable=True)
+    quantity = db.Column(db.Integer, default=1, nullable=False)
     status = db.Column(db.String(50), default='Pending') # Pending, In Progress, Dispatched, Completed, Rejected
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -767,6 +770,7 @@ class CustomizationOrder(db.Model):
             "selected_color_name": self.selected_color_name,
             "selected_color_hex": self.selected_color_hex,
             "customization_notes": self.customization_notes,
+            "quantity": self.quantity if self.quantity is not None else 1,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

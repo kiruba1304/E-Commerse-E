@@ -136,6 +136,11 @@ def manage_shop():
         shop.email_templates = data['email_templates']
     if 'color_palette' in data:
         shop.color_palette = data['color_palette']
+    if 'customization_min_quantity' in data:
+        try:
+            shop.customization_min_quantity = int(data['customization_min_quantity'])
+        except ValueError:
+            return jsonify({"error": "Invalid customization minimum quantity"}), 400
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")

@@ -793,6 +793,7 @@ export default function App() {
   const [customizingProduct, setCustomizingProduct] = useState(null);
   const [selectedCustomColor, setSelectedCustomColor] = useState(null);
   const [customSizingNotes, setCustomSizingNotes] = useState("");
+  const [customQuantity, setCustomQuantity] = useState(1);
   const [submittingCustomOrder, setSubmittingCustomOrder] = useState(false);
   const [userCustomizations, setUserCustomizations] = useState([]);
   const [adminCustomizations, setAdminCustomizations] = useState([]);
@@ -5958,6 +5959,7 @@ export default function App() {
                           const palette = currentShop?.color_palette || [];
                           setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                           setCustomSizingNotes("");
+                          setCustomQuantity(currentShop?.customization_min_quantity || 1);
                         }
                       }}
                       style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column', background: '#ffffff', transition: 'all 0.3s ease' }}
@@ -6085,6 +6087,27 @@ export default function App() {
                       />
                     </div>
 
+                    {/* Quantity Selector */}
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
+                        Quantity (Minimum: {currentShop?.customization_min_quantity || 1})
+                      </label>
+                      <input
+                        type="number"
+                        min={currentShop?.customization_min_quantity || 1}
+                        value={customQuantity}
+                        onChange={e => setCustomQuantity(Math.max(currentShop?.customization_min_quantity || 1, parseInt(e.target.value) || 1))}
+                        style={{
+                          width: '100%',
+                          borderRadius: '12px',
+                          border: '1px solid #dcdcdc',
+                          padding: '10px 12px',
+                          fontSize: '0.85rem',
+                          outline: 'none',
+                        }}
+                      />
+                    </div>
+
                     {/* Actions */}
                     <div className="customization-actions" style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
                       <button
@@ -6117,7 +6140,8 @@ export default function App() {
                                 product_id: customizingProduct.id,
                                 color_name: selectedCustomColor.name,
                                 color_hex: selectedCustomColor.hex,
-                                customization_notes: customSizingNotes
+                                customization_notes: customSizingNotes,
+                                quantity: customQuantity
                               })
                             });
                             const data = await res.json();
@@ -6811,6 +6835,7 @@ export default function App() {
                         <th>Product Info</th>
                         <th>Selected Color</th>
                         <th>Measurements / Sizing Notes</th>
+                        <th>Quantity</th>
                         <th>Status</th>
                         <th>Date Submitted</th>
                       </tr>
@@ -6834,6 +6859,9 @@ export default function App() {
                           <td>
                             <pre style={{ margin: 0, fontSize: '0.8rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{cust.customization_notes}</pre>
                           </td>
+                          <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                            {cust.quantity || 1}
+                          </td>
                           <td>
                             <span style={{ 
                               padding: '4px 8px', 
@@ -6852,7 +6880,7 @@ export default function App() {
                       ))}
                       {userCustomizations.length === 0 && (
                         <tr>
-                          <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
                         </tr>
                       )}
                     </tbody>
@@ -10033,6 +10061,7 @@ export default function App() {
                           <th>Customer</th>
                           <th>Product</th>
                           <th>Bespoke Details</th>
+                          <th>Qty</th>
                           <th>Status</th>
                           <th>Actions</th>
                         </tr>
@@ -10061,6 +10090,9 @@ export default function App() {
                                 </span>
                                 <pre style={{ margin: 0, fontSize: '0.75rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap', background: '#fbf9ff', padding: '6px', borderRadius: '6px', border: '1px solid #f0e6fc' }}>{cust.customization_notes}</pre>
                               </div>
+                            </td>
+                            <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                              {cust.quantity || 1}
                             </td>
                             <td>
                               <span style={{ 
@@ -10108,127 +10140,189 @@ export default function App() {
                         ))}
                         {adminCustomizations.length === 0 && (
                           <tr>
-                            <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No customization requests received yet.</td>
+                            <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No customization requests received yet.</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Right Column: Color Palette configurator */}
-                  <div className="glass-panel" style={{ padding: '20px', height: 'fit-content' }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '16px', color: '#2b0b57' }}>Store Color Palette</h3>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Define the available color choices for custom tailoring orders.</p>
+                  {/* Right Column: Configurations & Palette */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     
-                    {/* List of current colors */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                      {(adminShop.color_palette || []).map((color, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fcfaff', borderRadius: '8px', border: '1px solid #f0e6fc' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '50%', background: color.hex, border: '1px solid #ddd' }} />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{color.name}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#888' }}>({color.hex})</span>
-                          </div>
-                          <button 
-                            type="button" 
-                            onClick={() => {
-                              const updatedPalette = (adminShop.color_palette || []).filter((_, i) => i !== idx);
-                              setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', padding: 0 }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ))}
-                      {(adminShop.color_palette || []).length === 0 && (
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No colors added yet.</p>
-                      )}
+                    {/* Minimum Order Quantity Configurator */}
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '8px', color: '#2b0b57' }}>Minimum Custom Quantity</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                        Set the minimum product quantity required for customers to place custom order requests.
+                      </p>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="1"
+                          value={(adminShop && adminShop.customization_min_quantity) || 1}
+                          onChange={e => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            setAdminShop(prev => ({ ...prev, customization_min_quantity: val }));
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle)',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`${API_BASE}/admin/shop`, {
+                                method: 'PUT',
+                                headers: getHeaders(),
+                                body: JSON.stringify({ customization_min_quantity: adminShop.customization_min_quantity })
+                              });
+                              if (res.ok) {
+                                addToast("Setting Saved", "Minimum custom order quantity updated.", "success");
+                                loadAdminShop();
+                              } else {
+                                addToast("Save Failed", "Failed to update settings.", "danger");
+                              }
+                            } catch (err) {
+                              addToast("Error", err.message, "danger");
+                            }
+                          }}
+                          className="btn-primary"
+                          style={{
+                            padding: '10px 16px',
+                            fontSize: '0.85rem',
+                            background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                            border: 'none',
+                            borderRadius: '8px'
+                          }}
+                        >
+                          Save
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Form to add a new color */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f0e6fc', paddingTop: '16px' }}>
-                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Add New Color</h4>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <input 
-                          type="text" 
-                          placeholder="Color Name (e.g. Royal Gold)"
-                          id="new-color-name"
-                          style={{ padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
-                        />
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Store Color Palette configurator */}
+                    <div className="glass-panel" style={{ padding: '20px', height: 'fit-content' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '16px', color: '#2b0b57' }}>Store Color Palette</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Define the available color choices for custom tailoring orders.</p>
+                      
+                      {/* List of current colors */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                        {(adminShop.color_palette || []).map((color, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fcfaff', borderRadius: '8px', border: '1px solid #f0e6fc' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '50%', background: color.hex, border: '1px solid #ddd' }} />
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{color.name}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#888' }}>({color.hex})</span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                const updatedPalette = (adminShop.color_palette || []).filter((_, i) => i !== idx);
+                                setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', padding: 0 }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ))}
+                        {(adminShop.color_palette || []).length === 0 && (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No colors added yet.</p>
+                        )}
+                      </div>
+
+                      {/* Form to add a new color */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f0e6fc', paddingTop: '16px' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Add New Color</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <input 
                             type="text" 
-                            placeholder="Color Code (e.g. #7a4ea5, rgb(...), gold)"
-                            id="new-color-hex"
-                            defaultValue="#7a4ea5"
-                            style={{ flex: 3, padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
+                            placeholder="Color Name (e.g. Royal Gold)"
+                            id="new-color-name"
+                            style={{ padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
                           />
-                          <input 
-                            type="color" 
-                            id="new-color-picker"
-                            defaultValue="#7a4ea5"
-                            onChange={e => {
-                              const hexInput = document.getElementById("new-color-hex");
-                              if (hexInput) hexInput.value = e.target.value;
-                            }}
-                            style={{ flex: 1, padding: '0', height: '34px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #ccc' }}
-                          />
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input 
+                              type="text" 
+                              placeholder="Color Code (e.g. #7a4ea5, rgb(...), gold)"
+                              id="new-color-hex"
+                              defaultValue="#7a4ea5"
+                              style={{ flex: 3, padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
+                            />
+                            <input 
+                              type="color" 
+                              id="new-color-picker"
+                              defaultValue="#7a4ea5"
+                              onChange={e => {
+                                const hexInput = document.getElementById("new-color-hex");
+                                if (hexInput) hexInput.value = e.target.value;
+                              }}
+                              style={{ flex: 1, padding: '0', height: '34px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #ccc' }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const nameInput = document.getElementById("new-color-name");
-                          const hexInput = document.getElementById("new-color-hex");
-                          if (!nameInput || !nameInput.value.trim()) {
-                            addToast("Name Required", "Please enter a color name.", "warning");
-                            return;
-                          }
-                          if (!hexInput || !hexInput.value.trim()) {
-                            addToast("Code Required", "Please enter a color code.", "warning");
-                            return;
-                          }
-                          const newColor = {
-                            name: nameInput.value.trim(),
-                            hex: hexInput.value.trim()
-                          };
-                          const updatedPalette = [...(adminShop.color_palette || []), newColor];
-                          setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
-                          nameInput.value = "";
-                        }}
-                        className="btn-secondary"
-                        style={{ padding: '8px', justifyContent: 'center', fontSize: '0.8rem' }}
-                      >
-                        Add to Palette
-                      </button>
-
-                      {/* Save Palette Button */}
-                      <button 
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(`${API_BASE}/admin/shop`, {
-                              method: 'PUT',
-                              headers: getHeaders(),
-                              body: JSON.stringify({ color_palette: adminShop.color_palette })
-                            });
-                            if (res.ok) {
-                              addToast("Palette Saved", "Your custom color palette has been updated.", "success");
-                              loadAdminShop();
-                            } else {
-                              addToast("Save Failed", "Failed to update color palette.", "danger");
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const nameInput = document.getElementById("new-color-name");
+                            const hexInput = document.getElementById("new-color-hex");
+                            if (!nameInput || !nameInput.value.trim()) {
+                              addToast("Name Required", "Please enter a color name.", "warning");
+                              return;
                             }
-                          } catch (err) {
-                            addToast("Error", err.message, "danger");
-                          }
-                        }}
-                        className="btn-primary"
-                        style={{ padding: '10px', justifyContent: 'center', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', fontSize: '0.85rem' }}
-                      >
-                        Save Palette
-                      </button>
+                            if (!hexInput || !hexInput.value.trim()) {
+                              addToast("Code Required", "Please enter a color code.", "warning");
+                              return;
+                            }
+                            const newColor = {
+                              name: nameInput.value.trim(),
+                              hex: hexInput.value.trim()
+                            };
+                            const updatedPalette = [...(adminShop.color_palette || []), newColor];
+                            setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                            nameInput.value = "";
+                          }}
+                          className="btn-secondary"
+                          style={{ padding: '8px', justifyContent: 'center', fontSize: '0.8rem' }}
+                        >
+                          Add to Palette
+                        </button>
+
+                        {/* Save Palette Button */}
+                        <button 
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`${API_BASE}/admin/shop`, {
+                                method: 'PUT',
+                                headers: getHeaders(),
+                                body: JSON.stringify({ color_palette: adminShop.color_palette })
+                              });
+                              if (res.ok) {
+                                addToast("Palette Saved", "Your custom color palette has been updated.", "success");
+                                loadAdminShop();
+                              } else {
+                                addToast("Save Failed", "Failed to update color palette.", "danger");
+                              }
+                            } catch (err) {
+                              addToast("Error", err.message, "danger");
+                            }
+                          }}
+                          className="btn-primary"
+                          style={{ padding: '10px', justifyContent: 'center', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', fontSize: '0.85rem' }}
+                        >
+                          Save Palette
+                        </button>
+                      </div>
                     </div>
+
                   </div>
                 </div>
 
