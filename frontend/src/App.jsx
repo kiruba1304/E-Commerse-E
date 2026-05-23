@@ -788,6 +788,15 @@ export default function App() {
   const [messagingForm, setMessagingForm] = useState({ platform: "SMS", recipient: "All Customers", message: "" });
   const [ticketReplyForm, setTicketReplyForm] = useState({ ticket_id: "", reply: "" });
 
+  // Customization States
+  const [selectedCustomCategory, setSelectedCustomCategory] = useState("");
+  const [customizingProduct, setCustomizingProduct] = useState(null);
+  const [selectedCustomColor, setSelectedCustomColor] = useState(null);
+  const [customSizingNotes, setCustomSizingNotes] = useState("");
+  const [submittingCustomOrder, setSubmittingCustomOrder] = useState(false);
+  const [userCustomizations, setUserCustomizations] = useState([]);
+  const [adminCustomizations, setAdminCustomizations] = useState([]);
+
   // Super Admin Workspace states
   const [superShops, setSuperShops] = useState([]);
   const [superAdmins, setSuperAdmins] = useState([]);
@@ -1309,6 +1318,7 @@ export default function App() {
         if (activePanel === 'cart') loadUserCart();
         if (activePanel === 'wishlist') loadUserWishlist();
         if (activePanel === 'orders') loadUserOrders();
+        if (activePanel === 'customizations') loadUserCustomizations();
         if (activePanel === 'help_center') loadUserHelpTickets();
         if (activePanel === 'notifications') loadUserNotifications();
         if (activePanel === 'settings') {
@@ -1424,6 +1434,16 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setMyOrders(data);
+      }
+    } catch (e) {}
+  };
+
+  const loadUserCustomizations = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/user/customizations`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) {
+        setUserCustomizations(data);
       }
     } catch (e) {}
   };
@@ -1691,6 +1711,12 @@ export default function App() {
       if (activePanel === 'messaging') loadAdminSmsLogs();
       if (activePanel === 'gst_report') loadGstReport(gstFilterDate, gstFilterMonth, gstFilterYear);
       if (activePanel === 'customers') loadAdminCustomers();
+      if (activePanel === 'customizations') {
+        loadAdminCustomizations();
+        loadAdminCategories();
+        loadAdminProducts();
+        loadAdminShop();
+      }
     }
   }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear]);
 
@@ -2378,6 +2404,14 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/customers`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCustomers(data);
+    } catch (e) {}
+  };
+
+  const loadAdminCustomizations = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/customizations`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setAdminCustomizations(data);
     } catch (e) {}
   };
 
@@ -5702,13 +5736,14 @@ export default function App() {
                   <img 
                     src={opacBanners[currentSlide]?.image} 
                     alt="" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)', cursor: 'pointer' }}
+                    onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }}
                   />
                   <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px', color: '#ffffff' }}>
                     <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, marginBottom: '12px' }}>BOUTIQUE SPECIALS</span>
                     <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.title}</h2>
                     <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem', maxWidth: '500px', marginBottom: '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.subtitle}</p>
-                    <button className="btn-primary" onClick={() => addToast("Promo Campaign Active", "Discounts applied automatically on designer saree catalog collections!", "success")} style={{ width: 'fit-content', padding: '10px 24px' }}>
+                    <button className="btn-primary" onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }} style={{ width: 'fit-content', padding: '10px 24px' }}>
                       {opacBanners[currentSlide]?.actionText} <ChevronRight size={18} />
                     </button>
                   </div>
@@ -5728,6 +5763,7 @@ export default function App() {
             </>
           )}
         </main>
+
 
         {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
         {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} />}
@@ -5844,6 +5880,274 @@ export default function App() {
       </>
     )}
 
+        {/* RENDER VIEW: CUSTOMIZATION PAGE */}
+        {currentView === 'customization' && (
+          <main className="main-content animate-fade-in" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 40px', minHeight: '80vh' }}>
+            {/* Breadcrumb / Back Navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
+              <span>/</span>
+              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Bespoke Customization</span>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.5rem', color: '#2b0b57', fontWeight: 700, marginBottom: '12px' }}>Custom Tailoring & Design</h1>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+                Select a category and browse our exclusive designs. Pick a product and specify your custom color and tailoring measurements to place a bespoke order.
+              </p>
+            </div>
+
+            {/* Category Tabs */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setSelectedCustomCategory("")}
+                style={{
+                  background: selectedCustomCategory === "" ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
+                  color: selectedCustomCategory === "" ? '#ffffff' : '#222222',
+                  border: '1px solid ' + (selectedCustomCategory === "" ? '#7a4ea5' : 'var(--border-subtle)'),
+                  padding: '10px 24px',
+                  borderRadius: '30px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  boxShadow: selectedCustomCategory === "" ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                All Designs
+              </button>
+              {(currentShop?.categories || categories).filter(cat => cat.customization_enabled).map(cat => (
+                <button 
+                  key={cat.id}
+                  onClick={() => setSelectedCustomCategory(cat.id)}
+                  style={{
+                    background: selectedCustomCategory === cat.id ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
+                    color: selectedCustomCategory === cat.id ? '#ffffff' : '#222222',
+                    border: '1px solid ' + (selectedCustomCategory === cat.id ? '#7a4ea5' : 'var(--border-subtle)'),
+                    padding: '10px 24px',
+                    borderRadius: '30px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    boxShadow: selectedCustomCategory === cat.id ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Product Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
+              {products.filter(p => p.customization_enabled).length > 0 ? (
+                products
+                  .filter(p => p.customization_enabled)
+                  .filter(p => selectedCustomCategory === "" ? true : p.category_id === selectedCustomCategory)
+                  .map(p => (
+                    <div 
+                      key={p.id} 
+                      className="glass-panel"
+                      onClick={() => {
+                        if (role === 'guest') {
+                          setLoginRoleTab("user");
+                          setShowLoginModal(true);
+                          addToast("Authentication Required", "Please login to place a customization order.", "info");
+                        } else {
+                          setCustomizingProduct(p);
+                          const palette = currentShop?.color_palette || [];
+                          setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
+                          setCustomSizingNotes("");
+                        }
+                      }}
+                      style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column', background: '#ffffff', transition: 'all 0.3s ease' }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-6px)';
+                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(122, 78, 165, 0.12)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '12px', background: '#fcfaff' }}>
+                        <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ padding: '0 4px 8px' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>{p.category_name}</div>
+                        <h3 style={{ fontSize: '1.15rem', color: 'var(--text-main)', fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '12px', height: '36px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.description}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</span>
+                          <span className="badge badge-success" style={{ background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '20px', fontWeight: 600 }}>Customize</span>
+                        </div>
+                      </div>
+                    </div>
+                ))
+              ) : (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px' }}>
+                  <AlertCircle size={48} style={{ margin: '0 auto 12px', color: '#7a4ea5' }} />
+                  <p>No products are currently enabled for customization by the shop administrator. Please check back later!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Customization Details Selection Modal */}
+            {customizingProduct && (
+              <div className="ad-modal-backdrop" onClick={() => setCustomizingProduct(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(12, 5, 20, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <div className="customization-modal-container" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', position: 'relative' }}>
+                  <button onClick={() => setCustomizingProduct(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', zIndex: 100, borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <X size={20} />
+                  </button>
+
+                  {/* Left Side: Product Preview */}
+                  <div className="customization-modal-left" style={{ background: '#fbf9ff', padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', height: '240px', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', marginBottom: '16px', background: '#ffffff' }}>
+                      <img src={customizingProduct.images[0] || null} alt={customizingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57', textAlign: 'center', margin: '0 0 6px' }}>{customizingProduct.name}</h4>
+                    <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#7a4ea5' }}>₹{customizingProduct.price.toFixed(2)}</span>
+                  </div>
+
+                  {/* Right Side: Customization Form */}
+                  <div className="customization-modal-right" style={{ padding: '35px 30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', fontWeight: 700, color: '#2b0b57', margin: '0 0 4px' }}>Bespoke Order Details</h3>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Configure tailoring options below</p>
+                    </div>
+
+                    {/* Color Palette Selector */}
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Design Color Palette</label>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {(currentShop?.color_palette || [
+                          {"name": "Royal Gold", "hex": "#D4AF37"},
+                          {"name": "Noble Lavender", "hex": "#7a4ea5"},
+                          {"name": "Crimson Ruby", "hex": "#E84E7E"},
+                          {"name": "Midnight Indigo", "hex": "#2b0b57"},
+                          {"name": "Forest Green", "hex": "#228B22"},
+                          {"name": "Turquoise Teal", "hex": "#008080"}
+                        ]).map((c, idx) => {
+                          const isSelected = selectedCustomColor?.hex === c.hex;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setSelectedCustomColor(c)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 12px',
+                                borderRadius: '20px',
+                                border: '2px solid ' + (isSelected ? '#7a4ea5' : 'var(--border-subtle)'),
+                                background: '#ffffff',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                transition: 'all 0.2s ease',
+                                boxShadow: isSelected ? '0 2px 8px rgba(122,78,165,0.15)' : 'none'
+                              }}
+                            >
+                              <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: c.hex }} />
+                              {c.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Sizing & Custom Notes Textarea */}
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>Tailoring Measurements & Sizing Notes</label>
+                      <textarea
+                        rows="4"
+                        value={customSizingNotes}
+                        onChange={e => setCustomSizingNotes(e.target.value)}
+                        placeholder="Please specify custom tailoring details here, e.g.:
+- Chest Size: 38 inches
+- Waist Size: 32 inches
+- Shoulder Width: 16 inches
+- Saree Blouse Style: Round Neck / Elbow Sleeve
+- Any other requests..."
+                        style={{
+                          width: '100%',
+                          borderRadius: '12px',
+                          border: '1px solid #dcdcdc',
+                          padding: '12px',
+                          fontSize: '0.85rem',
+                          fontFamily: 'monospace',
+                          outline: 'none',
+                          resize: 'none',
+                          minHeight: '110px'
+                        }}
+                        required
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="customization-actions" style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setCustomizingProduct(null)}
+                        className="btn-secondary"
+                        style={{ flex: 1, justifyContent: 'center', padding: '10px' }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submittingCustomOrder}
+                        onClick={async () => {
+                          if (!selectedCustomColor) {
+                            addToast("Color Required", "Please select a color option.", "warning");
+                            return;
+                          }
+                          if (!customSizingNotes.trim()) {
+                            addToast("Notes Required", "Please specify custom sizing notes.", "warning");
+                            return;
+                          }
+                          setSubmittingCustomOrder(true);
+                          try {
+                            const res = await fetch(`${API_BASE}/user/customizations`, {
+                              method: 'POST',
+                              headers: getHeaders(),
+                              body: JSON.stringify({
+                                shop_id: customizingProduct.shop_id,
+                                product_id: customizingProduct.id,
+                                color_name: selectedCustomColor.name,
+                                color_hex: selectedCustomColor.hex,
+                                customization_notes: customSizingNotes
+                              })
+                            });
+                            const data = await res.json();
+                            if (res.ok) {
+                              addToast("Success!", "Bespoke customization request submitted successfully.", "success");
+                              setCustomizingProduct(null);
+                              loadUserCustomizations();
+                            } else {
+                              addToast("Request Failed", data.error || "Failed to submit request.", "danger");
+                            }
+                          } catch (err) {
+                            addToast("Error", err.message, "danger");
+                          } finally {
+                            setSubmittingCustomOrder(false);
+                          }
+                        }}
+                        className="btn-primary"
+                        style={{ flex: 2, justifyContent: 'center', padding: '10px', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none' }}
+                      >
+                        {submittingCustomOrder ? 'Submitting...' : 'Submit Bespoke Order'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </main>
+        )}
+
+
       {/* RENDER VIEW 2: CUSTOMER / USER VIEW */}
       {currentView === 'user_dashboard' && role === 'user' && (
         <div className="dashboard-grid">
@@ -5876,6 +6180,9 @@ export default function App() {
             </span>
             <span className={`sidebar-link ${activePanel === 'settings' ? 'active' : ''}`} onClick={() => setActivePanel("settings")}>
               <Settings size={18} /> Account Settings
+            </span>
+            <span className={`sidebar-link ${activePanel === 'customizations' ? 'active' : ''}`} onClick={() => setActivePanel("customizations")}>
+              <Sparkles size={18} /> Customization Requests
             </span>
             <span className="sidebar-link" onClick={() => setCurrentView("opac")} style={{ borderTop: '1px solid #eeeeee', marginTop: '16px', paddingTop: '16px' }}>
               ← Return to Storefront
@@ -6492,6 +6799,68 @@ export default function App() {
               </div>
             )}
 
+            {activePanel === 'customizations' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Bespoke Customizations</h2>
+                
+                <div className="responsive-table-container glass-panel">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Request ID</th>
+                        <th>Product Info</th>
+                        <th>Selected Color</th>
+                        <th>Measurements / Sizing Notes</th>
+                        <th>Status</th>
+                        <th>Date Submitted</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userCustomizations.map(cust => (
+                        <tr key={cust.id}>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{cust.id}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <img src={cust.product_image || null} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
+                              <span style={{ fontWeight: 600 }}>{cust.product_name}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', background: '#f5edff', fontSize: '0.75rem', fontWeight: 600 }}>
+                              <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: cust.selected_color_hex }} />
+                              {cust.selected_color_name}
+                            </span>
+                          </td>
+                          <td>
+                            <pre style={{ margin: 0, fontSize: '0.8rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{cust.customization_notes}</pre>
+                          </td>
+                          <td>
+                            <span style={{ 
+                              padding: '4px 8px', 
+                              borderRadius: '4px', 
+                              fontSize: '0.75rem', 
+                              fontWeight: 'bold', 
+                              background: cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.15)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                              color: cust.status === 'Completed' ? '#7a4ea5' : cust.status === 'Rejected' ? '#e84e7e' : '#b45309',
+                              border: '1px solid ' + (cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.3)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.25)' : 'rgba(251, 191, 36, 0.25)')
+                            }}>
+                              {cust.status}
+                            </span>
+                          </td>
+                          <td>{new Date(cust.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                      {userCustomizations.length === 0 && (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </main>
         </div>
       )}
@@ -6546,6 +6915,9 @@ export default function App() {
             </span>
             <span className={`sidebar-link ${activePanel === 'customers' ? 'active' : ''}`} onClick={() => setActivePanel("customers")}>
               <User size={18} /> Customer List
+            </span>
+            <span className={`sidebar-link ${activePanel === 'customizations' ? 'active' : ''}`} onClick={() => setActivePanel("customizations")}>
+              <Sparkles size={18} /> Customization Orders
             </span>
             <span className={`sidebar-link ${activePanel === 'logs' ? 'active' : ''}`} onClick={() => setActivePanel("logs")}>
               <FileText size={18} /> Store Audit Trail
@@ -9640,6 +10012,369 @@ export default function App() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {activePanel === 'customizations' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Customization Orders Manager</h2>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '30px' }}>
+                  {/* Left Column: Customization Requests Table */}
+                  <div className="responsive-table-container glass-panel" style={{ padding: '20px' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '16px', color: '#2b0b57' }}>Request Queue</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Customer</th>
+                          <th>Product</th>
+                          <th>Bespoke Details</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminCustomizations.map(cust => (
+                          <tr key={cust.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{cust.id}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600 }}>{cust.user_name}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cust.user_email}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <img src={cust.product_image || null} alt="" style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{cust.product_name}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '10px', background: '#f5edff', fontSize: '0.7rem', fontWeight: 600, width: 'fit-content' }}>
+                                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: cust.selected_color_hex }} />
+                                  {cust.selected_color_name}
+                                </span>
+                                <pre style={{ margin: 0, fontSize: '0.75rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap', background: '#fbf9ff', padding: '6px', borderRadius: '6px', border: '1px solid #f0e6fc' }}>{cust.customization_notes}</pre>
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ 
+                                padding: '4px 8px', 
+                                borderRadius: '4px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 'bold', 
+                                background: cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.15)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                                color: cust.status === 'Completed' ? '#7a4ea5' : cust.status === 'Rejected' ? '#e84e7e' : '#b45309',
+                                border: '1px solid ' + (cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.3)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.25)' : 'rgba(251, 191, 36, 0.25)')
+                              }}>
+                                {cust.status}
+                              </span>
+                            </td>
+                            <td>
+                              <select 
+                                value={cust.status} 
+                                onChange={async (e) => {
+                                  const newStatus = e.target.value;
+                                  try {
+                                    const res = await fetch(`${API_BASE}/admin/customizations/${cust.id}`, {
+                                      method: 'PUT',
+                                      headers: getHeaders(),
+                                      body: JSON.stringify({ status: newStatus })
+                                    });
+                                    if (res.ok) {
+                                      addToast("Status Updated", `Customization #${cust.id} status changed to ${newStatus}.`, "success");
+                                      loadAdminCustomizations();
+                                    } else {
+                                      addToast("Error", "Failed to update status.", "danger");
+                                    }
+                                  } catch (err) {
+                                    addToast("Error", err.message, "danger");
+                                  }
+                                }}
+                                style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid #dcdcdc' }}
+                              >
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Completed">Completed</option>
+                                <option value="Rejected">Rejected</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                        {adminCustomizations.length === 0 && (
+                          <tr>
+                            <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No customization requests received yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Right Column: Color Palette configurator */}
+                  <div className="glass-panel" style={{ padding: '20px', height: 'fit-content' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '16px', color: '#2b0b57' }}>Store Color Palette</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Define the available color choices for custom tailoring orders.</p>
+                    
+                    {/* List of current colors */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                      {(adminShop.color_palette || []).map((color, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fcfaff', borderRadius: '8px', border: '1px solid #f0e6fc' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '50%', background: color.hex, border: '1px solid #ddd' }} />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{color.name}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#888' }}>({color.hex})</span>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              const updatedPalette = (adminShop.color_palette || []).filter((_, i) => i !== idx);
+                              setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', padding: 0 }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                      {(adminShop.color_palette || []).length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No colors added yet.</p>
+                      )}
+                    </div>
+
+                    {/* Form to add a new color */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f0e6fc', paddingTop: '16px' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Add New Color</h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <input 
+                          type="text" 
+                          placeholder="Color Name (e.g. Royal Gold)"
+                          id="new-color-name"
+                          style={{ padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input 
+                            type="text" 
+                            placeholder="Color Code (e.g. #7a4ea5, rgb(...), gold)"
+                            id="new-color-hex"
+                            defaultValue="#7a4ea5"
+                            style={{ flex: 3, padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
+                          />
+                          <input 
+                            type="color" 
+                            id="new-color-picker"
+                            defaultValue="#7a4ea5"
+                            onChange={e => {
+                              const hexInput = document.getElementById("new-color-hex");
+                              if (hexInput) hexInput.value = e.target.value;
+                            }}
+                            style={{ flex: 1, padding: '0', height: '34px', cursor: 'pointer', borderRadius: '6px', border: '1px solid #ccc' }}
+                          />
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const nameInput = document.getElementById("new-color-name");
+                          const hexInput = document.getElementById("new-color-hex");
+                          if (!nameInput || !nameInput.value.trim()) {
+                            addToast("Name Required", "Please enter a color name.", "warning");
+                            return;
+                          }
+                          if (!hexInput || !hexInput.value.trim()) {
+                            addToast("Code Required", "Please enter a color code.", "warning");
+                            return;
+                          }
+                          const newColor = {
+                            name: nameInput.value.trim(),
+                            hex: hexInput.value.trim()
+                          };
+                          const updatedPalette = [...(adminShop.color_palette || []), newColor];
+                          setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                          nameInput.value = "";
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '8px', justifyContent: 'center', fontSize: '0.8rem' }}
+                      >
+                        Add to Palette
+                      </button>
+
+                      {/* Save Palette Button */}
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`${API_BASE}/admin/shop`, {
+                              method: 'PUT',
+                              headers: getHeaders(),
+                              body: JSON.stringify({ color_palette: adminShop.color_palette })
+                            });
+                            if (res.ok) {
+                              addToast("Palette Saved", "Your custom color palette has been updated.", "success");
+                              loadAdminShop();
+                            } else {
+                              addToast("Save Failed", "Failed to update color palette.", "danger");
+                            }
+                          } catch (err) {
+                            addToast("Error", err.message, "danger");
+                          }
+                        }}
+                        className="btn-primary"
+                        style={{ padding: '10px', justifyContent: 'center', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', fontSize: '0.85rem' }}
+                      >
+                        Save Palette
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customizable Catalog Configurations */}
+                <div className="glass-panel animate-fade-in" style={{ padding: '24px', marginTop: '10px', background: '#ffffff', borderRadius: '16px', border: '1px solid #f0e6fc', boxShadow: '0 8px 30px rgba(122, 78, 165, 0.04)' }}>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.4rem', color: '#2b0b57', marginBottom: '8px', borderBottom: '1px solid #f0e6fc', paddingBottom: '12px', fontFamily: 'var(--font-serif)' }}>Configure Customizable Catalog</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px' }}>Select which categories and individual products are allowed to be customized by customers on the Bespoke Customization page.</p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.2fr', gap: '30px' }}>
+                    
+                    {/* Category Customization Toggles */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '1.1rem', color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>Category Customization</h4>
+                      <div className="responsive-table-container" style={{ border: '1px solid #f0e6fc', borderRadius: '8px', overflow: 'hidden' }}>
+                        <table style={{ margin: 0 }}>
+                          <thead>
+                            <tr style={{ background: '#fcfaff' }}>
+                              <th>Category</th>
+                              <th style={{ textAlign: 'right' }}>Customization</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminCategories.map(cat => (
+                              <tr key={cat.id}>
+                                <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{cat.name}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const newVal = !cat.customization_enabled;
+                                      try {
+                                        const res = await fetch(`${API_BASE}/admin/categories/${cat.id}`, {
+                                          method: 'PUT',
+                                          headers: getHeaders(),
+                                          body: JSON.stringify({ customization_enabled: newVal })
+                                        });
+                                        if (res.ok) {
+                                          addToast("Updated", `Customization ${newVal ? 'enabled' : 'disabled'} for category '${cat.name}'.`, "success");
+                                          loadAdminCategories();
+                                        } else {
+                                          addToast("Update Failed", "Failed to update category customization status.", "danger");
+                                        }
+                                      } catch (err) {
+                                        addToast("Error", err.message, "danger");
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '4px 12px',
+                                      fontSize: '0.75rem',
+                                      borderRadius: '20px',
+                                      background: cat.customization_enabled ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#e5e7eb',
+                                      color: cat.customization_enabled ? '#fff' : '#4b5563',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      boxShadow: cat.customization_enabled ? '0 2px 8px rgba(122,78,165,0.15)' : 'none',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    {cat.customization_enabled ? "✓ Enabled" : "Disabled"}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {adminCategories.length === 0 && (
+                              <tr>
+                                <td colSpan="2" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>No categories created yet.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Product Customization Toggles */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontWeight: 700, fontSize: '1.1rem', color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>Product Customization</h4>
+                      <div className="responsive-table-container" style={{ border: '1px solid #f0e6fc', borderRadius: '8px', overflow: 'hidden', maxHeight: '350px', overflowY: 'auto' }}>
+                        <table style={{ margin: 0 }}>
+                          <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#fcfaff' }}>
+                            <tr>
+                              <th>Product</th>
+                              <th>Category</th>
+                              <th style={{ textAlign: 'right' }}>Customization</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminProducts.map(p => (
+                              <tr key={p.id}>
+                                <td>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <img src={p.images[0] || null} alt="" style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{p.name}</span>
+                                  </div>
+                                </td>
+                                <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.category_name}</td>
+                                <td style={{ textAlign: 'right' }}>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const newVal = !p.customization_enabled;
+                                      try {
+                                        const res = await fetch(`${API_BASE}/admin/products/${p.id}`, {
+                                          method: 'PUT',
+                                          headers: getHeaders(),
+                                          body: JSON.stringify({ customization_enabled: newVal })
+                                        });
+                                        if (res.ok) {
+                                          addToast("Updated", `Customization ${newVal ? 'enabled' : 'disabled'} for product '${p.name}'.`, "success");
+                                          loadAdminProducts();
+                                        } else {
+                                          addToast("Update Failed", "Failed to update product customization status.", "danger");
+                                        }
+                                      } catch (err) {
+                                        addToast("Error", err.message, "danger");
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '4px 12px',
+                                      fontSize: '0.75rem',
+                                      borderRadius: '20px',
+                                      background: p.customization_enabled ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#e5e7eb',
+                                      color: p.customization_enabled ? '#fff' : '#4b5563',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      fontWeight: 600,
+                                      boxShadow: p.customization_enabled ? '0 2px 8px rgba(122,78,165,0.15)' : 'none',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    {p.customization_enabled ? "✓ Enabled" : "Disabled"}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {adminProducts.length === 0 && (
+                              <tr>
+                                <td colSpan="3" style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>No products in catalog yet.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
               </div>
             )}

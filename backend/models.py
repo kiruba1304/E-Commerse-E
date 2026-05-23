@@ -65,6 +65,7 @@ class Shop(db.Model):
     smtp_use_tls = db.Column(db.Boolean, default=True)
     smtp_sender_name = db.Column(db.String(255), nullable=True)
     email_templates_json = db.Column(db.Text, nullable=True)
+    color_palette_json = db.Column(db.Text, nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -175,6 +176,27 @@ class Shop(db.Model):
     def email_templates(self, value):
         self.email_templates_json = json.dumps(value)
 
+    @property
+    def color_palette(self):
+        if not self.color_palette_json:
+            # Default premium Indian ethnic-wear color palette (names & hexes)
+            return [
+                {"name": "Royal Gold", "hex": "#D4AF37"},
+                {"name": "Noble Lavender", "hex": "#7a4ea5"},
+                {"name": "Crimson Ruby", "hex": "#E84E7E"},
+                {"name": "Midnight Indigo", "hex": "#2b0b57"},
+                {"name": "Forest Green", "hex": "#228B22"},
+                {"name": "Turquoise Teal", "hex": "#008080"}
+            ]
+        try:
+            return json.loads(self.color_palette_json)
+        except Exception:
+            return []
+
+    @color_palette.setter
+    def color_palette(self, value):
+        self.color_palette_json = json.dumps(value)
+
     def serialize(self):
         return {
             "id": self.id,
@@ -194,6 +216,7 @@ class Shop(db.Model):
             "gst_inclusive": self.gst_inclusive,
             "saree_models": self.saree_models,
             "banners": self.banners,
+            "color_palette": self.color_palette,
             "smtp_host": self.smtp_host,
             "smtp_port": self.smtp_port,
             "smtp_user": self.smtp_user,
@@ -302,6 +325,7 @@ class Category(db.Model):
     description = db.Column(db.Text, nullable=True)
     image_url = db.Column(db.Text, nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    customization_enabled = db.Column(db.Boolean, default=False)
 
     products = db.relationship('Product', backref='category', lazy=True)
 
@@ -311,7 +335,8 @@ class Category(db.Model):
             "name": self.name,
             "description": self.description,
             "image_url": self.image_url,
-            "shop_id": self.shop_id
+            "shop_id": self.shop_id,
+            "customization_enabled": self.customization_enabled or False
         }
 
 class Product(db.Model):
@@ -333,6 +358,7 @@ class Product(db.Model):
     min_quantity = db.Column(db.Integer, nullable=True)   # minimum units for bulk pricing
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    customization_enabled = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -369,6 +395,7 @@ class Product(db.Model):
             "category_id": self.category_id,
             "category_name": self.category.name if self.category else "Uncategorized",
             "shop_id": self.shop_id,
+            "customization_enabled": self.customization_enabled or False,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -705,4 +732,41 @@ class OTPVerification(db.Model):
             "otp_code": self.otp_code,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "is_verified": self.is_verified
+        }
+
+class CustomizationOrder(db.Model):
+    __tablename__ = 'customization_orders'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    selected_color_name = db.Column(db.String(100), nullable=True)
+    selected_color_hex = db.Column(db.String(50), nullable=True)
+    customization_notes = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), default='Pending') # Pending, In Progress, Dispatched, Completed, Rejected
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    user = db.relationship('User', backref=db.backref('customization_orders_rel', lazy=True))
+    shop = db.relationship('Shop', backref=db.backref('customization_orders_rel', lazy=True))
+    product = db.relationship('Product', backref=db.backref('customization_orders_rel', lazy=True))
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "user_name": self.user.name if self.user else "Unknown User",
+            "user_email": self.user.email if self.user else "N/A",
+            "shop_id": self.shop_id,
+            "shop_name": self.shop.name if self.shop else "Unknown Shop",
+            "product_id": self.product_id,
+            "product_name": self.product.name if self.product else "Deleted Product",
+            "product_image": self.product.images[0] if self.product and self.product.images else None,
+            "selected_color_name": self.selected_color_name,
+            "selected_color_hex": self.selected_color_hex,
+            "customization_notes": self.customization_notes,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None
         }

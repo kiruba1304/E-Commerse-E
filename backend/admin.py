@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file
-from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection
+from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection, CustomizationOrder
 from auth_middleware import generate_token, token_required, role_required
 from datetime import datetime, timezone
 import json
@@ -134,6 +134,8 @@ def manage_shop():
         shop.smtp_sender_name = data['smtp_sender_name']
     if 'email_templates' in data:
         shop.email_templates = data['email_templates']
+    if 'color_palette' in data:
+        shop.color_palette = data['color_palette']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -214,7 +216,8 @@ def manage_categories():
         name=name,
         description=data.get('description', ''),
         image_url=data.get('image_url', ''),
-        shop_id=shop_id
+        shop_id=shop_id,
+        customization_enabled=bool(data.get('customization_enabled', False))
     )
     db.session.add(cat)
     db.session.commit()
@@ -249,6 +252,8 @@ def modify_category(cat_id):
         cat.description = data['description']
     if 'image_url' in data:
         cat.image_url = data['image_url']
+    if 'customization_enabled' in data:
+        cat.customization_enabled = bool(data['customization_enabled'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated product category '{cat.name}'")
@@ -346,7 +351,8 @@ def manage_products():
         bulk_sale_price=float(data['bulk_sale_price']) if data.get('bulk_sale_price') else None,
         min_quantity=int(data['min_quantity']) if data.get('min_quantity') else None,
         category_id=data.get('category_id'),
-        shop_id=shop_id
+        shop_id=shop_id,
+        customization_enabled=bool(data.get('customization_enabled', False))
     )
     p.images = images  # sets JSON field via property setter
     
@@ -400,6 +406,8 @@ def modify_product(prod_id):
         p.min_quantity = int(data['min_quantity']) if data['min_quantity'] else None
     if 'category_id' in data:
         p.category_id = data['category_id']
+    if 'customization_enabled' in data:
+        p.customization_enabled = bool(data['customization_enabled'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")
@@ -1162,3 +1170,29 @@ def get_store_logs():
     shop_id = request.user['shop_id']
     logs = SystemLog.query.filter_by(shop_id=shop_id).filter(SystemLog.actor_type != 'super_admin').order_by(SystemLog.created_at.desc()).all()
     return jsonify([log.serialize() for log in logs]), 200
+
+# CUSTOMIZATION ORDER MANAGEMENT
+@admin_bp.route('/customizations', methods=['GET'])
+@role_required(['admin'])
+def list_customizations():
+    shop_id = request.user['shop_id']
+    custs = CustomizationOrder.query.filter_by(shop_id=shop_id).order_by(CustomizationOrder.created_at.desc()).all()
+    return jsonify([c.serialize() for c in custs]), 200
+
+@admin_bp.route('/customizations/<int:cust_id>', methods=['PUT'])
+@role_required(['admin'])
+def update_customization_status(cust_id):
+    shop_id = request.user['shop_id']
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop_id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    data = request.get_json() or {}
+    if 'status' in data:
+        cust.status = data['status']
+        db.session.commit()
+        
+        # Log action
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated status of Customization #{cust_id} to '{cust.status}'")
+        
+    return jsonify({"message": "Customization request updated successfully", "customization": cust.serialize()}), 200

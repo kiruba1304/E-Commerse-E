@@ -9,3 +9,27 @@
 **/.env.*
 !**/.env.example
 !**/.env.*.example
+
+# Node dependencies (do NOT commit these - install with npm install)
+node_modules/
+**/node_modules/
+
+# Frontend build output
+frontend/dist/
+frontend/.vite/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# SQLite database (contains real user data - do not commit)
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+Thumbs.db

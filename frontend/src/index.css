@@ -2385,4 +2385,58 @@ input[type="checkbox"] {
     max-height: none !important;
   }
 }
+
+/* Customization Modal Styles */
+.customization-modal-container {
+  display: flex;
+  flex-direction: row;
+  width: 760px;
+  max-width: 95%;
+  max-height: 85vh;
+  overflow: hidden;
+}
+
+.customization-modal-left {
+  width: 40%;
+  border-right: 1px solid #f0e6fc;
+  flex-shrink: 0;
+}
+
+.customization-modal-right {
+  width: 60%;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .customization-modal-container {
+    flex-direction: column !important;
+    width: 95% !important;
+    max-height: 80vh !important;
+    margin: 20px auto !important;
+    overflow-y: auto !important;
+  }
+
+  .customization-modal-left {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #f0e6fc !important;
+    padding: 24px !important;
+  }
+
+  .customization-modal-right {
+    width: 100% !important;
+    padding: 24px 20px 80px !important; /* 80px bottom padding to clear the mobile bottom navigation bar */
+    overflow-y: visible !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .customization-actions {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .customization-actions > button {
+    width: 100% !important;
+  }
+}
 

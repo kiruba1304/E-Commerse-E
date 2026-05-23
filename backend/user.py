@@ -8,7 +8,7 @@ import random
 from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, request, jsonify
-from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog, OTPVerification
+from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog, OTPVerification, CustomizationOrder
 from auth_middleware import generate_token, token_required, role_required
 from mail_sender import send_shop_email
 
@@ -923,3 +923,46 @@ def manage_help_tickets():
 
     log_user_action(user_id, request.user['username'], f"Opened support ticket '{subject}'", shop_id)
     return jsonify(ticket.serialize()), 201
+
+# CUSTOMIZATION ORDERS
+@user_bp.route('/customizations', methods=['POST'])
+@role_required(['user'])
+def create_customization():
+    user_id = request.user['user_id']
+    username = request.user['username']
+    
+    data = request.get_json() or {}
+    shop_id = data.get('shop_id')
+    product_id = data.get('product_id')
+    color_name = data.get('color_name')
+    color_hex = data.get('color_hex')
+    customization_notes = data.get('customization_notes')
+    
+    if not all([shop_id, product_id]):
+        return jsonify({"error": "shop_id and product_id are required"}), 400
+        
+    prod = Product.query.filter_by(id=product_id, shop_id=shop_id).first()
+    if not prod:
+        return jsonify({"error": "Product not found in this shop"}), 404
+        
+    cust = CustomizationOrder(
+        user_id=user_id,
+        shop_id=shop_id,
+        product_id=product_id,
+        selected_color_name=color_name,
+        selected_color_hex=color_hex,
+        customization_notes=customization_notes
+    )
+    db.session.add(cust)
+    db.session.commit()
+    
+    log_user_action(user_id, username, f"Placed Customization Request #{cust.id} for product '{prod.name}'", shop_id=shop_id)
+    
+    return jsonify({"message": "Customization request submitted successfully", "customization": cust.serialize()}), 201
+
+@user_bp.route('/customizations', methods=['GET'])
+@role_required(['user'])
+def get_user_customizations():
+    user_id = request.user['user_id']
+    custs = CustomizationOrder.query.filter_by(user_id=user_id).order_by(CustomizationOrder.created_at.desc()).all()
+    return jsonify([c.serialize() for c in custs]), 200
