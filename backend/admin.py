@@ -493,26 +493,24 @@ def revenue_report():
 @role_required(['admin'])
 def list_customers():
     shop_id = request.user['shop_id']
-    # Select distinct users who purchased from this shop
+    # Select all registered users in the system
+    users = User.query.order_by(User.created_at.desc()).all()
     orders = Order.query.filter_by(shop_id=shop_id).all()
-    user_ids = list(set([o.user_id for o in orders]))
     
     customers = []
-    for uid in user_ids:
-        user = User.query.get(uid)
-        if user:
-            user_orders = [o for o in orders if o.user_id == uid]
-            total_spent = sum([o.final_amount for o in user_orders])
-            customers.append({
-                "id": user.id,
-                "name": user.name,
-                "username": user.username,
-                "email": user.email,
-                "contact_phone": user.contact_phone,
-                "total_orders": len(user_orders),
-                "total_spent": round(total_spent, 2),
-                "joined_at": user.created_at.isoformat() if user.created_at else None
-            })
+    for user in users:
+        user_orders = [o for o in orders if o.user_id == user.id]
+        total_spent = sum([o.final_amount for o in user_orders])
+        customers.append({
+            "id": user.id,
+            "name": user.name,
+            "username": user.username,
+            "email": user.email,
+            "contact_phone": user.contact_phone,
+            "total_orders": len(user_orders),
+            "total_spent": round(total_spent, 2),
+            "joined_at": user.created_at.isoformat() if user.created_at else None
+        })
             
     return jsonify(customers), 200
 
