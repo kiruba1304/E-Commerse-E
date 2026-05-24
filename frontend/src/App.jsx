@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
-  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2
 } from 'lucide-react';
 
 const API_BASE = "/api";
@@ -779,7 +779,7 @@ export default function App() {
   });
   
   // Admin edits/creations
-  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
@@ -797,6 +797,7 @@ export default function App() {
   const [submittingCustomOrder, setSubmittingCustomOrder] = useState(false);
   const [userCustomizations, setUserCustomizations] = useState([]);
   const [adminCustomizations, setAdminCustomizations] = useState([]);
+  const [sharingProduct, setSharingProduct] = useState(null);
 
   // Super Admin Workspace states
   const [superShops, setSuperShops] = useState([]);
@@ -970,10 +971,12 @@ export default function App() {
     const cachedUser = localStorage.getItem('user');
     const cachedRole = localStorage.getItem('role');
 
+    let currentRole = null;
     if (cachedToken && cachedUser && cachedRole) {
       setToken(cachedToken);
       setUser(JSON.parse(cachedUser));
       setRole(cachedRole);
+      currentRole = cachedRole;
       
       // Auto Route depending on role
       if (cachedRole === 'user') {
@@ -989,6 +992,27 @@ export default function App() {
     }
     
     fetchShops();
+
+    // Check if deep linking product parameter is present
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedProdId = urlParams.get('product');
+    if (sharedProdId) {
+      fetch(`${API_BASE}/opac/products/${sharedProdId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            if (currentRole === 'user') {
+              setActiveProduct(data);
+              setActiveProductImageIndex(0);
+              setCurrentView('product_detail');
+              window.scrollTo(0, 0);
+            } else {
+              setDetailProduct(data);
+            }
+          }
+        })
+        .catch(err => console.error("Failed to load shared product", err));
+    }
   }, [token]);
 
   // Load products when activeShopId, searchQuery, category, price changes
@@ -2011,7 +2035,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Catalog Updated", `Product saved.`, "success");
-        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "" });
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false });
         loadAdminProducts();
       } else {
         const err = await res.json();
@@ -3562,7 +3586,18 @@ export default function App() {
             {/* Right side: Information */}
             <div className="product-detail-modal-right">
               <span className="badge badge-info" style={{ width: 'fit-content' }}>{detailProduct.category_name}</span>
-              <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222' }}>{detailProduct.name}</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>{detailProduct.name}</h3>
+                <button 
+                  onClick={() => setSharingProduct(detailProduct)}
+                  style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
+                  title="Share Saree"
+                  onMouseEnter={e => { e.currentTarget.style.background = '#e8d8fc'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f5edff'; e.currentTarget.style.transform = 'none'; }}
+                >
+                  <Share2 size={18} />
+                </button>
+              </div>
               
               <div className="price-row">
                 <span className="current-price" style={{ fontSize: '1.6rem' }}>₹{detailProduct.price.toFixed(2)}</span>
@@ -3598,6 +3633,45 @@ export default function App() {
                   <Heart size={18} />
                 </button>
               </div>
+
+              {detailProduct.customization_enabled && (
+                <button
+                  onClick={() => {
+                    if (role === 'guest' || !role) {
+                      setLoginRoleTab("user");
+                      setShowLoginModal(true);
+                      addToast("Authentication Required", "Please login to place a customization order.", "info");
+                    } else {
+                      setCustomizingProduct(detailProduct);
+                      const palette = currentShop?.color_palette || [];
+                      setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
+                      setCustomSizingNotes("");
+                      setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(122, 78, 165, 0.15)',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    marginTop: '12px'
+                  }}
+                >
+                  <Sparkles size={16} /> BESPOKE CUSTOMIZATION
+                </button>
+              )}
 
               {/* Reviews listing section */}
               <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
@@ -4504,19 +4578,70 @@ export default function App() {
                   <ShoppingBag size={20} /> BUY NOW
                 </button>
               </div>
+
+              {activeProduct.customization_enabled && (
+                <div style={{ marginTop: '16px' }}>
+                  <button
+                    onClick={() => {
+                      if (role === 'guest') {
+                        setLoginRoleTab("user");
+                        setShowLoginModal(true);
+                        addToast("Authentication Required", "Please login to place a customization order.", "info");
+                      } else {
+                        setCustomizingProduct(activeProduct);
+                        const palette = currentShop?.color_palette || [];
+                        setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
+                        setCustomSizingNotes("");
+                        setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                      }
+                    }}
+                    className="btn-primary"
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 15px rgba(122, 78, 165, 0.2)',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    <Sparkles size={20} /> BESPOKE CUSTOMIZATION
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Details */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div>
-                <h1 style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    4.5 <Star size={14} fill="white" />
-                  </span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>{(activeProduct.reviews || []).length} Ratings & Reviews</span>
-                  <span className="badge badge-info">{activeProduct.category_name}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
+                <div>
+                  <h1 style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      4.5 <Star size={14} fill="white" />
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>{(activeProduct.reviews || []).length} Ratings & Reviews</span>
+                    <span className="badge badge-info">{activeProduct.category_name}</span>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setSharingProduct(activeProduct)}
+                  style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', padding: '12px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
+                  title="Share Saree"
+                  onMouseEnter={e => { e.currentTarget.style.background = '#e8d8fc'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#f5edff'; e.currentTarget.style.transform = 'none'; }}
+                >
+                  <Share2 size={20} />
+                </button>
               </div>
 
               {/* Price Block */}
@@ -5994,180 +6119,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Customization Details Selection Modal */}
-            {customizingProduct && (
-              <div className="ad-modal-backdrop" onClick={() => setCustomizingProduct(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(12, 5, 20, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <div className="customization-modal-container" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', position: 'relative' }}>
-                  <button onClick={() => setCustomizingProduct(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', zIndex: 100, borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <X size={20} />
-                  </button>
-
-                  {/* Left Side: Product Preview */}
-                  <div className="customization-modal-left" style={{ background: '#fbf9ff', padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '100%', height: '240px', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', marginBottom: '16px', background: '#ffffff' }}>
-                      <img src={customizingProduct.images[0] || null} alt={customizingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57', textAlign: 'center', margin: '0 0 6px' }}>{customizingProduct.name}</h4>
-                    <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#7a4ea5' }}>₹{customizingProduct.price.toFixed(2)}</span>
-                  </div>
-
-                  {/* Right Side: Customization Form */}
-                  <div className="customization-modal-right" style={{ padding: '35px 30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                      <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', fontWeight: 700, color: '#2b0b57', margin: '0 0 4px' }}>Bespoke Order Details</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Configure tailoring options below</p>
-                    </div>
-
-                    {/* Color Palette Selector */}
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Design Color Palette</label>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {(currentShop?.color_palette || [
-                          {"name": "Royal Gold", "hex": "#D4AF37"},
-                          {"name": "Noble Lavender", "hex": "#7a4ea5"},
-                          {"name": "Crimson Ruby", "hex": "#E84E7E"},
-                          {"name": "Midnight Indigo", "hex": "#2b0b57"},
-                          {"name": "Forest Green", "hex": "#228B22"},
-                          {"name": "Turquoise Teal", "hex": "#008080"}
-                        ]).map((c, idx) => {
-                          const isSelected = selectedCustomColor?.hex === c.hex;
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => setSelectedCustomColor(c)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                borderRadius: '20px',
-                                border: '2px solid ' + (isSelected ? '#7a4ea5' : 'var(--border-subtle)'),
-                                background: '#ffffff',
-                                cursor: 'pointer',
-                                fontWeight: 600,
-                                fontSize: '0.75rem',
-                                transition: 'all 0.2s ease',
-                                boxShadow: isSelected ? '0 2px 8px rgba(122,78,165,0.15)' : 'none'
-                              }}
-                            >
-                              <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: c.hex }} />
-                              {c.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Sizing & Custom Notes Textarea */}
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>Tailoring Measurements & Sizing Notes</label>
-                      <textarea
-                        rows="4"
-                        value={customSizingNotes}
-                        onChange={e => setCustomSizingNotes(e.target.value)}
-                        placeholder="Please specify custom tailoring details here, e.g.:
-- Chest Size: 38 inches
-- Waist Size: 32 inches
-- Shoulder Width: 16 inches
-- Saree Blouse Style: Round Neck / Elbow Sleeve
-- Any other requests..."
-                        style={{
-                          width: '100%',
-                          borderRadius: '12px',
-                          border: '1px solid #dcdcdc',
-                          padding: '12px',
-                          fontSize: '0.85rem',
-                          fontFamily: 'monospace',
-                          outline: 'none',
-                          resize: 'none',
-                          minHeight: '110px'
-                        }}
-                        required
-                      />
-                    </div>
-
-                    {/* Quantity Selector */}
-                    <div>
-                      <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
-                        Quantity (Minimum: {currentShop?.customization_min_quantity || 1})
-                      </label>
-                      <input
-                        type="number"
-                        min={currentShop?.customization_min_quantity || 1}
-                        value={customQuantity}
-                        onChange={e => setCustomQuantity(Math.max(currentShop?.customization_min_quantity || 1, parseInt(e.target.value) || 1))}
-                        style={{
-                          width: '100%',
-                          borderRadius: '12px',
-                          border: '1px solid #dcdcdc',
-                          padding: '10px 12px',
-                          fontSize: '0.85rem',
-                          outline: 'none',
-                        }}
-                      />
-                    </div>
-
-                    {/* Actions */}
-                    <div className="customization-actions" style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setCustomizingProduct(null)}
-                        className="btn-secondary"
-                        style={{ flex: 1, justifyContent: 'center', padding: '10px' }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={submittingCustomOrder}
-                        onClick={async () => {
-                          if (!selectedCustomColor) {
-                            addToast("Color Required", "Please select a color option.", "warning");
-                            return;
-                          }
-                          if (!customSizingNotes.trim()) {
-                            addToast("Notes Required", "Please specify custom sizing notes.", "warning");
-                            return;
-                          }
-                          setSubmittingCustomOrder(true);
-                          try {
-                            const res = await fetch(`${API_BASE}/user/customizations`, {
-                              method: 'POST',
-                              headers: getHeaders(),
-                              body: JSON.stringify({
-                                shop_id: customizingProduct.shop_id,
-                                product_id: customizingProduct.id,
-                                color_name: selectedCustomColor.name,
-                                color_hex: selectedCustomColor.hex,
-                                customization_notes: customSizingNotes,
-                                quantity: customQuantity
-                              })
-                            });
-                            const data = await res.json();
-                            if (res.ok) {
-                              addToast("Success!", "Bespoke customization request submitted successfully.", "success");
-                              setCustomizingProduct(null);
-                              loadUserCustomizations();
-                            } else {
-                              addToast("Request Failed", data.error || "Failed to submit request.", "danger");
-                            }
-                          } catch (err) {
-                            addToast("Error", err.message, "danger");
-                          } finally {
-                            setSubmittingCustomOrder(false);
-                          }
-                        }}
-                        className="btn-primary"
-                        style={{ flex: 2, justifyContent: 'center', padding: '10px', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none' }}
-                      >
-                        {submittingCustomOrder ? 'Submitting...' : 'Submit Bespoke Order'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Modals moved to root level */}
           </main>
         )}
 
@@ -8091,6 +8043,25 @@ export default function App() {
                     )}
                   </div>
 
+                  {/* Customization Activation Toggle */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#fbf9ff', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px 20px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="customization_enabled"
+                      checked={productForm.customization_enabled || false}
+                      onChange={e => setProductForm(prev => ({ ...prev, customization_enabled: e.target.checked }))}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#7a4ea5' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label htmlFor="customization_enabled" style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', cursor: 'pointer' }}>
+                        Allow Bespoke Customization
+                      </label>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Check this to show the "Customization" button to customers, enabling custom tailoring options (colors, notes, quantity).
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Multiple Product Images - maximum below 10 */}
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Images (up to 10 images)</label>
@@ -8242,7 +8213,7 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "" })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -11488,6 +11459,277 @@ export default function App() {
           <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Account</span>
         </button>
       </div>
+
+      {/* Share Product Modal */}
+      {sharingProduct && (
+        <div className="ad-modal-backdrop" onClick={() => setSharingProduct(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(12, 5, 20, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="customization-modal-container" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', position: 'relative', padding: '30px', maxWidth: '420px', width: '90%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <button onClick={() => setSharingProduct(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', zIndex: 100, borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={20} />
+            </button>
+
+            <div>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', fontWeight: 800, color: '#2b0b57', margin: '0 0 4px 0' }}>Share this Saree</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Spread the elegance with friends and family</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', background: '#fcfaff', padding: '12px', borderRadius: '12px', border: '1px solid #f0e6fc' }}>
+              <img src={sharingProduct.images[0] || null} alt="" style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#222222', margin: '0 0 4px 0', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{sharingProduct.name}</h4>
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#7a4ea5' }}>₹{sharingProduct.price.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              {/* WhatsApp */}
+              <button
+                onClick={() => {
+                  const text = encodeURIComponent(`Check out this beautiful saree: ${sharingProduct.name} at ₹${sharingProduct.price}! ${window.location.origin}?product=${sharingProduct.id}`);
+                  window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: 'none', borderRadius: '10px', background: '#25D366', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.9)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                WhatsApp
+              </button>
+
+              {/* Facebook */}
+              <button
+                onClick={() => {
+                  const url = encodeURIComponent(`${window.location.origin}?product=${sharingProduct.id}`);
+                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: 'none', borderRadius: '10px', background: '#1877F2', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.9)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                Facebook
+              </button>
+
+              {/* Twitter / X */}
+              <button
+                onClick={() => {
+                  const url = encodeURIComponent(`${window.location.origin}?product=${sharingProduct.id}`);
+                  const text = encodeURIComponent(`Check out this beautiful saree style: ${sharingProduct.name}!`);
+                  window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: 'none', borderRadius: '10px', background: '#000000', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.9)'}
+                onMouseLeave={e => e.currentTarget.style.filter = 'none'}
+              >
+                Twitter / X
+              </button>
+
+              {/* Copy Link */}
+              <button
+                onClick={() => {
+                  const link = `${window.location.origin}?product=${sharingProduct.id}`;
+                  navigator.clipboard.writeText(link);
+                  addToast("Link Copied!", "Product link copied to clipboard.", "success");
+                }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', border: '1px solid #7a4ea5', borderRadius: '10px', background: '#ffffff', color: '#7a4ea5', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fcfaff'}
+                onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+              >
+                Copy Link
+              </button>
+            </div>
+
+            {navigator.share && (
+              <button
+                onClick={() => {
+                  navigator.share({
+                    title: sharingProduct.name,
+                    text: `Check out this beautiful saree: ${sharingProduct.name}`,
+                    url: `${window.location.origin}?product=${sharingProduct.id}`
+                  }).catch(() => {});
+                }}
+                className="btn-primary"
+                style={{ width: '100%', padding: '12px', fontWeight: 700, fontSize: '0.9rem', justifyContent: 'center', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', borderRadius: '10px', cursor: 'pointer' }}
+              >
+                More Apps...
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Customization Details Selection Modal */}
+      {customizingProduct && (
+        <div className="ad-modal-backdrop" onClick={() => setCustomizingProduct(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(12, 5, 20, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="customization-modal-container" onClick={e => e.stopPropagation()} style={{ background: '#ffffff', borderRadius: '24px', boxShadow: '0 30px 60px rgba(0,0,0,0.15)', position: 'relative' }}>
+            <button onClick={() => setCustomizingProduct(null)} style={{ position: 'absolute', top: '20px', right: '20px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', zIndex: 100, borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={20} />
+            </button>
+
+            {/* Left Side: Product Preview */}
+            <div className="customization-modal-left" style={{ background: '#fbf9ff', padding: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '100%', height: '240px', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.05)', marginBottom: '16px', background: '#ffffff' }}>
+                <img src={customizingProduct.images[0] || null} alt={customizingProduct.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <h4 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57', textAlign: 'center', margin: '0 0 6px' }}>{customizingProduct.name}</h4>
+              <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#7a4ea5' }}>₹{customizingProduct.price.toFixed(2)}</span>
+            </div>
+
+            {/* Right Side: Customization Form */}
+            <div className="customization-modal-right" style={{ padding: '35px 30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', fontWeight: 700, color: '#2b0b57', margin: '0 0 4px' }}>Bespoke Order Details</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>Configure tailoring options below</p>
+              </div>
+
+              {/* Color Palette Selector */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Design Color Palette</label>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {(currentShop?.color_palette || [
+                    {"name": "Royal Gold", "hex": "#D4AF37"},
+                    {"name": "Noble Lavender", "hex": "#7a4ea5"},
+                    {"name": "Crimson Ruby", "hex": "#E84E7E"},
+                    {"name": "Midnight Indigo", "hex": "#2b0b57"},
+                    {"name": "Forest Green", "hex": "#228B22"},
+                    {"name": "Turquoise Teal", "hex": "#008080"}
+                  ]).map((c, idx) => {
+                    const isSelected = selectedCustomColor?.hex === c.hex;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedCustomColor(c)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          border: '2px solid ' + (isSelected ? '#7a4ea5' : 'var(--border-subtle)'),
+                          background: '#ffffff',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          transition: 'all 0.2s ease',
+                          boxShadow: isSelected ? '0 2px 8px rgba(122,78,165,0.15)' : 'none'
+                        }}
+                      >
+                        <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: c.hex }} />
+                        {c.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sizing & Custom Notes Textarea */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>Tailoring Measurements & Sizing Notes</label>
+                <textarea
+                  rows="4"
+                  value={customSizingNotes}
+                  onChange={e => setCustomSizingNotes(e.target.value)}
+                  placeholder="Please specify custom tailoring details here, e.g.:
+- Chest Size: 38 inches
+- Waist Size: 32 inches
+- Shoulder Width: 16 inches
+- Saree Blouse Style: Round Neck / Elbow Sleeve
+- Any other requests..."
+                  style={{
+                    width: '100%',
+                    borderRadius: '12px',
+                    border: '1px solid #dcdcdc',
+                    padding: '12px',
+                    fontSize: '0.85rem',
+                    fontFamily: 'monospace',
+                    outline: 'none',
+                    resize: 'none',
+                    minHeight: '110px'
+                  }}
+                  required
+                />
+              </div>
+
+              {/* Quantity Selector */}
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
+                  Quantity (Minimum: {currentShop?.customization_min_quantity || 1})
+                </label>
+                <input
+                  type="number"
+                  min={currentShop?.customization_min_quantity || 1}
+                  value={customQuantity}
+                  onChange={e => setCustomQuantity(Math.max(currentShop?.customization_min_quantity || 1, parseInt(e.target.value) || 1))}
+                  style={{
+                    width: '100%',
+                    borderRadius: '12px',
+                    border: '1px solid #dcdcdc',
+                    padding: '10px 12px',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="customization-actions" style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setCustomizingProduct(null)}
+                  className="btn-secondary"
+                  style={{ flex: 1, justifyContent: 'center', padding: '10px' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={submittingCustomOrder}
+                  onClick={async () => {
+                    if (!selectedCustomColor) {
+                      addToast("Color Required", "Please select a color option.", "warning");
+                      return;
+                    }
+                    if (!customSizingNotes.trim()) {
+                      addToast("Notes Required", "Please specify custom sizing notes.", "warning");
+                      return;
+                    }
+                    setSubmittingCustomOrder(true);
+                    try {
+                      const res = await fetch(`${API_BASE}/user/customizations`, {
+                        method: 'POST',
+                        headers: getHeaders(),
+                        body: JSON.stringify({
+                          shop_id: customizingProduct.shop_id,
+                          product_id: customizingProduct.id,
+                          color_name: selectedCustomColor.name,
+                          color_hex: selectedCustomColor.hex,
+                          customization_notes: customSizingNotes,
+                          quantity: customQuantity
+                        })
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        addToast("Success!", "Bespoke customization request submitted successfully.", "success");
+                        setCustomizingProduct(null);
+                        loadUserCustomizations();
+                      } else {
+                        addToast("Request Failed", data.error || "Failed to submit request.", "danger");
+                      }
+                    } catch (err) {
+                      addToast("Error", err.message, "danger");
+                    } finally {
+                      setSubmittingCustomOrder(false);
+                    }
+                  }}
+                  className="btn-primary"
+                  style={{ flex: 2, justifyContent: 'center', padding: '10px', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none' }}
+                >
+                  {submittingCustomOrder ? 'Submitting...' : 'Submit Bespoke Order'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
