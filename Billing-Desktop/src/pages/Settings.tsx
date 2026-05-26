@@ -23,6 +23,9 @@ const Settings: React.FC = () => {
   const [gstInclusive, setGstInclusive] = useState(false);
   const [gstPercentage, setGstPercentage] = useState<number>(18);
   const [footerMessage, setFooterMessage] = useState('');
+  const [ecommerceApiUrl, setEcommerceApiUrl] = useState('');
+  const [ecommerceApiKey, setEcommerceApiKey] = useState('');
+  const [ecommerceSyncInterval, setEcommerceSyncInterval] = useState<number>(10);
 
   const [printers, setPrinters] = useState<any[]>([]);
   const [selectedReceiptPrinter, setSelectedReceiptPrinter] = useState<string>(() => localStorage.getItem('receipt_printer_name') || '');
@@ -44,6 +47,9 @@ const Settings: React.FC = () => {
       setShowGst(settings.showGst !== undefined ? settings.showGst : true);
       setGstInclusive(settings.gstInclusive || false);
       setGstPercentage(settings.gstPercentage !== undefined ? parseFloat(settings.gstPercentage) : 18);
+      setEcommerceApiUrl(settings.ecommerceApiUrl || 'http://localhost:5000/api');
+      setEcommerceApiKey(settings.ecommerceApiKey || '');
+      setEcommerceSyncInterval(settings.ecommerceSyncInterval !== undefined ? parseInt(settings.ecommerceSyncInterval) : 10);
       setFooterMessage(settings.footerMessage || 'Thank you for your business!');
     } catch { }
     try {
@@ -85,6 +91,33 @@ const Settings: React.FC = () => {
     alert('Printer settings saved successfully!');
   };
 
+  const testEcommerceConnection = async () => {
+    if (!ecommerceApiUrl || !ecommerceApiKey) {
+      alert('Please fill in both E-Commerce URL and API Key.');
+      return;
+    }
+    try {
+      const response = await fetch(`${ecommerceApiUrl.replace(/\/$/, '')}/billing/sync/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: ecommerceApiKey })
+      });
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        alert(`Connection successful! Connected to shop: ${resData.shop_name}`);
+      } else {
+        alert(`Connection failed: ${resData.error || 'Unknown error'}`);
+      }
+    } catch (e: any) {
+      alert(`Network error connecting to E-Commerce site: ${e.message || String(e)}`);
+    }
+  };
+
+  const triggerEcommerceSync = () => {
+    window.dispatchEvent(new Event('trigger-ecommerce-sync'));
+    alert('Synchronization process triggered in background...');
+  };
+
   const saveSettings = () => {
     const existingRaw = localStorage.getItem('app_settings');
     const existing = existingRaw ? JSON.parse(existingRaw) : {};
@@ -102,6 +135,9 @@ const Settings: React.FC = () => {
       showGst: showGst,
       gstInclusive: gstInclusive,
       gstPercentage: gstPercentage,
+      ecommerceApiUrl: ecommerceApiUrl.trim(),
+      ecommerceApiKey: ecommerceApiKey.trim(),
+      ecommerceSyncInterval: ecommerceSyncInterval,
       footerMessage: footerMessage.trim()
     };
     localStorage.setItem('app_settings', JSON.stringify(next));
@@ -457,6 +493,57 @@ const Settings: React.FC = () => {
                 <Upload className="h-4 w-4" /> Import SQL Backup
                 <input type="file" accept=".sql" className="hidden" onChange={handleImportSql} />
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="card border border-white/60 bg-white/85 shadow-soft">
+          <h2 className="mb-4 text-xl font-semibold text-slate-900">E-Commerce Integration Sync</h2>
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Website Sync Endpoint URL</label>
+              <input 
+                type="text" 
+                value={ecommerceApiUrl} 
+                onChange={(e) => setEcommerceApiUrl(e.target.value)} 
+                className="input w-full" 
+                placeholder="e.g., http://localhost:5000/api" 
+              />
+              <p className="mt-1 text-xs text-slate-500">Your online shop backend base API URL.</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Billing Sync API Key</label>
+              <input 
+                type="password" 
+                value={ecommerceApiKey} 
+                onChange={(e) => setEcommerceApiKey(e.target.value)} 
+                className="input w-full" 
+                placeholder="Paste the generated key from website admin..." 
+              />
+              <p className="mt-1 text-xs text-slate-500">Generate this key in the Store settings of your website admin panel.</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Sync Interval (seconds)</label>
+              <input 
+                type="number" 
+                min="5" 
+                value={ecommerceSyncInterval} 
+                onChange={(e) => setEcommerceSyncInterval(parseInt(e.target.value) || 10)} 
+                className="input w-full" 
+                placeholder="e.g., 10" 
+              />
+              <p className="mt-1 text-xs text-slate-500">How frequently the app automatically syncs with the website (minimum 5 seconds).</p>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button onClick={testEcommerceConnection} className="btn-secondary px-4 py-2 text-sm">
+                Test Connection
+              </button>
+              <button onClick={triggerEcommerceSync} className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm">
+                Sync Now
+              </button>
+              <button onClick={saveSettings} className="btn-secondary px-4 py-2 text-sm">
+                Save Sync Details
+              </button>
             </div>
           </div>
         </div>

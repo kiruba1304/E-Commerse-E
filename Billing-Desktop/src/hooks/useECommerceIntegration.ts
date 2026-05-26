@@ -1,178 +1,300 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDatabase } from './useDatabase';
 import { BillItem } from '../types';
 
 export const useECommerceIntegration = () => {
   const db = useDatabase();
+  const isSyncingRef = useRef(false);
 
-  useEffect(() => {
-    const api = (window as any).electronAPI;
-    if (!api || !api.onWebhookOrder) return;
+  const performSync = async () => {
+    if (isSyncingRef.current) return;
+    isSyncingRef.current = true;
 
-    api.onWebhookOrder(async (orderData: any) => {
-      console.log('Received E-commerce Webhook:', orderData);
-      
-      try {
-        await db.waitForInit(); // ensure DB is ready
-        
-        // 1. Process Customer (Online Categorization)
-        let customerId: number;
-        const customers = db.getCustomers();
-        const existingCustomer = customers.find(c => c.phone === orderData.customer?.phone || c.email === orderData.customer?.email);
-        
-        if (existingCustomer) {
-          customerId = existingCustomer.id;
-          db.updateCustomer(customerId, { 
-            type: 'online', 
-            address: orderData.customer?.shipping_address 
-          });
-        } else {
-          customerId = db.createCustomer({
-            name: orderData.customer?.name || 'Online Customer',
-            phone: orderData.customer?.phone || '',
-            email: orderData.customer?.email,
-            address: orderData.customer?.shipping_address,
-            type: 'online'
-          });
-        }
+    try {
+      await db.waitForInit();
 
-        // 2. Reserve Stock and Prepare Items
-        const products = db.getProducts();
-        const billItems: BillItem[] = [];
-        let totalAmount = 0;
+      // Read configurations from localStorage
+      const settingsRaw = localStorage.getItem('app_settings');
+      if (!settingsRaw) {
+        isSyncingRef.current = false;
+        return;
+      }
 
-        for (const item of (orderData.items || [])) {
-          const product = products.find(p => p.barcode === item.sku || p.id === item.productId);
-          if (product) {
-            // Update reserved stock
-            const currentReserved = product.reservedStock || 0;
-            db.updateProduct(product.id, {
-              reservedStock: currentReserved + (item.quantity || 1)
+      const settings = JSON.parse(settingsRaw);
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+
+      if (!apiUrl || !apiKey) {
+        isSyncingRef.current = false;
+        return;
+      }
+
+      console.log('Starting E-Commerce Bidirectional Sync...');
+
+      // -------------------------------------------------------------
+      // 1. SYNC PRODUCTS (BIDIRECTIONAL)
+      // -------------------------------------------------------------
+      const localProducts = db.getProducts();
+      const productSyncRes = await fetch(`${apiUrl}/billing/sync/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          products: localProducts
+        })
+      });
+
+      if (productSyncRes.ok) {
+        const prodData = await productSyncRes.json();
+        const webProducts = prodData.products || [];
+
+        // Update local storage products with details from website
+        for (const wp of webProducts) {
+          const localProd = localProducts.find(
+            lp => (wp.barcode && lp.barcode === wp.barcode) || (wp.sku_code && lp.skuCode === wp.sku_code)
+          );
+
+          if (localProd) {
+            // Update local product: stock count, price, name, classification code
+            db.updateProduct(localProd.id, {
+              count: wp.stock,
+              sellingPrice: wp.price,
+              name: wp.name,
+              skuCode: wp.sku_code,
+              hsnCode: wp.hsc_code
             });
-
-            const itemTotal = (item.price || product.sellingPrice) * (item.quantity || 1);
-            totalAmount += itemTotal;
-
-            billItems.push({
-              id: Date.now() + Math.random(),
-              billId: 0, // Will be set by db.createBill
-              productId: product.id,
-              quantity: item.quantity || 1,
-              unitPrice: item.price || product.sellingPrice,
+          } else {
+            // Create product locally since it does not exist
+            db.createProduct({
+              name: wp.name,
+              company: 'N/A',
+              productCode: wp.sku_code,
+              skuCode: wp.sku_code,
+              hsnCode: wp.hsc_code,
+              count: wp.stock,
+              costPrice: wp.original_price || wp.price,
+              sellingPrice: wp.price,
               discount: 0,
-              gst: product.gst || 0,
-              totalPrice: itemTotal
+              gst: settings.gstPercentage || 18,
+              barcode: wp.barcode || `BC-${Date.now()}-${Math.floor(Math.random() * 100)}`,
+              finalPrice: wp.price
             });
           }
         }
-
-        // 3. Generate Multi-Tier Invoices
-        const shipping = Number(orderData.shipping || 0);
-        const commission = Number(orderData.commission || 0);
-        const orderId = orderData.orderId || Math.floor(Math.random() * 1000000);
-
-        // Bill A: Customer Facing Invoice (Includes Shipping)
-        db.createBill({
-          id: 0,
-          billNumber: `EC-CUST-${orderId}`,
-          customerId,
-          totalAmount: totalAmount + shipping,
-          totalDiscount: 0,
-          totalGst: 0,
-          finalAmount: totalAmount + shipping,
-          paymentMethod: 'online',
-          status: 'completed',
-          salesChannel: 'ecommerce',
-          invoiceType: 'customer_bill',
-          items: billItems,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-
-        // Bill B: Seller/Marketplace Bill (Deducts Commission)
-        db.createBill({
-          id: 0,
-          billNumber: `EC-SELL-${orderId}`,
-          customerId, // Keeping customer reference
-          totalAmount: totalAmount,
-          totalDiscount: commission, // Treat commission as discount on seller payout
-          totalGst: 0,
-          finalAmount: totalAmount - commission,
-          paymentMethod: 'online',
-          status: 'completed',
-          salesChannel: 'ecommerce',
-          invoiceType: 'seller_bill',
-          items: billItems,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        
-        // Show success alert
-        api.showAlert(`New E-commerce order #${orderId} received and processed!`, 'Order Synced');
-      } catch (err) {
-        console.error('Error processing E-commerce order:', err);
       }
-    });
-  }, [db]);
 
-  // ==============================================================================
-  // METHOD 2: POLLING (THE "PULL" METHOD) - NO THIRD-PARTY APPS REQUIRED
-  // ==============================================================================
-  // Since the POS is a local desktop app, it cannot easily receive incoming traffic
-  // from the public internet without port-forwarding or tools like Ngrok.
-  // The industry-standard way to solve this natively is "Polling".
-  // The POS actively reaches out to your website every X minutes to fetch new orders.
-  useEffect(() => {
-    const ENABLE_POLLING = true; // Set to true to enable this method
-    if (!ENABLE_POLLING) return;
+      // -------------------------------------------------------------
+      // 2. SYNC POS BILLS TO WEBSITE
+      // -------------------------------------------------------------
+      const localBills = db.getBills();
+      
+      // Load synced bill numbers list to prevent resending
+      const syncedBillsRaw = localStorage.getItem('synced_bill_numbers');
+      const syncedBillNumbers: string[] = syncedBillsRaw ? JSON.parse(syncedBillsRaw) : [];
 
-    const ECOMMERCE_API_URL = 'https://yourwebsite.com/api/pending-orders'; // Your website's API endpoint
-    const API_KEY = 'your_secret_api_key';
+      const unsyncedBills = localBills.filter(b => !syncedBillNumbers.includes(b.billNumber));
 
-    const fetchNewOrders = async () => {
-      try {
-        await db.waitForInit();
-        // 1. Ask the website for new orders
-        const response = await fetch(ECOMMERCE_API_URL, {
-          headers: { 'Authorization': `Bearer ${API_KEY}` }
+      if (unsyncedBills.length > 0) {
+        const billSyncRes = await fetch(`${apiUrl}/billing/sync/bills`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: apiKey,
+            bills: unsyncedBills
+          })
         });
 
-        if (!response.ok) return;
+        if (billSyncRes.ok) {
+          const resJson = await billSyncRes.json();
+          if (resJson.success) {
+            // Add all processed bill numbers to synced bills list
+            const updatedSynced = [...syncedBillNumbers, ...unsyncedBills.map(b => b.billNumber)];
+            localStorage.setItem('synced_bill_numbers', JSON.stringify(updatedSynced));
+          }
+        }
+      }
 
-        const newOrders = await response.json();
-        
-        if (newOrders && newOrders.length > 0) {
-          console.log(`Fetched ${newOrders.length} new orders from E-Commerce site.`);
-          
-          for (const _ of newOrders) {
-            // Process the order here using the exact same logic as the Webhook method above
-            // (Create customer, reserve stock, generate bills)
-            // ...
+      // -------------------------------------------------------------
+      // 3. PULL WEBSITE ORDERS TO POS
+      // -------------------------------------------------------------
+      const orderPullRes = await fetch(`${apiUrl}/billing/sync/orders/pull`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey })
+      });
+
+      if (orderPullRes.ok) {
+        const orderData = await orderPullRes.json();
+        const pendingOrders = orderData.orders || [];
+
+        if (pendingOrders.length > 0) {
+          console.log(`Fetched ${pendingOrders.length} pending orders from website.`);
+          const processedOrderIds: number[] = [];
+
+          const currentProducts = db.getProducts();
+
+          for (const order of pendingOrders) {
+            // Find or create customer
+            let customerId: number;
+            const customers = db.getCustomers();
+            const email = order.customer?.email;
+            const phone = order.customer?.phone;
+            
+            const existingCustomer = customers.find(
+              c => (phone && c.phone === phone) || (email && c.email === email)
+            );
+
+            if (existingCustomer) {
+              customerId = existingCustomer.id;
+              db.updateCustomer(customerId, {
+                type: 'online',
+                address: order.customer?.shipping_address
+              });
+            } else {
+              customerId = db.createCustomer({
+                name: order.customer?.name || 'Online Customer',
+                phone: phone || '',
+                email: email,
+                address: order.customer?.shipping_address,
+                type: 'online'
+              });
+            }
+
+            // Prepare items and reduce stock locally
+            const billItems: BillItem[] = [];
+            let totalAmount = 0;
+
+            for (const item of (order.items || [])) {
+              // Match product locally on ID or Barcode
+              const product = currentProducts.find(
+                p => p.id === item.product_id || p.barcode === item.barcode || p.skuCode === item.sku_code
+              );
+
+              if (product) {
+                const itemTotal = item.price * item.quantity;
+                totalAmount += itemTotal;
+
+                billItems.push({
+                  id: Date.now() + Math.random(),
+                  billId: 0, // will be set by createBill
+                  productId: product.id,
+                  quantity: item.quantity,
+                  unitPrice: item.price,
+                  discount: 0,
+                  gst: product.gst || settings.gstPercentage || 18,
+                  totalPrice: itemTotal
+                });
+              }
+            }
+
+            // Create POS Customer Bill for records
+            db.createBill({
+              id: 0,
+              billNumber: `EC-CUST-${order.id}`,
+              customerId,
+              totalAmount: totalAmount,
+              totalDiscount: order.discount_amount || 0,
+              totalGst: order.gst_amount || 0,
+              finalAmount: order.final_amount,
+              paymentMethod: 'online',
+              status: 'completed',
+              salesChannel: 'ecommerce',
+              invoiceType: 'customer_bill',
+              items: billItems,
+              createdAt: order.created_at || new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+
+            processedOrderIds.push(order.id);
           }
 
-          // 2. Tell the website the orders were successfully synced so it doesn't send them again
-          const syncedIds = newOrders.map((o: any) => o.orderId);
-          await fetch('https://yourwebsite.com/api/mark-orders-synced', {
-            method: 'POST',
-            headers: { 
-              'Authorization': `Bearer ${API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ syncedIds })
-          });
-          
+          // Report processed orders back to website to mark them as synced
+          if (processedOrderIds.length > 0) {
+            await fetch(`${apiUrl}/billing/sync/orders/mark-synced`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: apiKey,
+                order_ids: processedOrderIds
+              })
+            });
+          }
+
           const api = (window as any).electronAPI;
-          if (api) api.showAlert(`Synced ${newOrders.length} orders from website!`, 'Sync Complete');
+          if (api?.showAlert) {
+            api.showAlert(`Successfully synced ${pendingOrders.length} orders from website!`, 'Sync Complete');
+          }
         }
-      } catch (err) {
-        console.error('Failed to poll e-commerce orders:', err);
       }
+
+      // Save sync timing log
+      const nowStr = new Date().toLocaleString();
+      const updatedSettings = {
+        ...settings,
+        lastSyncTime: nowStr,
+        syncStatus: 'Success'
+      };
+      localStorage.setItem('app_settings', JSON.stringify(updatedSettings));
+      console.log('Bidirectional E-Commerce Sync completed successfully.');
+
+    } catch (e: any) {
+      console.error('E-Commerce Sync error:', e);
+      try {
+        const raw = localStorage.getItem('app_settings');
+        if (raw) {
+          const settings = JSON.parse(raw);
+          localStorage.setItem('app_settings', JSON.stringify({
+            ...settings,
+            syncStatus: `Failed: ${e.message || String(e)}`
+          }));
+        }
+      } catch {}
+    } finally {
+      isSyncingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    // Run sync on startup
+    performSync();
+
+    let timer: any = null;
+    let lastSyncTime = Date.now();
+
+    const tick = async () => {
+      // Load latest interval from localStorage
+      let intervalSeconds = 10;
+      try {
+        const raw = localStorage.getItem('app_settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.ecommerceSyncInterval !== undefined) {
+            intervalSeconds = Math.max(5, parseInt(parsed.ecommerceSyncInterval) || 10);
+          }
+        }
+      } catch {}
+
+      const elapsed = (Date.now() - lastSyncTime) / 1000;
+      if (elapsed >= intervalSeconds) {
+        await performSync();
+        lastSyncTime = Date.now();
+      }
+
+      timer = setTimeout(tick, 1000); // Check every second
     };
 
-    // Run once on startup, then every 5 minutes (300000 ms)
-    fetchNewOrders();
-    const interval = setInterval(fetchNewOrders, 5 * 60 * 1000);
+    timer = setTimeout(tick, 1000);
 
-    return () => clearInterval(interval);
+    // Bind custom window event listener for manual triggers from Settings page
+    const handleManualSync = async () => {
+      await performSync();
+      lastSyncTime = Date.now();
+    };
+    window.addEventListener('trigger-ecommerce-sync', handleManualSync);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('trigger-ecommerce-sync', handleManualSync);
+    };
   }, [db]);
 };

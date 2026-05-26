@@ -15,6 +15,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 from super_admin import super_admin_bp
 from admin import admin_bp
 from user import user_bp
+from billing_sync import billing_sync_bp
 
 app = Flask(__name__)
 CORS(app)
@@ -63,6 +64,7 @@ db.init_app(app)
 app.register_blueprint(super_admin_bp, url_prefix='/api/super-admin')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(user_bp, url_prefix='/api/user')
+app.register_blueprint(billing_sync_bp, url_prefix='/api/billing/sync')
 
 # UNIFIED AUTHENTICATION ENDPOINT
 @app.route('/api/auth/login', methods=['POST'])
