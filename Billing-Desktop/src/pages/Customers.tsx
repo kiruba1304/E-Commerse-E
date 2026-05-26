@@ -616,34 +616,34 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
               return (
                 <div key={customer.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-soft transition-all hover:-translate-y-0.5 hover:border-primary-200">
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900">{customer.name}</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate">{customer.name}</h3>
                       <div className="mt-2 space-y-1 text-sm text-slate-600">
                         <div className="flex items-center gap-2">
-                          <Phone className="w-3 h-3" />
-                          <span>{customer.phone}</span>
+                          <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate">{customer.phone}</span>
                         </div>
                         {customer.email && (
                           <div className="flex items-center gap-2">
-                            <Mail className="w-3 h-3" />
-                            <span>{customer.email}</span>
+                            <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span className="truncate">{customer.email}</span>
                           </div>
                         )}
                         {customer.address && (
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-3 h-3" />
-                            <span className="truncate">{customer.address}</span>
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-3 h-3 text-slate-400 mt-1 shrink-0" />
+                            <span className="break-words text-slate-600">{customer.address}</span>
                           </div>
                         )}
                         {customer.gstNumber && (
                           <div className="flex items-center gap-2 text-primary-600 font-semibold">
-                            <Receipt className="w-3 h-3" />
-                            <span>GSTIN: {customer.gstNumber}</span>
+                            <Receipt className="w-3 h-3 shrink-0" />
+                            <span className="truncate">GSTIN: {customer.gstNumber}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 shrink-0">
                       <button onClick={() => handleEdit(customer)} className="btn-icon btn-icon-primary" title="Edit">
                         <Edit className="h-4 w-4" />
                       </button>
