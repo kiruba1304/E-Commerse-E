@@ -7072,6 +7072,41 @@ export default function App() {
                   </div>
                 </div>
 
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '20px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Desktop POS Billing App Integration</h4>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Billing API Key</label>
+                      <input 
+                        type="text" 
+                        placeholder="Generate an API key for your desktop app..."
+                        value={adminShop.billing_api_key || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, billing_api_key: e.target.value }))}
+                        style={{ fontFamily: 'monospace', height: '38px' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                        let randStr = '';
+                        for (let i = 0; i < 24; i++) {
+                          randStr += chars.charAt(Math.floor(Math.random() * chars.length));
+                        }
+                        const newKey = 'BILLING_' + randStr;
+                        setAdminShop(prev => ({ ...prev, billing_api_key: newKey }));
+                      }}
+                      className="btn-secondary"
+                      style={{ height: '38px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap', border: '1px solid #7a4ea5', color: '#7a4ea5' }}
+                    >
+                      Generate API Key
+                    </button>
+                  </div>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', marginBottom: 0 }}>
+                    Copy this key and paste it in your desktop billing application's settings to sync orders, stock, and customers.
+                  </p>
+                </div>
+
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '24px', marginTop: '10px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5' }}>Hero Section Slider & Cards</h4>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>

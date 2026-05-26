@@ -106,6 +106,8 @@ def manage_shop():
         shop.razorpay_key_id = data['razorpay_key_id']
     if 'razorpay_key_secret' in data:
         shop.razorpay_key_secret = data['razorpay_key_secret']
+    if 'billing_api_key' in data:
+        shop.billing_api_key = data['billing_api_key']
     if 'gst_percentage' in data:
         try:
             shop.gst_percentage = float(data['gst_percentage'])
