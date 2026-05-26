@@ -151,6 +151,7 @@ const Billing: React.FC = () => {
           }
           : item
       ));
+    } else {
       let activeGst = 18;
       try {
         const raw = localStorage.getItem('app_settings');

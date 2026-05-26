@@ -366,12 +366,12 @@ class BrowserDatabase {
       // Skip for seller_bills to prevent double deduction
       if (newBill.invoiceType !== 'seller_bill') {
         const available = products[pIndex].count;
-        if (available < item.quantity) {
+        if (newBill.salesChannel !== 'ecommerce' && available < item.quantity) {
           throw new Error(`Insufficient stock for ${products[pIndex].name}. In stock: ${available}, requested: ${item.quantity}`);
         }
         products[pIndex] = {
           ...products[pIndex],
-          count: available - item.quantity,
+          count: Math.max(0, available - item.quantity),
           updatedAt: nowIso,
         };
 
@@ -435,10 +435,10 @@ class BrowserDatabase {
 
     // Customers
     sql += '-- Table: Customers\n';
-    sql += 'CREATE TABLE IF NOT EXISTS Customers (id INTEGER PRIMARY KEY, name TEXT, phone TEXT, email TEXT, address TEXT, creditBalance REAL, creditHistory TEXT, createdAt TEXT, updatedAt TEXT);\n';
+    sql += 'CREATE TABLE IF NOT EXISTS Customers (id INTEGER PRIMARY KEY, name TEXT, phone TEXT, email TEXT, address TEXT, creditBalance REAL, creditHistory TEXT, createdAt TEXT, updatedAt TEXT, gstNumber TEXT);\n';
     const customers = this.getCustomers();
     customers.forEach(c => {
-      sql += `INSERT INTO Customers VALUES (${c.id}, '${c.name.replace(/'/g, "''")}', '${c.phone.replace(/'/g, "''")}', '${(c.email || '').replace(/'/g, "''")}', '${(c.address || '').replace(/'/g, "''")}', ${c.creditBalance || 0}, '${JSON.stringify(c.creditHistory || []).replace(/'/g, "''")}', '${c.createdAt}', '${c.updatedAt}');\n`;
+      sql += `INSERT INTO Customers VALUES (${c.id}, '${c.name.replace(/'/g, "''")}', '${c.phone.replace(/'/g, "''")}', '${(c.email || '').replace(/'/g, "''")}', '${(c.address || '').replace(/'/g, "''")}', ${c.creditBalance || 0}, '${JSON.stringify(c.creditHistory || []).replace(/'/g, "''")}', '${c.createdAt}', '${c.updatedAt}', '${(c.gstNumber || '').replace(/'/g, "''")}');\n`;
     });
     sql += '\n';
 
@@ -603,6 +603,7 @@ class BrowserDatabase {
             creditHistory: row[6] ? JSON.parse(String(row[6])) : [],
             createdAt: String(row[7] ?? new Date().toISOString()),
             updatedAt: String(row[8] ?? new Date().toISOString()),
+            gstNumber: row[9] ? String(row[9]) : undefined,
           });
           break;
 

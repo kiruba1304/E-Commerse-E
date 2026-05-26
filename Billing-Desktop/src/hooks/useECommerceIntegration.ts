@@ -182,7 +182,8 @@ export const useECommerceIntegration = () => {
                   unitPrice: item.price,
                   discount: 0,
                   gst: product.gst || settings.gstPercentage || 18,
-                  totalPrice: itemTotal
+                  totalPrice: itemTotal,
+                  product // store reference to product for rendering
                 });
               }
             }

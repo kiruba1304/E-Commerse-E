@@ -515,9 +515,13 @@ class OrderItem(db.Model):
     def serialize(self):
         product_image = None
         category_name = "Uncategorized"
+        barcode = ""
+        sku_code = ""
         if self.product:
             product_image = self.product.images[0] if self.product.images else None
             category_name = self.product.category.name if self.product.category else "Uncategorized"
+            barcode = self.product.barcode or ""
+            sku_code = self.product.sku_code or ""
         return {
             "id": self.id,
             "order_id": self.order_id,
@@ -526,7 +530,9 @@ class OrderItem(db.Model):
             "price": self.price,
             "quantity": self.quantity,
             "product_image": product_image,
-            "category_name": category_name
+            "category_name": category_name,
+            "barcode": barcode,
+            "sku_code": sku_code
         }
 
 class CartItem(db.Model):

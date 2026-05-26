@@ -24,6 +24,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
+  gstNumber?: string; // GST number for client
   totalPurchases?: number; // Total amount spent
   purchaseCount?: number; // Number of purchases
   lastPurchaseDate?: string; // Last purchase date

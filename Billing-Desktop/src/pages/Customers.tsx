@@ -42,7 +42,8 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
     name: '',
     phone: '',
     email: '',
-    address: ''
+    address: '',
+    gstNumber: ''
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -57,10 +58,8 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
 
     try {
       if (editingCustomer) {
-        // For now, we'll just handle adding new customers
-        // Customer editing can be implemented later
-        alert('Customer editing not yet implemented');
-        setEditingCustomer(null);
+        await updateCustomer(editingCustomer.id, formData);
+        alert('Customer updated successfully!');
       } else {
         await addCustomer(formData);
       }
@@ -77,7 +76,8 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
       name: '',
       phone: '',
       email: '',
-      address: ''
+      address: '',
+      gstNumber: ''
     });
     setShowAddForm(false);
     setEditingCustomer(null);
@@ -88,7 +88,8 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
       name: customer.name,
       phone: customer.phone,
       email: customer.email || '',
-      address: customer.address || ''
+      address: customer.address || '',
+      gstNumber: customer.gstNumber || ''
     });
     setEditingCustomer(customer);
     setShowAddForm(true);
@@ -315,6 +316,19 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
                   onChange={(e) => handleInputChange('address', e.target.value)}
                   className="input w-full h-20 resize-none"
                   placeholder="Enter customer address"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  GST Number
+                </label>
+                <input
+                  type="text"
+                  value={formData.gstNumber}
+                  onChange={(e) => handleInputChange('gstNumber', e.target.value)}
+                  className="input w-full"
+                  placeholder="Enter customer GST number"
                 />
               </div>
 
@@ -619,6 +633,12 @@ const Customers: React.FC<CustomersProps> = ({ onNavigate }) => {
                           <div className="flex items-center gap-2">
                             <MapPin className="w-3 h-3" />
                             <span className="truncate">{customer.address}</span>
+                          </div>
+                        )}
+                        {customer.gstNumber && (
+                          <div className="flex items-center gap-2 text-primary-600 font-semibold">
+                            <Receipt className="w-3 h-3" />
+                            <span>GSTIN: {customer.gstNumber}</span>
                           </div>
                         )}
                       </div>

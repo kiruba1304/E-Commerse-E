@@ -406,7 +406,12 @@ export const generateRegularA5Receipt = (bill: Bill, settings: AppSettings, qrDa
             <strong>Bill Date:</strong><br>${new Date(bill.createdAt).toLocaleDateString()}
           </div>
           <div class="bill-details">
-            ${bill.customer ? `<strong>${bill.customer.name}</strong><br>${bill.customer.phone}` : '<strong>Walk-in Customer</strong>'}
+            ${bill.customer ? `
+              <strong>${bill.customer.name}</strong><br>
+              ${bill.customer.phone}
+              ${bill.customer.address ? `<br>${bill.customer.address.replace(/\n/g, '<br>')}` : ''}
+              ${bill.customer.gstNumber ? `<br><strong>GSTIN:</strong> ${bill.customer.gstNumber}` : ''}
+            ` : '<strong>Walk-in Customer</strong>'}
           </div>
         </div>
         <div class="items">
@@ -534,6 +539,7 @@ export const generateRegularA4Receipt = (bill: Bill, settings: AppSettings, qrDa
               <div>${bill.customer.phone}</div>
               ${bill.customer.email ? `<div>${bill.customer.email}</div>` : ''}
               ${bill.customer.address ? `<div>${bill.customer.address}</div>` : ''}
+              ${bill.customer.gstNumber ? `<div><strong>GSTIN:</strong> ${bill.customer.gstNumber}</div>` : ''}
             ` : '<div><strong>Walk-in Customer</strong></div>'}
           </div>
         </div>
@@ -671,6 +677,7 @@ export const generateRegularA4DetailedReceipt = (bill: Bill, settings: AppSettin
               <div>Phone: ${bill.customer.phone}</div>
               ${bill.customer.email ? `<div>Email: ${bill.customer.email}</div>` : ''}
               ${bill.customer.address ? `<div>Address: ${bill.customer.address}</div>` : ''}
+              ${bill.customer.gstNumber ? `<div><strong>GSTIN:</strong> ${bill.customer.gstNumber}</div>` : ''}
             ` : '<div><strong>Walk-in Customer</strong></div>'}
           </div>
         </div>
