@@ -144,7 +144,7 @@ export const useECommerceIntegration = () => {
         if (newOrders && newOrders.length > 0) {
           console.log(`Fetched ${newOrders.length} new orders from E-Commerce site.`);
           
-          for (const orderData of newOrders) {
+          for (const _ of newOrders) {
             // Process the order here using the exact same logic as the Webhook method above
             // (Create customer, reserve stock, generate bills)
             // ...

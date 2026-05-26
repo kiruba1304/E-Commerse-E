@@ -415,11 +415,30 @@ const Reports: React.FC = () => {
         const itemBase = itemBases[idx] || 0;
         const share = base > 0 ? (itemBase / base) : 0;
         const perItemExtra = extraPart * share;
-        const adjustedBase = Math.max(0, itemBase - perItemExtra);
-        const itemGstAmt = adjustedBase * (Number(it.gst || 0) / 100);
+        let gstInclusive = false;
+        try {
+          const raw = localStorage.getItem('app_settings');
+          if (raw) {
+            gstInclusive = !!JSON.parse(raw).gstInclusive;
+          }
+        } catch {}
+
+        const adjustedBaseRaw = Math.max(0, itemBase - perItemExtra);
+        let adjustedBase = adjustedBaseRaw;
+        let itemGstAmt = 0;
+        let grossValue = 0;
+
+        if (gstInclusive) {
+          adjustedBase = adjustedBaseRaw / (1 + Number(it.gst || 0) / 100);
+          itemGstAmt = adjustedBaseRaw * (Number(it.gst || 0) / 100) / (1 + Number(it.gst || 0) / 100);
+          grossValue = adjustedBaseRaw;
+        } else {
+          itemGstAmt = adjustedBaseRaw * (Number(it.gst || 0) / 100);
+          grossValue = adjustedBaseRaw + itemGstAmt;
+        }
+
         const cgst = itemGstAmt / 2;
         const sgst = itemGstAmt / 2;
-        const grossValue = adjustedBase + itemGstAmt;
 
         list.push({
           id: `${b.billNumber}-${it.id}`,
@@ -449,6 +468,12 @@ const Reports: React.FC = () => {
       return true;
     });
   }, [gstRecords, fromDate, toDate, gstRateFilter]);
+
+  const uniqueGstRates = useMemo(() => {
+    const rates = new Set<number>();
+    gstRecords.forEach(r => rates.add(r.gstRate));
+    return Array.from(rates).sort((a, b) => a - b);
+  }, [gstRecords]);
 
   const gstSummary = useMemo(() => {
     let totalTaxable = 0;
@@ -552,7 +577,17 @@ const Reports: React.FC = () => {
           profit: 0,
         };
         rec.quantitySold += it.quantity;
-        rec.revenue += it.totalPrice - (it.totalPrice * it.discount / 100) + ((it.totalPrice - (it.totalPrice * it.discount / 100)) * it.gst / 100);
+        let gstInclusive = false;
+        try {
+          const raw = localStorage.getItem('app_settings');
+          if (raw) {
+            gstInclusive = !!JSON.parse(raw).gstInclusive;
+          }
+        } catch {}
+
+        const itemBase = it.totalPrice - (it.totalPrice * it.discount / 100);
+        const itemRevenue = gstInclusive ? itemBase : (itemBase + (itemBase * it.gst / 100));
+        rec.revenue += itemRevenue;
         // rough profit estimate
         if (p) rec.profit += (it.unitPrice - p.costPrice) * it.quantity;
         map.set(it.productId, rec);
@@ -670,9 +705,25 @@ const Reports: React.FC = () => {
         const share = base > 0 ? (itemBase / base) : 0;
         const perItemExtra = extraPart * share;
         const perItemDisc = (itemDiscounts[idx] || 0) + perItemExtra;
-        const adjustedBase = Math.max(0, itemBase - perItemExtra);
-        const itemGst = adjustedBase * (Number(it.gst || 0) / 100);
-        const itemFinalIncGst = adjustedBase + itemGst;
+        let gstInclusive = false;
+        try {
+          const raw = localStorage.getItem('app_settings');
+          if (raw) {
+            gstInclusive = !!JSON.parse(raw).gstInclusive;
+          }
+        } catch {}
+
+        const adjustedBaseRaw = Math.max(0, itemBase - perItemExtra);
+        let itemGst = 0;
+        let itemFinalIncGst = 0;
+
+        if (gstInclusive) {
+          itemGst = adjustedBaseRaw * (Number(it.gst || 0) / 100) / (1 + Number(it.gst || 0) / 100);
+          itemFinalIncGst = adjustedBaseRaw;
+        } else {
+          itemGst = adjustedBaseRaw * (Number(it.gst || 0) / 100);
+          itemFinalIncGst = adjustedBaseRaw + itemGst;
+        }
 
         const profit2 = itemFinalIncGst - costTotal; // total - total cost price
 
@@ -1192,11 +1243,9 @@ const Reports: React.FC = () => {
                     className="input text-xs"
                   >
                     <option value="all">All Tax Rates</option>
-                    <option value="0">0% GST</option>
-                    <option value="5">5% GST</option>
-                    <option value="12">12% GST</option>
-                    <option value="18">18% GST</option>
-                    <option value="28">28% GST</option>
+                    {uniqueGstRates.map(rate => (
+                      <option key={rate} value={rate.toString()}>{rate}% GST</option>
+                    ))}
                   </select>
                 </div>
                 <button

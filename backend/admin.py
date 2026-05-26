@@ -359,7 +359,10 @@ def manage_products():
         min_quantity=int(data['min_quantity']) if data.get('min_quantity') else None,
         category_id=data.get('category_id'),
         shop_id=shop_id,
-        customization_enabled=bool(data.get('customization_enabled', False))
+        customization_enabled=bool(data.get('customization_enabled', False)),
+        barcode=data.get('barcode', ''),
+        sku_code=data.get('sku_code', ''),
+        hsc_code=data.get('hsc_code', '')
     )
     p.images = images  # sets JSON field via property setter
     
@@ -415,6 +418,12 @@ def modify_product(prod_id):
         p.category_id = data['category_id']
     if 'customization_enabled' in data:
         p.customization_enabled = bool(data['customization_enabled'])
+    if 'barcode' in data:
+        p.barcode = data['barcode']
+    if 'sku_code' in data:
+        p.sku_code = data['sku_code']
+    if 'hsc_code' in data:
+        p.hsc_code = data['hsc_code']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")

@@ -19,6 +19,20 @@ import { Product } from '../types';
 import { useProducts } from '../hooks/useDatabase';
 
 
+const getGlobalGstSetting = (): number => {
+  try {
+    const raw = localStorage.getItem('app_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.gstPercentage !== undefined) {
+        return parseFloat(parsed.gstPercentage) || 0;
+      }
+    }
+  } catch {}
+  return 18; // default to 18%
+};
+
+
 const Products: React.FC = () => {
   const { products, loading, error, addProduct, updateProduct, deleteProduct, refreshProducts } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,11 +70,12 @@ const Products: React.FC = () => {
     name: '',
     company: 'N/A',
     productCode: '',
+    skuCode: '',
+    hsnCode: '',
     count: '' as string | number,
     costPrice: '' as string | number,
     sellingPrice: '' as string | number,
     discount: '' as string | number,
-    gst: '18.00' as string | number,
     barcode: ''
   });
 
@@ -68,6 +83,18 @@ const Products: React.FC = () => {
   const calculateFinalPrice = (sellingPrice: number, discount: number, gst: number) => {
     const discountAmount = (sellingPrice * discount) / 100;
     const priceAfterDiscount = sellingPrice - discountAmount;
+    
+    let gstInclusive = false;
+    try {
+      const raw = localStorage.getItem('app_settings');
+      if (raw) {
+        gstInclusive = !!JSON.parse(raw).gstInclusive;
+      }
+    } catch {}
+
+    if (gstInclusive) {
+      return priceAfterDiscount;
+    }
     const gstAmount = (priceAfterDiscount * gst) / 100;
     return priceAfterDiscount + gstAmount;
   };
@@ -75,7 +102,7 @@ const Products: React.FC = () => {
   const finalPrice = calculateFinalPrice(
     parseFloat(String(formData.sellingPrice)) || 0,
     parseFloat(String(formData.discount)) || 0,
-    parseFloat(String(formData.gst)) || 0
+    getGlobalGstSetting()
   );
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -96,15 +123,18 @@ const Products: React.FC = () => {
     e.preventDefault();
 
     try {
+      const activeGst = getGlobalGstSetting();
       const productData = {
         name: formData.name,
         company: formData.company,
-        productCode: formData.productCode,
+        productCode: formData.skuCode || formData.productCode,
+        skuCode: formData.skuCode || formData.productCode,
+        hsnCode: formData.hsnCode,
         count: parseInt(String(formData.count)) || 0,
         costPrice: parseFloat(String(formData.costPrice)) || 0,
         sellingPrice: parseFloat(String(formData.sellingPrice)) || 0,
         discount: parseFloat(String(formData.discount)) || 0,
-        gst: parseFloat(String(formData.gst)) || 0,
+        gst: activeGst,
         barcode: formData.barcode,
         finalPrice,
       };
@@ -128,11 +158,12 @@ const Products: React.FC = () => {
       name: '',
       company: 'N/A',
       productCode: '',
+      skuCode: '',
+      hsnCode: '',
       count: '',
       costPrice: '',
       sellingPrice: '',
       discount: '',
-      gst: '18.00',
       barcode: ''
     });
     setShowAddForm(false);
@@ -143,12 +174,13 @@ const Products: React.FC = () => {
     setFormData({
       name: product.name,
       company: product.company,
-      productCode: product.productCode || '',
+      productCode: product.skuCode || product.productCode || '',
+      skuCode: product.skuCode || product.productCode || '',
+      hsnCode: product.hsnCode || '',
       count: product.count,
       costPrice: product.costPrice,
       sellingPrice: product.sellingPrice,
       discount: product.discount,
-      gst: product.gst,
       barcode: product.barcode
     });
     setEditingProduct(product);
@@ -320,7 +352,8 @@ const Products: React.FC = () => {
       ID: p.id,
       Name: p.name,
       Company: p.company,
-      Code: p.productCode,
+      SKUCode: p.skuCode || p.productCode || '',
+      HSNCode: p.hsnCode || '',
       Stock: p.count,
       CostPrice: p.costPrice,
       SellingPrice: p.sellingPrice,
@@ -338,12 +371,12 @@ const Products: React.FC = () => {
     const ws = utils.json_to_sheet([{
       Name: "Sample Product",
       Company: "Sample Company",
-      Code: "PROD001",
+      SKUCode: "SKU-SHIRT-001",
+      HSNCode: "62052000",
       Stock: 10,
       CostPrice: 100,
       SellingPrice: 150,
       Discount: 5,
-      GST: 18,
       Barcode: "123456789012"
     }]);
     const wb = utils.book_new();
@@ -365,17 +398,27 @@ const Products: React.FC = () => {
         const jsonData = utils.sheet_to_json(ws);
 
         let addedCount = 0;
+        const globalGst = getGlobalGstSetting();
         // Process sequentially to avoid database locking issues if any
         for (const row of jsonData as any[]) {
           if (row.Name && row.SellingPrice !== undefined) {
             const sellingPrice = Number(row.SellingPrice) || 0;
             const discount = Number(row.Discount) || 0;
-            const gst = Number(row.GST) || 0;
+            const gst = globalGst;
 
             // Calculate final price
             const discountAmount = (sellingPrice * discount) / 100;
             const priceAfterDiscount = sellingPrice - discountAmount;
-            const gstAmount = (priceAfterDiscount * gst) / 100;
+            
+            let gstInclusive = false;
+            try {
+              const raw = localStorage.getItem('app_settings');
+              if (raw) {
+                gstInclusive = !!JSON.parse(raw).gstInclusive;
+              }
+            } catch {}
+
+            const gstAmount = gstInclusive ? 0 : (priceAfterDiscount * gst) / 100;
             const finalPrice = priceAfterDiscount + gstAmount;
 
             let barcode = row.Barcode ? String(row.Barcode) : '';
@@ -385,10 +428,15 @@ const Products: React.FC = () => {
               barcode = `${timestamp}${random}`.slice(-12);
             }
 
+            const sku = String(row.SKUCode || row.Code || row.SKU || '').trim();
+            const hsn = String(row.HSNCode || row.HSN || row.HSCCode || row.HSC || '').trim();
+
             const newProduct = {
               name: row.Name,
               company: row.Company || 'N/A',
-              productCode: row.Code || '',
+              productCode: sku,
+              skuCode: sku,
+              hsnCode: hsn,
               count: Number(row.Stock) || 0,
               costPrice: Number(row.CostPrice) || 0,
               sellingPrice,
@@ -591,20 +639,6 @@ const Products: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Product Code
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.productCode}
-                      onChange={(e) => handleInputChange('productCode', e.target.value)}
-                      className="input w-full"
-                      placeholder="Enter internal product code"
-                    />
-                  </div>
-
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Company
                     </label>
                     <input
@@ -628,6 +662,59 @@ const Products: React.FC = () => {
                       className="input w-full"
                       placeholder="0"
                     />
+                  </div>
+
+                  {/* POS Integration Section styled like website */}
+                  <div className="bg-primary-50/20 p-4 rounded-2xl border border-primary-100/50 grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-primary-700 mb-1">
+                        SKU Code (POS Inventory)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.skuCode}
+                        onChange={(e) => {
+                          handleInputChange('skuCode', e.target.value);
+                          handleInputChange('productCode', e.target.value);
+                        }}
+                        className="input w-full text-sm bg-white"
+                        placeholder="e.g., SKU-SHIRT-001"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-primary-700 mb-1">
+                        HSC / HSN Code (GST classification)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.hsnCode}
+                        onChange={(e) => handleInputChange('hsnCode', e.target.value)}
+                        className="input w-full text-sm bg-white"
+                        placeholder="e.g., 62052000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-primary-700 mb-1">
+                        Barcode (Scan Code)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={formData.barcode}
+                          onChange={(e) => handleInputChange('barcode', e.target.value)}
+                          className="input flex-1 text-sm bg-white"
+                          placeholder="Enter or generate barcode"
+                        />
+                        <button
+                          type="button"
+                          onClick={generateBarcode}
+                          className="btn-secondary flex items-center justify-center p-2 text-xs"
+                          title="Generate Barcode"
+                        >
+                          <Barcode className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -662,60 +749,20 @@ const Products: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Discount (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={formData.discount}
-                        onChange={(e) => handleInputChange('discount', e.target.value)}
-                        className="input w-full"
-                        placeholder="0"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        GST (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={formData.gst}
-                        onChange={(e) => handleInputChange('gst', e.target.value)}
-                        className="input w-full"
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Barcode
+                      Discount (%)
                     </label>
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        value={formData.barcode}
-                        onChange={(e) => handleInputChange('barcode', e.target.value)}
-                        className="input flex-1"
-                        placeholder="Enter or generate barcode"
-                      />
-                      <button
-                        type="button"
-                        onClick={generateBarcode}
-                        className="btn-secondary flex items-center gap-2 px-3 py-2"
-                      >
-                        <Barcode className="w-4 h-4" />
-                        Generate
-                      </button>
-                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={formData.discount}
+                      onChange={(e) => handleInputChange('discount', e.target.value)}
+                      className="input w-full"
+                      placeholder="0"
+                    />
                   </div>
 
                   <div className="flex gap-3 pt-5">
@@ -760,6 +807,8 @@ const Products: React.FC = () => {
                           <div className="grid grid-cols-2 gap-4">
                             <div><span className="text-slate-500">Name:</span><div className="font-medium text-slate-900">{viewingProduct.name}</div></div>
                             <div><span className="text-slate-500">Company:</span><div className="font-medium text-slate-900">{viewingProduct.company}</div></div>
+                            <div><span className="text-slate-500">SKU Code:</span><div className="font-medium text-slate-900">{viewingProduct.skuCode || viewingProduct.productCode || '-'}</div></div>
+                            <div><span className="text-slate-500">HSN Code:</span><div className="font-medium text-slate-900">{viewingProduct.hsnCode || '-'}</div></div>
                             <div><span className="text-slate-500">Stock:</span><div className="font-medium text-slate-900">{viewingProduct.count}</div></div>
                             <div><span className="text-slate-500">Cost Price:</span><div className="font-medium text-slate-900">₹{viewingProduct.costPrice.toFixed(2)}</div></div>
                             <div><span className="text-slate-500">Selling Price:</span><div className="font-medium text-slate-900">₹{viewingProduct.sellingPrice.toFixed(2)}</div></div>
@@ -775,6 +824,14 @@ const Products: React.FC = () => {
                       </div>
                     )}
 
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500">SKU Code</span>
+                      <span className="font-medium">{formData.skuCode || formData.productCode || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-slate-500">HSN Code</span>
+                      <span className="font-medium">{formData.hsnCode || 'N/A'}</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-slate-500">Company</span>
                       <span className="font-medium">{formData.company}</span>
@@ -797,7 +854,7 @@ const Products: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-slate-500">GST</span>
-                      <span className="font-medium">{(parseFloat(String(formData.gst)) || 0).toFixed(2)}%</span>
+                      <span className="font-medium">{getGlobalGstSetting().toFixed(2)}%</span>
                     </div>
                     <hr className="my-2" />
                     <div className="flex justify-between">
@@ -848,7 +905,8 @@ const Products: React.FC = () => {
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Product</th>
-                  <th className="px-5 py-4 text-left font-semibold text-slate-700">Code</th>
+                  <th className="px-5 py-4 text-left font-semibold text-slate-700">SKU Code</th>
+                  <th className="px-5 py-4 text-left font-semibold text-slate-700">HSN Code</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Company</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Stock</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Cost Price</th>
@@ -867,7 +925,8 @@ const Products: React.FC = () => {
                         <div className="text-sm text-slate-500">ID: {product.id}</div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-700">{product.productCode || '-'}</td>
+                    <td className="px-5 py-4 text-slate-700">{product.skuCode || product.productCode || '-'}</td>
+                    <td className="px-5 py-4 text-slate-700">{product.hsnCode || '-'}</td>
                     <td className="px-5 py-4 text-slate-700">{product.company}</td>
                     <td className="px-5 py-4">
                       <span className={`badge ${product.count > 10

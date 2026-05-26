@@ -1,0 +1,58 @@
+import sqlite3
+import os
+
+db_path = os.path.join(os.path.dirname(__file__), 'ecommerce.db')
+
+def migrate():
+    print(f"Connecting to database at {db_path}...")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # 1. Migrate products table
+    cursor.execute("PRAGMA table_info(products)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    if 'barcode' not in columns:
+        print("Adding column 'barcode' to table 'products'...")
+        cursor.execute("ALTER TABLE products ADD COLUMN barcode VARCHAR(100)")
+    else:
+        print("Column 'barcode' already exists in table 'products'.")
+
+    if 'sku_code' not in columns:
+        print("Adding column 'sku_code' to table 'products'...")
+        cursor.execute("ALTER TABLE products ADD COLUMN sku_code VARCHAR(100)")
+    else:
+        print("Column 'sku_code' already exists in table 'products'.")
+
+    if 'hsc_code' not in columns:
+        print("Adding column 'hsc_code' to table 'products'...")
+        cursor.execute("ALTER TABLE products ADD COLUMN hsc_code VARCHAR(100)")
+    else:
+        print("Column 'hsc_code' already exists in table 'products'.")
+
+    # 2. Migrate shops table
+    cursor.execute("PRAGMA table_info(shops)")
+    shop_columns = [col[1] for col in cursor.fetchall()]
+
+    if 'billing_api_key' not in shop_columns:
+        print("Adding column 'billing_api_key' to table 'shops'...")
+        cursor.execute("ALTER TABLE shops ADD COLUMN billing_api_key VARCHAR(255)")
+    else:
+        print("Column 'billing_api_key' already exists in table 'shops'.")
+
+    # 3. Migrate orders table
+    cursor.execute("PRAGMA table_info(orders)")
+    order_columns = [col[1] for col in cursor.fetchall()]
+
+    if 'is_synced' not in order_columns:
+        print("Adding column 'is_synced' to table 'orders'...")
+        cursor.execute("ALTER TABLE orders ADD COLUMN is_synced BOOLEAN DEFAULT 0")
+    else:
+        print("Column 'is_synced' already exists in table 'orders'.")
+
+    conn.commit()
+    conn.close()
+    print("Migration completed successfully!")
+
+if __name__ == '__main__':
+    migrate()

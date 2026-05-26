@@ -20,6 +20,8 @@ const Settings: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [gstNumber, setGstNumber] = useState('');
   const [showGst, setShowGst] = useState(true);
+  const [gstInclusive, setGstInclusive] = useState(false);
+  const [gstPercentage, setGstPercentage] = useState<number>(18);
   const [footerMessage, setFooterMessage] = useState('');
 
   const [printers, setPrinters] = useState<any[]>([]);
@@ -40,6 +42,8 @@ const Settings: React.FC = () => {
       setPhone(settings.phone || '9965326590, 9047656890');
       setGstNumber(settings.gstNumber || '');
       setShowGst(settings.showGst !== undefined ? settings.showGst : true);
+      setGstInclusive(settings.gstInclusive || false);
+      setGstPercentage(settings.gstPercentage !== undefined ? parseFloat(settings.gstPercentage) : 18);
       setFooterMessage(settings.footerMessage || 'Thank you for your business!');
     } catch { }
     try {
@@ -96,6 +100,8 @@ const Settings: React.FC = () => {
       phone: phone.trim(),
       gstNumber: gstNumber.trim(),
       showGst: showGst,
+      gstInclusive: gstInclusive,
+      gstPercentage: gstPercentage,
       footerMessage: footerMessage.trim()
     };
     localStorage.setItem('app_settings', JSON.stringify(next));
@@ -123,11 +129,11 @@ const Settings: React.FC = () => {
 
   const exportProducts = () => {
     const rows: (string | number)[][] = [
-      ['ID', 'Code', 'Name', 'Company', 'Stock', 'Cost', 'Selling', 'Discount', 'GST', 'Final', 'Barcode', 'Created', 'Updated'],
+      ['ID', 'SKU Code', 'Name', 'Company', 'Stock', 'Cost', 'Selling', 'Discount', 'GST', 'Final', 'Barcode', 'HSN Code', 'Created', 'Updated'],
       ...products.map(p => [
-        p.id, p.productCode || '', p.name, p.company, p.count,
+        p.id, p.skuCode || p.productCode || '', p.name, p.company, p.count,
         p.costPrice.toFixed(2), p.sellingPrice.toFixed(2), p.discount,
-        p.gst.toFixed(2), p.finalPrice.toFixed(2), p.barcode,
+        p.gst.toFixed(2), p.finalPrice.toFixed(2), p.barcode, p.hsnCode || '',
         p.createdAt, p.updatedAt
       ])
     ];
@@ -360,6 +366,19 @@ const Settings: React.FC = () => {
                 placeholder="e.g., 22AAAAA1111A1Z1" 
               />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">Default GST Percentage (%)</label>
+              <input 
+                type="number" 
+                min="0" 
+                max="100" 
+                step="0.01"
+                value={gstPercentage} 
+                onChange={(e) => setGstPercentage(parseFloat(e.target.value) || 0)} 
+                className="input w-full" 
+                placeholder="e.g., 18" 
+              />
+            </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
               <div>
                 <label className="text-sm font-semibold text-slate-900">Show GST Number on Invoices</label>
@@ -373,6 +392,23 @@ const Settings: React.FC = () => {
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showGst ? 'translate-x-6' : 'translate-x-1'}`}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <div>
+                <label className="text-sm font-semibold text-slate-900">GST Calculation Mode</label>
+                <p className="text-xs text-slate-500">{gstInclusive ? "Inclusive (GST is included in selling price)" : "Exclusive (GST is added on top of selling price)"}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGstInclusive(!gstInclusive)}
+                style={{ backgroundColor: gstInclusive ? 'var(--primary)' : '#cbd5e1' }}
+                className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gstInclusive ? 'translate-x-6' : 'translate-x-1'}`}
                 />
               </button>
             </div>

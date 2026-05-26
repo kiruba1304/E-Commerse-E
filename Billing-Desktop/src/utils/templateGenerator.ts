@@ -10,6 +10,7 @@ interface AppSettings {
   phone?: string;
   gstNumber?: string;
   showGst?: boolean;
+  gstInclusive?: boolean;
   footerMessage?: string;
   logoUrl?: string;
 }
@@ -101,7 +102,7 @@ export const generateThermalCompactReceipt = (bill: Bill, settings: AppSettings,
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Disc:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -209,7 +210,7 @@ export const generateThermalStandardReceipt = (bill: Bill, settings: AppSettings
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -315,7 +316,7 @@ export const generateThermalDetailedReceipt = (bill: Bill, settings: AppSettings
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST (Incl):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL AMOUNT</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -430,7 +431,7 @@ export const generateRegularA5Receipt = (bill: Bill, settings: AppSettings, qrDa
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #333; margin-top: 5px; padding-top: 5px;">
@@ -558,7 +559,7 @@ export const generateRegularA4Receipt = (bill: Bill, settings: AppSettings, qrDa
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST (${bill.items?.[0]?.gst || 0}%):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST (${bill.items?.[0]?.gst || 0}% ${settings.gstInclusive ? 'Incl' : 'Excl'}):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL AMOUNT DUE:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #333; margin-top: 8px; padding-top: 8px;">
@@ -698,7 +699,7 @@ export const generateRegularA4DetailedReceipt = (bill: Bill, settings: AppSettin
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Total Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
           <div class="total-line"><span>Base Amount (after discount):</span><span>₹${(bill.totalAmount - bill.totalDiscount).toFixed(2)}</span></div>
-          <div class="total-line"><span>GST (Included):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Included)' : '(Excluded)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
           <div class="total-line final-total"><span>TOTAL AMOUNT DUE:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #1a3a52; margin-top: 8px; padding-top: 8px;">

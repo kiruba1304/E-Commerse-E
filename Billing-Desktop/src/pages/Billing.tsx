@@ -35,7 +35,7 @@ const Billing: React.FC = () => {
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit' | 'other'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online'>('cash');
   // extra discount value and mode: percent or rupees
   const [extraDiscountValue, setExtraDiscountValue] = useState<string>('');
   const [extraDiscountMode, setExtraDiscountMode] = useState<'percent' | 'rupees'>('percent');
@@ -151,7 +151,17 @@ const Billing: React.FC = () => {
           }
           : item
       ));
-    } else {
+      let activeGst = 18;
+      try {
+        const raw = localStorage.getItem('app_settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.gstPercentage !== undefined) {
+            activeGst = parseFloat(parsed.gstPercentage) || 0;
+          }
+        }
+      } catch {}
+
       // Add new item
       const newItem: BillItemWithProduct = {
         id: Date.now(),
@@ -160,7 +170,7 @@ const Billing: React.FC = () => {
         quantity,
         unitPrice: product.sellingPrice,
         discount: product.discount,
-        gst: product.gst,
+        gst: activeGst,
         totalPrice: quantity * product.sellingPrice,
         product
       };
@@ -193,6 +203,19 @@ const Billing: React.FC = () => {
   };
 
   const calculateTotals = () => {
+    let gstInclusive = false;
+    let gstPercentage = 18;
+    try {
+      const raw = localStorage.getItem('app_settings');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        gstInclusive = !!parsed.gstInclusive;
+        if (parsed.gstPercentage !== undefined) {
+          gstPercentage = parseFloat(parsed.gstPercentage) || 0;
+        }
+      }
+    } catch {}
+
     const subtotal = billItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const itemDiscount = billItems.reduce((sum, item) => sum + (item.totalPrice * item.discount / 100), 0);
     const base = Math.max(0, subtotal - itemDiscount);
@@ -212,12 +235,16 @@ const Billing: React.FC = () => {
       billItems.forEach(item => {
         const itemBase = item.totalPrice - (item.totalPrice * item.discount / 100);
         const adjustedItemBase = itemBase * (baseAfterExtra / base);
-        totalGst += adjustedItemBase * (item.gst / 100);
+        if (gstInclusive) {
+          totalGst += adjustedItemBase * (gstPercentage / 100) / (1 + gstPercentage / 100);
+        } else {
+          totalGst += adjustedItemBase * (gstPercentage / 100);
+        }
       });
     }
 
     const totalDiscount = itemDiscount + extraDiscountAmount;
-    const finalTotal = baseAfterExtra + totalGst;
+    const finalTotal = gstInclusive ? baseAfterExtra : (baseAfterExtra + totalGst);
 
     return { subtotal, itemDiscount, extraDiscountAmount, totalDiscount, totalGst, finalTotal };
   };
@@ -355,6 +382,7 @@ const Billing: React.FC = () => {
       phone: appSettings.phone || '',
       gstNumber: appSettings.gstNumber || '',
       showGst: appSettings.showGst !== undefined ? appSettings.showGst : true,
+      gstInclusive: appSettings.gstInclusive || false,
       footerMessage: appSettings.footerMessage || '',
       logoUrl: appSettings.logoUrl || ''
     };
@@ -525,6 +553,14 @@ const Billing: React.FC = () => {
     product.company.toLowerCase().includes(barcodeInput.toLowerCase()) ||
     product.barcode.includes(barcodeInput)
   );
+
+  const gstInclusive = (() => {
+    try {
+      const raw = localStorage.getItem('app_settings');
+      if (raw) return !!JSON.parse(raw).gstInclusive;
+    } catch {}
+    return false;
+  })();
 
   return (
     <div className="min-h-full rounded-[2rem] bg-white/70 p-5 shadow-soft backdrop-blur-sm lg:p-8">
@@ -700,7 +736,7 @@ const Billing: React.FC = () => {
                 )}
                 
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">GST:</span>
+                  <span className="text-slate-600">GST {gstInclusive ? '(Inclusive)' : '(Exclusive)'}:</span>
                   <span className="font-medium text-slate-900">₹{totals.totalGst.toFixed(2)}</span>
                 </div>
                 <hr className="my-1 border-slate-200" />
@@ -873,8 +909,10 @@ const Billing: React.FC = () => {
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
                         <div className="font-semibold text-slate-900 text-sm">{item.product.name}</div>
-                        <div className="text-xs text-slate-600">{item.product.company}</div>
-                        <div className="text-xs text-slate-500">Code: {item.product.productCode || '-'}</div>
+                        <div className="text-xs text-slate-500 flex flex-wrap gap-x-2">
+                          <span>SKU: {item.product.skuCode || item.product.productCode || '-'}</span>
+                          {item.product.hsnCode && <span>• HSN: {item.product.hsnCode}</span>}
+                        </div>
 
                         <div className="text-xs text-slate-500">
                           ₹{item.unitPrice.toFixed(2)} each

@@ -9,7 +9,10 @@ export interface Product {
   discount: number;
   gst: number;
   barcode: string;
+  finalPrice: number;
   reservedStock?: number; // Stock reserved for online orders
+  hsnCode?: string;
+  skuCode?: string;
   createdAt: string;
   updatedAt: string;
 }

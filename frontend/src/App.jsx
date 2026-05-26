@@ -779,7 +779,7 @@ export default function App() {
   });
   
   // Admin edits/creations
-  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false });
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
@@ -2035,7 +2035,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Catalog Updated", `Product saved.`, "success");
-        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false });
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "" });
         loadAdminProducts();
       } else {
         const err = await res.json();
@@ -8037,6 +8037,37 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Billing POS Integration Codes */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SKU Code (POS Inventory)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., SKU-SHIRT-001"
+                        value={productForm.sku_code || ""}
+                        onChange={e => setProductForm(prev => ({ ...prev, sku_code: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>HSC / HSN Code (GST classification)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., 62052000"
+                        value={productForm.hsc_code || ""}
+                        onChange={e => setProductForm(prev => ({ ...prev, hsc_code: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Barcode (Scan Code)</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g., 890123456789"
+                        value={productForm.barcode || ""}
+                        onChange={e => setProductForm(prev => ({ ...prev, barcode: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
                   {/* Bulk Pricing Section */}
                   <div style={{ background: 'linear-gradient(135deg, rgba(122,78,165,0.06), rgba(86,51,122,0.04))', border: '1px solid rgba(122,78,165,0.18)', borderRadius: '12px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -8223,7 +8254,9 @@ export default function App() {
                                 <img src={p.images[0] || null} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px' }} />
                                 <div>
                                   <strong style={{ color: 'var(--text-main)' }}>{p.name}</strong>
-                                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {p.id}</span>
+                                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    ID: {p.id} {p.sku_code && ` • SKU: ${p.sku_code}`} {p.hsc_code && ` • HSC: ${p.hsc_code}`} {p.barcode && ` • Barcode: ${p.barcode}`}
+                                  </span>
                                 </div>
                               </div>
                             </td>
@@ -8248,7 +8281,7 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "" })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>

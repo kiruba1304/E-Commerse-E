@@ -98,11 +98,13 @@ class BrowserDatabase {
       const finalPrice = Number(p.finalPrice ?? sellingPrice * (1 - discount / 100) * (1 + gst / 100));
       const name = String(p.name ?? '');
       const company = String(p.company ?? '');
-      const productCode = p.productCode ? String(p.productCode) : undefined;
+      const skuCode = p.skuCode ? String(p.skuCode) : (p.productCode ? String(p.productCode) : '');
+      const productCode = skuCode; // keep productCode identical to skuCode
+      const hsnCode = p.hsnCode ? String(p.hsnCode) : (p.hsc_code ? String(p.hsc_code) : '');
       const barcode = String(p.barcode ?? '');
       const createdAt = String(p.createdAt ?? new Date().toISOString());
       const updatedAt = String(p.updatedAt ?? createdAt);
-      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt };
+      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt, skuCode, hsnCode };
       return prod;
     });
   }
@@ -424,10 +426,10 @@ class BrowserDatabase {
 
     // Products
     sql += '-- Table: Products\n';
-    sql += 'CREATE TABLE IF NOT EXISTS Products (id INTEGER PRIMARY KEY, name TEXT, company TEXT, productCode TEXT, count INTEGER, costPrice REAL, sellingPrice REAL, discount REAL, gst REAL, finalPrice REAL, barcode TEXT, createdAt TEXT, updatedAt TEXT);\n';
+    sql += 'CREATE TABLE IF NOT EXISTS Products (id INTEGER PRIMARY KEY, name TEXT, company TEXT, productCode TEXT, count INTEGER, costPrice REAL, sellingPrice REAL, discount REAL, gst REAL, finalPrice REAL, barcode TEXT, createdAt TEXT, updatedAt TEXT, hsnCode TEXT, skuCode TEXT);\n';
     const products = this.getProducts();
     products.forEach(p => {
-      sql += `INSERT INTO Products VALUES (${p.id}, '${p.name.replace(/'/g, "''")}', '${p.company.replace(/'/g, "''")}', '${(p.productCode || '').replace(/'/g, "''")}', ${p.count}, ${p.costPrice}, ${p.sellingPrice}, ${p.discount}, ${p.gst}, ${p.finalPrice}, '${(p.barcode || '').replace(/'/g, "''")}', '${p.createdAt}', '${p.updatedAt}');\n`;
+      sql += `INSERT INTO Products VALUES (${p.id}, '${p.name.replace(/'/g, "''")}', '${p.company.replace(/'/g, "''")}', '${(p.productCode || '').replace(/'/g, "''")}', ${p.count}, ${p.costPrice}, ${p.sellingPrice}, ${p.discount}, ${p.gst}, ${p.finalPrice}, '${(p.barcode || '').replace(/'/g, "''")}', '${p.createdAt}', '${p.updatedAt}', '${(p.hsnCode || '').replace(/'/g, "''")}', '${(p.skuCode || '').replace(/'/g, "''")}');\n`;
     });
     sql += '\n';
 
@@ -585,6 +587,8 @@ class BrowserDatabase {
             barcode: String(row[10] ?? ''),
             createdAt: String(row[11] ?? new Date().toISOString()),
             updatedAt: String(row[12] ?? new Date().toISOString()),
+            hsnCode: row[13] ? String(row[13]) : '',
+            skuCode: row[14] ? String(row[14]) : '',
           });
           break;
 

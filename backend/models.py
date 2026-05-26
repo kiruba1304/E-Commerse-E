@@ -46,6 +46,7 @@ class Shop(db.Model):
     whatsapp_api_key = db.Column(db.String(255), nullable=True)
     razorpay_key_id = db.Column(db.String(255), nullable=True)
     razorpay_key_secret = db.Column(db.String(255), nullable=True)
+    billing_api_key = db.Column(db.String(255), nullable=True)
     
     # Super coin configuration
     super_coin_enabled = db.Column(db.Boolean, default=True)
@@ -211,6 +212,7 @@ class Shop(db.Model):
             "whatsapp_api_key": self.whatsapp_api_key,
             "razorpay_key_id": self.razorpay_key_id,
             "razorpay_key_secret": self.razorpay_key_secret,
+            "billing_api_key": self.billing_api_key,
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
             "gst_percentage": self.gst_percentage,
@@ -361,6 +363,9 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     customization_enabled = db.Column(db.Boolean, default=False)
+    barcode = db.Column(db.String(100), nullable=True)
+    sku_code = db.Column(db.String(100), nullable=True)
+    hsc_code = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -398,6 +403,9 @@ class Product(db.Model):
             "category_name": self.category.name if self.category else "Uncategorized",
             "shop_id": self.shop_id,
             "customization_enabled": self.customization_enabled or False,
+            "barcode": self.barcode or "",
+            "sku_code": self.sku_code or "",
+            "hsc_code": self.hsc_code or "",
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -449,6 +457,7 @@ class Order(db.Model):
     gst_amount = db.Column(db.Float, default=0.0) # standard calculations
     gst_inclusive = db.Column(db.Boolean, default=False)
     discount_amount = db.Column(db.Float, default=0.0)
+    is_synced = db.Column(db.Boolean, default=False, nullable=False)
     
     # Return features
     return_request_status = db.Column(db.String(50), default='None') # None, Pending, Approved, Rejected
@@ -484,6 +493,7 @@ class Order(db.Model):
             "return_reason": self.return_reason,
             "return_image_url": self.return_image_url,
             "razorpay_payment_id": self.razorpay_payment_id,
+            "is_synced": self.is_synced,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "items": [item.serialize() for item in self.items]
         }
