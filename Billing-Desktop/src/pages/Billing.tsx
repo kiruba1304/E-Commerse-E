@@ -35,7 +35,7 @@ const Billing: React.FC = () => {
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerModal, setShowCustomerModal] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online' | 'cod'>('cash');
   // extra discount value and mode: percent or rupees
   const [extraDiscountValue, setExtraDiscountValue] = useState<string>('');
   const [extraDiscountMode, setExtraDiscountMode] = useState<'percent' | 'rupees'>('percent');

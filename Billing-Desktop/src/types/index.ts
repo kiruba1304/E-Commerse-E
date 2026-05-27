@@ -13,6 +13,7 @@ export interface Product {
   reservedStock?: number; // Stock reserved for online orders
   hsnCode?: string;
   skuCode?: string;
+  images?: string[]; // URLs of product images from website
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +95,7 @@ export interface BillItem {
   gst: number;
   totalPrice: number;
   product?: Product;
+  productImage?: string; // Thumbnail/image URL for item
 }
 
 export interface Bill {
@@ -104,7 +106,7 @@ export interface Bill {
   totalDiscount: number;
   totalGst: number;
   finalAmount: number;
-  paymentMethod: 'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online';
+  paymentMethod: 'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online' | 'cod';
   status: 'pending' | 'completed' | 'cancelled';
   salesChannel?: 'pos' | 'ecommerce'; // Source of the bill
   invoiceType?: 'customer_bill' | 'seller_bill'; // Type of invoice

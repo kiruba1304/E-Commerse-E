@@ -104,7 +104,8 @@ class BrowserDatabase {
       const barcode = String(p.barcode ?? '');
       const createdAt = String(p.createdAt ?? new Date().toISOString());
       const updatedAt = String(p.updatedAt ?? createdAt);
-      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt, skuCode, hsnCode };
+      const images = Array.isArray(p.images) ? p.images : [];
+      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt, skuCode, hsnCode, images };
       return prod;
     });
   }

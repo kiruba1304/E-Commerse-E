@@ -55,13 +55,14 @@ export const useECommerceIntegration = () => {
           );
 
           if (localProd) {
-            // Update local product: stock count, price, name, classification code
+            // Update local product: stock count, price, name, classification code, images
             db.updateProduct(localProd.id, {
               count: wp.stock,
               sellingPrice: wp.price,
               name: wp.name,
               skuCode: wp.sku_code,
-              hsnCode: wp.hsc_code
+              hsnCode: wp.hsc_code,
+              images: wp.images || []
             });
           } else {
             // Create product locally since it does not exist
@@ -77,7 +78,8 @@ export const useECommerceIntegration = () => {
               discount: 0,
               gst: settings.gstPercentage || 18,
               barcode: wp.barcode || `BC-${Date.now()}-${Math.floor(Math.random() * 100)}`,
-              finalPrice: wp.price
+              finalPrice: wp.price,
+              images: wp.images || []
             });
           }
         }
@@ -183,8 +185,18 @@ export const useECommerceIntegration = () => {
                   discount: 0,
                   gst: product.gst || settings.gstPercentage || 18,
                   totalPrice: itemTotal,
-                  product // store reference to product for rendering
+                  product, // store reference to product for rendering
+                  productImage: item.product_image
                 });
+              }
+            }
+
+            // Map payment method to 'cod' or 'online' or other valid POS payment method
+            let mappedPaymentMethod: any = 'online';
+            if (order.payment_method) {
+              const methodLower = order.payment_method.toLowerCase();
+              if (['cod', 'cash', 'card', 'upi', 'credit', 'other'].includes(methodLower)) {
+                mappedPaymentMethod = methodLower;
               }
             }
 
@@ -197,7 +209,7 @@ export const useECommerceIntegration = () => {
               totalDiscount: order.discount_amount || 0,
               totalGst: order.gst_amount || 0,
               finalAmount: order.final_amount,
-              paymentMethod: 'online',
+              paymentMethod: mappedPaymentMethod,
               status: 'completed',
               salesChannel: 'ecommerce',
               invoiceType: 'customer_bill',
