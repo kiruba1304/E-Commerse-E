@@ -816,6 +816,13 @@ export const useProducts = () => {
 
   useEffect(() => {
     loadProducts();
+    const handleSync = () => {
+      loadProducts();
+    };
+    window.addEventListener('ecommerce-sync-completed', handleSync);
+    return () => {
+      window.removeEventListener('ecommerce-sync-completed', handleSync);
+    };
   }, []);
 
   return {
@@ -891,6 +898,13 @@ export const useCustomers = () => {
 
   useEffect(() => {
     loadCustomers();
+    const handleSync = () => {
+      loadCustomers();
+    };
+    window.addEventListener('ecommerce-sync-completed', handleSync);
+    return () => {
+      window.removeEventListener('ecommerce-sync-completed', handleSync);
+    };
   }, []);
 
   return {
@@ -1027,6 +1041,13 @@ export const useBills = () => {
 
   useEffect(() => {
     loadBills();
+    const handleSync = () => {
+      loadBills();
+    };
+    window.addEventListener('ecommerce-sync-completed', handleSync);
+    return () => {
+      window.removeEventListener('ecommerce-sync-completed', handleSync);
+    };
   }, []);
 
   return {
@@ -1064,6 +1085,13 @@ export const useTransactions = () => {
 
   useEffect(() => {
     loadTransactions();
+    const handleSync = () => {
+      loadTransactions();
+    };
+    window.addEventListener('ecommerce-sync-completed', handleSync);
+    return () => {
+      window.removeEventListener('ecommerce-sync-completed', handleSync);
+    };
   }, []);
 
   return { transactions, loading, error, refreshTransactions: loadTransactions };

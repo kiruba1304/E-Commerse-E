@@ -26,7 +26,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
-      webSecurity: true,
+      webSecurity: false,
       preload: path.join(__dirname, 'preload.cjs')
     },
     icon: path.join(__dirname, 'assets/icon.ico'),

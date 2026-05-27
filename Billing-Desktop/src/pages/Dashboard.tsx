@@ -283,14 +283,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <p className="text-gray-500">Loading bills...</p>
               </div>
             ) : recentBills.length > 0 ? (
-              recentBills.map((bill, index) => (
-                <div key={index} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-3 hover:bg-slate-100 transition-colors">
-                  <div>
-                    <p className="font-semibold text-slate-900">{bill.billNumber}</p>
-                    <p className="text-sm text-slate-600">
-                      {bill.customer?.name || 'Walk-in Customer'}
-                    </p>
-                  </div>
+              recentBills.map((bill, index) => {
+                const customer = customers.find(c => c.id === bill.customerId);
+                const customerName = customer?.name || bill.customer?.name || 'Walk-in Customer';
+                return (
+                  <div key={index} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-3 hover:bg-slate-100 transition-colors">
+                    <div>
+                      <p className="font-semibold text-slate-900">{bill.billNumber}</p>
+                      <p className="text-sm text-slate-600">
+                        {customerName}
+                      </p>
+                    </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="font-semibold text-slate-900">₹{bill.finalAmount.toFixed(2)}</p>
@@ -307,7 +310,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     </button>
                   </div>
                 </div>
-              ))
+              );
+            })
             ) : (
               <div className="text-center py-8">
                 <p className="text-slate-500 text-sm">No recent bills available</p>

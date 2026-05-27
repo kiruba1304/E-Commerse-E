@@ -97,12 +97,23 @@ export const useECommerceIntegration = () => {
       const unsyncedBills = localBills.filter(b => !syncedBillNumbers.includes(b.billNumber));
 
       if (unsyncedBills.length > 0) {
+        const allCustomers = db.getCustomers();
+        const unsyncedBillsWithCustomers = unsyncedBills.map(b => {
+          if (!b.customer && b.customerId) {
+            const foundCust = allCustomers.find(c => c.id === b.customerId);
+            if (foundCust) {
+              return { ...b, customer: foundCust };
+            }
+          }
+          return b;
+        });
+
         const billSyncRes = await fetch(`${apiUrl}/billing/sync/bills`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             api_key: apiKey,
-            bills: unsyncedBills
+            bills: unsyncedBillsWithCustomers
           })
         });
 
@@ -167,9 +178,9 @@ export const useECommerceIntegration = () => {
             let totalAmount = 0;
 
             for (const item of (order.items || [])) {
-              // Match product locally on ID or Barcode
+              // Match product locally on Barcode or SKU code (avoiding database ID collision)
               const product = currentProducts.find(
-                p => p.id === item.product_id || p.barcode === item.barcode || p.skuCode === item.sku_code
+                p => (item.barcode && p.barcode === item.barcode) || (item.sku_code && p.skuCode === item.sku_code)
               );
 
               if (product) {
@@ -200,11 +211,16 @@ export const useECommerceIntegration = () => {
               }
             }
 
+            // Find the updated customer details to embed in the bill object
+            const currentCustomers = db.getCustomers();
+            const customerObj = currentCustomers.find(c => c.id === customerId);
+
             // Create POS Customer Bill for records
             db.createBill({
               id: 0,
               billNumber: `EC-CUST-${order.id}`,
               customerId,
+              customer: customerObj,
               totalAmount: totalAmount,
               totalDiscount: order.discount_amount || 0,
               totalGst: order.gst_amount || 0,
@@ -249,6 +265,9 @@ export const useECommerceIntegration = () => {
       };
       localStorage.setItem('app_settings', JSON.stringify(updatedSettings));
       console.log('Bidirectional E-Commerce Sync completed successfully.');
+      
+      // Dispatch custom window event to trigger React hooks to reload from localStorage/backup file
+      window.dispatchEvent(new CustomEvent('ecommerce-sync-completed'));
 
     } catch (e: any) {
       console.error('E-Commerce Sync error:', e);
