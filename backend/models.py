@@ -48,6 +48,11 @@ class Shop(db.Model):
     razorpay_key_secret = db.Column(db.String(255), nullable=True)
     billing_api_key = db.Column(db.String(255), nullable=True)
     last_billing_heartbeat_at = db.Column(db.DateTime, nullable=True)
+    
+    # DTDC Credentials
+    dtdc_client_code = db.Column(db.String(255), nullable=True)
+    dtdc_api_key = db.Column(db.String(255), nullable=True)
+    dtdc_api_url = db.Column(db.String(255), nullable=True)
     last_online_order_number = db.Column(db.Integer, default=0, nullable=False)
     
     # Super coin configuration
@@ -216,6 +221,9 @@ class Shop(db.Model):
             "razorpay_key_secret": self.razorpay_key_secret,
             "billing_api_key": self.billing_api_key,
             "last_billing_heartbeat_at": self.last_billing_heartbeat_at.isoformat() if self.last_billing_heartbeat_at else None,
+            "dtdc_client_code": self.dtdc_client_code,
+            "dtdc_api_key": self.dtdc_api_key,
+            "dtdc_api_url": self.dtdc_api_url,
             "last_online_order_number": self.last_online_order_number,
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
@@ -469,6 +477,7 @@ class Order(db.Model):
     return_reason = db.Column(db.Text, nullable=True)
     return_image_url = db.Column(db.Text, nullable=True)
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
+    shipping_label_url = db.Column(db.String(255), nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -499,6 +508,7 @@ class Order(db.Model):
             "return_reason": self.return_reason,
             "return_image_url": self.return_image_url,
             "razorpay_payment_id": self.razorpay_payment_id,
+            "shipping_label_url": self.shipping_label_url,
             "is_synced": self.is_synced,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "items": [item.serialize() for item in self.items]

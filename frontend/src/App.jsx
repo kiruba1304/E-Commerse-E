@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
-  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer
 } from 'lucide-react';
 
 const API_BASE = "/api";
@@ -718,6 +718,7 @@ export default function App() {
   const [adminCategories, setAdminCategories] = useState([]);
   const [adminCollections, setAdminCollections] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
+  const [bookingShippingId, setBookingShippingId] = useState(null);
   const [adminCustomers, setAdminCustomers] = useState([]);
   const [adminInventory, setAdminInventory] = useState(null);
   const [adminRevenue, setAdminRevenue] = useState(null);
@@ -2227,6 +2228,33 @@ export default function App() {
         loadAdminOrders();
       }
     } catch (e) {}
+  };
+
+  const handleBookDtdcShipping = async (orderId, weight = 0.5) => {
+    try {
+      setBookingShippingId(orderId);
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/book-shipping`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ weight_kg: weight })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const parts = data.order.tracking_info ? data.order.tracking_info.split('AWB:') : [];
+        const awb = parts.length > 0 ? parts[parts.length - 1].trim() : '';
+        addToast("Shipment Booked", `DTDC shipment booked. AWB: ${awb}`, "success");
+        loadAdminOrders();
+        if (data.order.shipping_label_url) {
+          window.open(data.order.shipping_label_url, '_blank');
+        }
+      } else {
+        addToast("Booking Failed", data.error || "Could not book DTDC shipment.", "danger");
+      }
+    } catch (e) {
+      addToast("Error", "Network error while booking shipment.", "danger");
+    } finally {
+      setBookingShippingId(null);
+    }
   };
 
   const handleResolveReturn = async (orderId, decision) => {
@@ -7195,6 +7223,42 @@ export default function App() {
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '20px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5' }}>DTDC Courier Integration</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                    Configure your DTDC Direct API credentials to book shipments and print routing labels directly. If left blank, mock label routing will be used.
+                  </p>
+                  <div className="admin-grid-2col">
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC Client Code</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. GL001"
+                        value={adminShop.dtdc_client_code || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, dtdc_client_code: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC API Key</label>
+                      <input 
+                        type="password" 
+                        placeholder="DTDC API Key..."
+                        value={adminShop.dtdc_api_key || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, dtdc_api_key: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '12px' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC API URL</label>
+                    <input 
+                      type="text" 
+                      placeholder="https://api.dtdc.com/v1/shipments"
+                      value={adminShop.dtdc_api_url || ""}
+                      onChange={e => setAdminShop(prev => ({ ...prev, dtdc_api_url: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '20px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Desktop POS Billing App Integration</h4>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
                     <div style={{ flex: 1 }}>
@@ -8895,61 +8959,139 @@ export default function App() {
                                     {o.status}
                                   </span>
                                 </td>
-                                <td style={{ textAlign: 'right' }}>
-                                  {o.status === 'Pending' && (
-                                    <>
-                                      {o.payment_method === 'COD' ? (
-                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                          <button 
-                                            onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
-                                            className="btn-primary" 
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
-                                          >
-                                            Accept
-                                          </button>
-                                          <button 
-                                            onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
-                                            className="btn-danger" 
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                          >
-                                            Reject
-                                          </button>
-                                        </div>
-                                      ) : (
+                                  <td style={{ textAlign: 'right' }}>
+                                    {o.status === 'Pending' && (
+                                      <>
+                                        {o.payment_method === 'COD' ? (
+                                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                            <button 
+                                              onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
+                                              className="btn-primary" 
+                                              style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                            >
+                                              Accept
+                                            </button>
+                                            <button 
+                                              onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
+                                              className="btn-danger" 
+                                              style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                            >
+                                              Reject
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                            <button 
+                                              onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
+                                              className="btn-primary" 
+                                              style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
+                                            >
+                                              Dispatch Order
+                                            </button>
+                                            <button 
+                                              onClick={() => {
+                                                const weightStr = prompt("Enter package weight in kg:", "0.5");
+                                                if (weightStr !== null) {
+                                                  const weight = parseFloat(weightStr) || 0.5;
+                                                  handleBookDtdcShipping(o.id, weight);
+                                                }
+                                              }}
+                                              className="btn-primary" 
+                                              disabled={bookingShippingId === o.id}
+                                              style={{ 
+                                                padding: '6px 12px', 
+                                                fontSize: '0.75rem', 
+                                                background: '#7a4ea5', 
+                                                borderColor: '#7a4ea5',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px',
+                                                width: '100%',
+                                                maxWidth: '160px'
+                                              }}
+                                            >
+                                              <Truck size={12} />
+                                              {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
+                                            </button>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                    {o.status === 'Accepted' && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
                                         <button 
                                           onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
                                           className="btn-primary" 
-                                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                          style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
                                         >
                                           Dispatch Order
                                         </button>
-                                      )}
-                                    </>
-                                  )}
-                                  {o.status === 'Accepted' && (
-                                    <button 
-                                      onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
-                                      className="btn-primary" 
-                                      style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                    >
-                                      Dispatch Order
-                                    </button>
-                                  )}
-                                  {o.status === 'Dispatched' && (
-                                    <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399' }}>
-                                      Confirm Delivery
-                                    </button>
-                                  )}
-                                  {o.status === 'Customer Received' && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
-                                  )}
-                                  {o.status === 'Returned' && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
-                                  )}
-                                  {o.status === 'Rejected' && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
-                                  )}
-                                </td>
+                                        <button 
+                                          onClick={() => {
+                                            const weightStr = prompt("Enter package weight in kg:", "0.5");
+                                            if (weightStr !== null) {
+                                              const weight = parseFloat(weightStr) || 0.5;
+                                              handleBookDtdcShipping(o.id, weight);
+                                            }
+                                          }}
+                                          className="btn-primary" 
+                                          disabled={bookingShippingId === o.id}
+                                          style={{ 
+                                            padding: '6px 12px', 
+                                            fontSize: '0.75rem', 
+                                            background: '#7a4ea5', 
+                                            borderColor: '#7a4ea5',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            width: '100%',
+                                            maxWidth: '160px'
+                                          }}
+                                        >
+                                          <Truck size={12} />
+                                          {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
+                                        </button>
+                                      </div>
+                                    )}
+                                    {o.status === 'Dispatched' && (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                        <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399', width: '100%', maxWidth: '160px' }}>
+                                          Confirm Delivery
+                                        </button>
+                                        {o.shipping_label_url && (
+                                          <button 
+                                            onClick={() => window.open(o.shipping_label_url, '_blank')}
+                                            className="btn-secondary" 
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              borderColor: '#7a4ea5', 
+                                              color: '#7a4ea5',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '6px',
+                                              width: '100%',
+                                              maxWidth: '160px'
+                                            }}
+                                          >
+                                            <Printer size={12} /> Label
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                    {o.status === 'Customer Received' && (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
+                                    )}
+                                    {o.status === 'Returned' && (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
+                                    )}
+                                    {o.status === 'Rejected' && (
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
+                                    )}
+                                  </td>
                               </tr>
                             ))}
                             {filteredAdminOrders.length === 0 && (

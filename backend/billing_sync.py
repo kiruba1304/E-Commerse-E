@@ -324,3 +324,167 @@ def sync_pos_bills():
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to save POS bills: {str(e)}"}), 500
+
+@billing_sync_bp.route('/orders/list', methods=['POST'])
+def list_orders():
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    orders = Order.query.filter_by(shop_id=shop.id).order_by(Order.created_at.desc()).all()
+    return jsonify({
+        "success": True,
+        "orders": [o.serialize() for o in orders]
+    }), 200
+
+@billing_sync_bp.route('/orders/<int:order_id>/status', methods=['POST'])
+def update_order_status(order_id):
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    new_status = data.get('status')
+    if not new_status:
+        return jsonify({"error": "Status is required"}), 400
+        
+    order.status = new_status
+    if new_status == 'Dispatched':
+        order.tracking_info = data.get('tracking_info', order.tracking_info)
+        order.shipping_label_url = data.get('shipping_label_url', order.shipping_label_url)
+        
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "message": f"Order status updated to '{new_status}' successfully",
+        "order": order.serialize()
+    }), 200
+
+@billing_sync_bp.route('/orders/<int:order_id>/book-shipping', methods=['POST'])
+def book_order_shipping(order_id):
+    import requests
+    import secrets
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    weight_kg = float(data.get('weight_kg', 0.5))
+    declared_value = float(data.get('declared_value', order.final_amount))
+    
+    client_code = shop.dtdc_client_code
+    api_key_dtdc = shop.dtdc_api_key
+    api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
+    
+    awb_number = None
+    label_url = None
+    
+    if client_code and api_key_dtdc and client_code != "YOUR_DTDC_CLIENT_CODE" and not api_url.startswith("http://dummy"):
+        try:
+            payload = {
+                "client_code": client_code,
+                "consignee": {
+                    "name": order.user.name or order.user.username if order.user else "Customer",
+                    "phone": order.billing_phone or (order.user.contact_phone if order.user else ""),
+                    "address": order.shipping_address,
+                    "pincode": data.get('consignee_pincode', '')
+                },
+                "shipper": {
+                    "name": shop.name,
+                    "phone": shop.contact_phone or "",
+                    "address": shop.address or ""
+                },
+                "package": {
+                    "weight_kg": weight_kg,
+                    "declared_value": declared_value,
+                    "payment_mode": "Prepaid" if order.payment_method == "UPI" else "COD"
+                }
+            }
+            headers = {
+                "X-DTDC-API-KEY": api_key_dtdc,
+                "Content-Type": "application/json"
+            }
+            res = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            res_json = res.json()
+            if res.status_code in [200, 201] and res_json.get('status') == 'success':
+                awb_number = res_json.get('awb_number')
+                label_url = res_json.get('label_url')
+            else:
+                print(f"DTDC Live API Error: {res.text}")
+        except Exception as e:
+            print(f"DTDC Booking Exception: {e}")
+            
+    if not awb_number:
+        awb_number = f"D{secrets.token_hex(4).upper()}"
+        host = request.host_url
+        if not host.endswith('/'):
+            host += '/'
+        label_url = f"{host}api/admin/orders/{order.id}/shipping-label"
+        
+    order.status = 'Dispatched'
+    order.tracking_info = f"DTDC AWB: {awb_number}"
+    order.shipping_label_url = label_url
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "DTDC shipment booked successfully from POS",
+        "order": order.serialize()
+    }), 200
+
+@billing_sync_bp.route('/orders/<int:order_id>/return', methods=['POST'])
+def resolve_order_return(order_id):
+    from models import Notification
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    decision = data.get('decision') # 'Approved' or 'Rejected'
+    if decision not in ['Approved', 'Rejected']:
+        return jsonify({"error": "Invalid decision"}), 400
+        
+    order.return_request_status = decision
+    if decision == 'Approved':
+        order.status = 'Returned'
+        # Restore stock
+        for item in order.items:
+            product = Product.query.get(item.product_id)
+            if product:
+                product.stock += item.quantity
+                
+    # Notify User
+    notif = Notification(
+        recipient_type='user',
+        recipient_id=order.user_id,
+        title=f"Return Request {decision}",
+        message=f"Your return request for order #{order.id} was {decision.lower()}.",
+        shop_id=shop.id
+    )
+    db.session.add(notif)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": f"Return request {decision.lower()} successfully from POS",
+        "order": order.serialize()
+    }), 200

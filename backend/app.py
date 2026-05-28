@@ -229,6 +229,7 @@ def seed_database():
         db.create_all()
         ensure_shop_billing_heartbeat_column()
         ensure_online_order_sequence_columns()
+        ensure_dtdc_columns()
         backfill_online_order_numbers()
 
         # Check if already seeded
@@ -465,6 +466,23 @@ def ensure_shop_billing_heartbeat_column():
         columns = [row[1] for row in result.fetchall()]
         if 'last_billing_heartbeat_at' not in columns:
             connection.execute(text("ALTER TABLE shops ADD COLUMN last_billing_heartbeat_at DATETIME"))
+
+
+def ensure_dtdc_columns():
+    with db.engine.begin() as connection:
+        shop_result = connection.execute(text("PRAGMA table_info(shops)"))
+        shop_columns = [row[1] for row in shop_result.fetchall()]
+        if 'dtdc_client_code' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN dtdc_client_code VARCHAR(255)"))
+        if 'dtdc_api_key' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN dtdc_api_key VARCHAR(255)"))
+        if 'dtdc_api_url' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN dtdc_api_url VARCHAR(255)"))
+
+        order_result = connection.execute(text("PRAGMA table_info(orders)"))
+        order_columns = [row[1] for row in order_result.fetchall()]
+        if 'shipping_label_url' not in order_columns:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_label_url VARCHAR(255)"))
 
 
 def ensure_online_order_sequence_columns():

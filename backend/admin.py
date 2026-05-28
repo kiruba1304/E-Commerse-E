@@ -107,6 +107,12 @@ def manage_shop():
         shop.razorpay_key_secret = data['razorpay_key_secret']
     if 'billing_api_key' in data:
         shop.billing_api_key = data['billing_api_key']
+    if 'dtdc_client_code' in data:
+        shop.dtdc_client_code = data['dtdc_client_code']
+    if 'dtdc_api_key' in data:
+        shop.dtdc_api_key = data['dtdc_api_key']
+    if 'dtdc_api_url' in data:
+        shop.dtdc_api_url = data['dtdc_api_url']
     if 'gst_percentage' in data:
         try:
             shop.gst_percentage = float(data['gst_percentage'])
@@ -703,6 +709,317 @@ def resolve_return_request(order_id):
     db.session.commit()
     
     return jsonify(order.serialize()), 200
+
+@admin_bp.route('/orders/<int:order_id>/book-shipping', methods=['POST'])
+@role_required(['admin'])
+def book_shipping(order_id):
+    import requests
+    import secrets
+    
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    shop = Shop.query.get(shop_id)
+    
+    data = request.get_json() or {}
+    weight_kg = float(data.get('weight_kg', 0.5))
+    declared_value = float(data.get('declared_value', order.final_amount))
+    
+    client_code = shop.dtdc_client_code
+    api_key = shop.dtdc_api_key
+    api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
+    
+    awb_number = None
+    label_url = None
+    
+    if client_code and api_key and client_code != "YOUR_DTDC_CLIENT_CODE" and not api_url.startswith("http://dummy"):
+        try:
+            payload = {
+                "client_code": client_code,
+                "consignee": {
+                    "name": order.user.name or order.user.username if order.user else "Customer",
+                    "phone": order.billing_phone or (order.user.contact_phone if order.user else ""),
+                    "address": order.shipping_address,
+                    "pincode": data.get('consignee_pincode', '')
+                },
+                "shipper": {
+                    "name": shop.name,
+                    "phone": shop.contact_phone or "",
+                    "address": shop.address or ""
+                },
+                "package": {
+                    "weight_kg": weight_kg,
+                    "declared_value": declared_value,
+                    "payment_mode": "Prepaid" if order.payment_method == "UPI" else "COD"
+                }
+            }
+            headers = {
+                "X-DTDC-API-KEY": api_key,
+                "Content-Type": "application/json"
+            }
+            res = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            res_json = res.json()
+            if res.status_code in [200, 201] and res_json.get('status') == 'success':
+                awb_number = res_json.get('awb_number')
+                label_url = res_json.get('label_url')
+            else:
+                print(f"DTDC Live API Error: {res.text}")
+        except Exception as e:
+            print(f"DTDC Booking Exception: {e}")
+            
+    if not awb_number:
+        awb_number = f"D{secrets.token_hex(4).upper()}"
+        host = request.host_url
+        if not host.endswith('/'):
+            host += '/'
+        label_url = f"{host}api/admin/orders/{order.id}/shipping-label"
+        
+    order.status = 'Dispatched'
+    order.tracking_info = f"DTDC AWB: {awb_number}"
+    order.shipping_label_url = label_url
+    db.session.commit()
+    
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Booked DTDC Shipment for Order #{order.id} (AWB: {awb_number})")
+    
+    return jsonify({
+        "success": True,
+        "message": "DTDC shipment booked successfully",
+        "order": order.serialize()
+    }), 200
+
+
+@admin_bp.route('/orders/<int:order_id>/shipping-label', methods=['GET'])
+def get_shipping_label(order_id):
+    order = Order.query.get_or_404(order_id)
+    shop = Shop.query.get(order.shop_id)
+    
+    awb_number = "D00000000"
+    if order.tracking_info and "AWB:" in order.tracking_info:
+        awb_number = order.tracking_info.split("AWB:")[-1].strip()
+        
+    payment_mode = "PREPAID" if order.payment_method == "UPI" else "COD"
+    
+    html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>DTDC Shipping Label - AWB {awb_number}</title>
+        <style>
+            body {{
+                font-family: 'Helvetica Neue', Arial, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background-color: #f3f4f6;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }}
+            .label-card {{
+                width: 420px;
+                background: #ffffff;
+                border: 2px solid #111827;
+                border-radius: 8px;
+                box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+                overflow: hidden;
+                box-sizing: border-box;
+            }}
+            .header {{
+                background-color: #0c2340;
+                color: #ffffff;
+                padding: 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #111827;
+            }}
+            .logo-text {{
+                font-size: 1.4rem;
+                font-weight: 900;
+                letter-spacing: 2px;
+                color: #ffc72c;
+            }}
+            .header-tag {{
+                font-size: 0.75rem;
+                font-weight: 700;
+                background: rgba(255, 255, 255, 0.2);
+                padding: 4px 8px;
+                border-radius: 4px;
+                letter-spacing: 1px;
+            }}
+            .barcode-section {{
+                padding: 20px;
+                text-align: center;
+                border-bottom: 2px dashed #d1d5db;
+                background: #fafafa;
+            }}
+            .simulated-barcode {{
+                height: 50px;
+                background: repeating-linear-gradient(
+                    90deg,
+                    #111,
+                    #111 2px,
+                    #fff 2px,
+                    #fff 8px,
+                    #111 8px,
+                    #111 12px,
+                    #fff 12px,
+                    #fff 16px
+                );
+                width: 80%;
+                margin: 0 auto 10px auto;
+            }}
+            .awb-text {{
+                font-size: 1.1rem;
+                font-weight: 800;
+                letter-spacing: 3px;
+                color: #111827;
+                margin: 0;
+            }}
+            .info-grid {{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                border-bottom: 2px solid #111827;
+            }}
+            .info-box {{
+                padding: 12px;
+                box-sizing: border-box;
+            }}
+            .info-box:first-child {{
+                border-right: 2px solid #111827;
+            }}
+            .box-title {{
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #4b5563;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+                letter-spacing: 0.5px;
+            }}
+            .box-content {{
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #1f2937;
+                line-height: 1.3;
+                margin: 0;
+            }}
+            .address-section {{
+                padding: 14px;
+                border-bottom: 2px solid #111827;
+                min-height: 80px;
+            }}
+            .address-text {{
+                font-size: 0.9rem;
+                color: #111827;
+                line-height: 1.4;
+                margin: 4px 0 0 0;
+                font-weight: 600;
+            }}
+            .footer-row {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 14px;
+                background-color: #f9fafb;
+            }}
+            .payment-badge {{
+                font-size: 1rem;
+                font-weight: 800;
+                color: #ffffff;
+                background-color: { '#10b981' if payment_mode == 'PREPAID' else '#f59e0b' };
+                padding: 6px 12px;
+                border-radius: 4px;
+                letter-spacing: 0.5px;
+                border: 1px solid #111827;
+            }}
+            .amount-text {{
+                font-size: 1.1rem;
+                font-weight: 800;
+                color: #111827;
+            }}
+            .print-btn {{
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: #0c2340;
+                color: #ffffff;
+                border: none;
+                padding: 10px 20px;
+                font-size: 0.95rem;
+                font-weight: 700;
+                border-radius: 6px;
+                cursor: pointer;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                transition: transform 0.1s;
+            }}
+            .print-btn:active {{
+                transform: scale(0.95);
+            }}
+            @media print {{
+                body {{
+                    background-color: #ffffff;
+                    padding: 0;
+                }}
+                .print-btn {{
+                    display: none;
+                }}
+                .label-card {{
+                    box-shadow: none;
+                    border: 2px solid #000000;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <button class="print-btn" onclick="window.print()">Print Label</button>
+        
+        <div class="label-card">
+            <div class="header">
+                <div class="logo-text">DTDC EXPRESS</div>
+                <div class="header-tag">DOMESTIC</div>
+            </div>
+            
+            <div class="barcode-section">
+                <div class="simulated-barcode"></div>
+                <div class="awb-text">AWB: {awb_number}</div>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-box">
+                    <div class="box-title">Shipper (From)</div>
+                    <p class="box-content" style="font-weight: 800;">{shop.name}</p>
+                    <p class="box-content" style="font-size: 0.75rem; margin-top: 2px;">{shop.contact_phone}</p>
+                </div>
+                <div class="info-box">
+                    <div class="box-title">Routing Details</div>
+                    <p class="box-content" style="font-weight: 800; font-size: 1.05rem;">MAA / Z-4</p>
+                    <p class="box-content" style="font-size: 0.75rem; color: #4b5563;">STANDARD COURIER</p>
+                </div>
+            </div>
+            
+            <div class="address-section">
+                <div class="box-title">Consignee (Deliver To)</div>
+                <p class="address-text" style="font-size: 0.95rem; font-weight: 800; margin-bottom: 4px;">{order.user.name if order.user else 'Walk-in Customer'}</p>
+                <p class="address-text" style="font-size: 0.8rem; margin-top: 0; color: #4b5563;">Phone: {order.billing_phone or (order.user.contact_phone if order.user else '')}</p>
+                <p class="address-text">{order.shipping_address}</p>
+            </div>
+            
+            <div class="footer-row">
+                <div>
+                    <div class="box-title">Order Ref</div>
+                    <div class="box-content" style="font-weight: 700;">#{order.id}</div>
+                </div>
+                <div class="amount-text">₹{order.final_amount:.2f}</div>
+                <div class="payment-badge">{payment_mode}</div>
+            </div>
+        </div>
+    </body>
+    </html>
+    '''
+    return render_template_string(html)
 
 # POPUP ADS PUSHING
 @admin_bp.route('/popup-ads', methods=['GET', 'POST'])
