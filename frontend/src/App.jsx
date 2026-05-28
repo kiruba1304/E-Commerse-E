@@ -1701,22 +1701,107 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        if (data.order.payment_method === 'COD') {
-          addToast("Order Confirmed", "Your purchase is successful. Invoice will be generated after admin accepts the order.", "success");
+        const clearCheckoutFields = () => {
+          setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
+          refreshUserProfile();
+          setActivePanel("orders");
+        };
+
+        if (data.order.payment_method === 'UPI') {
+          // Dynamic script loader for Razorpay Checkout
+          const loadRazorpay = () => {
+            return new Promise((resolve) => {
+              if (window.Razorpay) {
+                resolve(true);
+                return;
+              }
+              const script = document.createElement('script');
+              script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+              script.onload = () => resolve(true);
+              script.onerror = () => resolve(false);
+              document.body.appendChild(script);
+            });
+          };
+
+          const sdkLoaded = await loadRazorpay();
+          if (!sdkLoaded) {
+            addToast("Payment Error", "Razorpay SDK failed to load. Please check your internet connection.", "danger");
+            return;
+          }
+
+          if (data.razorpay_key_id === "rzp_test_auraId98" || data.razorpay_key_id === "rzp_test_vogueId44" || data.razorpay_key_id === "rzp_test_greenId12" || data.razorpay_key_id === "YOUR_RAZORPAY_KEY_ID" || !data.razorpay_key_id) {
+            addToast("Test Key Active", "Using default dummy key. To avoid Razorpay validation errors, please configure your own valid Razorpay Key in Admin Shop Config.", "warning");
+          }
+
+          const options = {
+            key: data.razorpay_key_id || "rzp_test_auraId98",
+            amount: data.amount_paise,
+            currency: 'INR',
+            name: currentShop ? currentShop.name : "Nobaraa",
+            description: `Order Payment #${data.order.id}`,
+            handler: async function (paymentResponse) {
+              try {
+                const verifyRes = await fetch(`${API_BASE}/user/orders/verify`, {
+                  method: 'POST',
+                  headers: getHeaders(),
+                  body: JSON.stringify({
+                    order_id: data.order.id,
+                    razorpay_order_id: paymentResponse.razorpay_order_id || null,
+                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                    razorpay_signature: paymentResponse.razorpay_signature || null
+                  })
+                });
+                
+                const verifyData = await verifyRes.json();
+                if (verifyRes.ok) {
+                  addToast("Payment Successful", "Your payment has been successfully verified! Order confirmed.", "success");
+                  setInvoiceOrder(verifyData.order);
+                  clearCheckoutFields();
+                } else {
+                  addToast("Payment Verification Failed", verifyData.error || "Failed to verify payment signature.", "danger");
+                }
+              } catch (verifyErr) {
+                addToast("Payment Verification Error", "Could not complete payment verification.", "danger");
+              }
+            },
+            prefill: {
+              name: data.user_name,
+              email: data.user_email,
+              contact: data.user_phone
+            },
+            theme: {
+              color: "#7a4ea5"
+            },
+            modal: {
+              ondismiss: function () {
+                addToast("Payment Cancelled", "Payment window closed. You can complete the payment later in your Orders history.", "warning");
+                clearCheckoutFields();
+              }
+            }
+          };
+
+          if (data.razorpay_order_id) {
+            options.order_id = data.razorpay_order_id;
+          }
+
+          const paymentObject = new window.Razorpay(options);
+          paymentObject.open();
         } else {
-          addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
-          // Show invoice immediately!
-          setInvoiceOrder(data.order);
+          // Standard COD checkout or mock completion fallback
+          if (data.order.payment_method === 'COD') {
+            addToast("Order Confirmed", "Your purchase is successful. Invoice will be generated after admin accepts the order.", "success");
+          } else {
+            addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
+            setInvoiceOrder(data.order);
+          }
+          clearCheckoutFields();
         }
-        setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
-        refreshUserProfile();
-        
-        // Route to orders list
-        setActivePanel("orders");
       } else {
         addToast("Checkout Error", data.error || "Failed to process checkout.", "danger");
       }
-    } catch (e) {}
+    } catch (err) {
+      addToast("Checkout Error", "Failed to contact e-commerce checkout service.", "danger");
+    }
   };
 
   // ADMIN ACTION ROUTINES

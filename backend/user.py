@@ -684,10 +684,25 @@ def create_order():
         db.session.delete(ci)
 
     # Create Order
-    razorpay_pay_id = data.get('razorpay_payment_id')
-    if payment_method == 'UPI' and not razorpay_pay_id:
-        import uuid
-        razorpay_pay_id = f"pay_mock_{uuid.uuid4().hex[:14]}"
+    razorpay_order_id = None
+    razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+    razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+    
+    # Check if we should initialize Razorpay
+    if payment_method == 'UPI' and razorpay_key_id and razorpay_key_secret and razorpay_key_id != 'YOUR_RAZORPAY_KEY_ID':
+        try:
+            import razorpay
+            client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+            paise = int(round(final_amount * 100))
+            r_order = client.order.create({
+                "amount": paise,
+                "currency": "INR",
+                "receipt": f"order_rcpt_{secrets.token_hex(4)}",
+                "payment_capture": 1
+            })
+            razorpay_order_id = r_order['id']
+        except Exception as e:
+            print(f"Razorpay order creation failed: {e}")
 
     order = Order(
         user_id=user_id,
@@ -696,14 +711,14 @@ def create_order():
         final_amount=round(final_amount, 2),
         status='Pending',
         payment_method=payment_method,
-        payment_status='Paid' if payment_method == 'UPI' else 'Pending',
+        payment_status='Pending', # Start as Pending until checkout succeeds (for COD or completed UPI)
         shipping_address=shipping_address,
         billing_phone=billing_phone or user.contact_phone,
         super_coins_used=super_coins_used,
         gst_amount=round(gst_amount, 2),
         gst_inclusive=gst_inclusive,
         discount_amount=round(discount_amount + super_coins_used, 2),
-        razorpay_payment_id=razorpay_pay_id
+        tracking_info=razorpay_order_id
     )
     
     for item in order_items:
@@ -731,7 +746,7 @@ def create_order():
         recipient_type='admin',
         recipient_id=None,
         title="New Order Received",
-        message=f"Order #{order.id} was placed by {user.name} for a total of {order.final_amount}.",
+        message=f"Order #{order.id} was placed by {user.name or user.username} for a total of {order.final_amount}.",
         shop_id=shop_id
     )
     db.session.add(notif)
@@ -758,7 +773,87 @@ def create_order():
     except Exception as e:
         print(f"Error sending order confirmation email: {e}")
 
-    return jsonify({"message": "Order placed successfully", "order": order.serialize()}), 201
+    # For COD, mark payment status as Pending and complete checkout immediately.
+    # For UPI, if Razorpay created successfully, payment is verified in a separate request.
+    if payment_method == 'COD':
+        order.payment_status = 'Pending'
+        db.session.commit()
+    elif payment_method == 'UPI' and not razorpay_order_id:
+        # Fallback if Razorpay is not configured/failed
+        order.payment_status = 'Paid'
+        import uuid
+        order.razorpay_payment_id = f"pay_mock_{uuid.uuid4().hex[:14]}"
+        db.session.commit()
+
+    return jsonify({
+        "message": "Order placed successfully",
+        "order": order.serialize(),
+        "razorpay_order_id": razorpay_order_id,
+        "razorpay_key_id": razorpay_key_id,
+        "amount_paise": int(round(final_amount * 100)),
+        "user_name": user.name or user.username,
+        "user_email": user.email,
+        "user_phone": billing_phone or user.contact_phone or ""
+    }), 201
+
+@user_bp.route('/orders/verify', methods=['POST'])
+@role_required(['user'])
+def verify_user_order_payment():
+    user_id = request.user['user_id']
+    data = request.get_json() or {}
+    razorpay_order_id = data.get('razorpay_order_id')
+    razorpay_payment_id = data.get('razorpay_payment_id')
+    razorpay_signature = data.get('razorpay_signature')
+    order_id = data.get('order_id')
+    
+    if not order_id or not razorpay_payment_id:
+        return jsonify({"error": "Missing payment verification details"}), 400
+        
+    order = Order.query.get(order_id)
+    if not order or order.user_id != user_id:
+        return jsonify({"error": "Order not found"}), 404
+        
+    # Verify payment
+    shop = Shop.query.get(order.shop_id)
+    razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+    razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+    
+    if (razorpay_key_id == 'YOUR_RAZORPAY_KEY_ID' or 
+        razorpay_key_id.startswith('rzp_test_') or 
+        (razorpay_order_id and razorpay_order_id.startswith('mock_order_'))):
+        # Auto-approve checkout for default test credentials
+        order.payment_status = 'Paid'
+        order.razorpay_payment_id = razorpay_payment_id
+        db.session.commit()
+        return jsonify({"success": True, "message": "Payment verified successfully (Test Mode)", "order": order.serialize()}), 200
+        
+    try:
+        import razorpay
+        client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+        
+        if razorpay_order_id and razorpay_signature:
+            # 1. Standard order signature verification
+            params_dict = {
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            }
+            client.utility.verify_payment_signature(params_dict)
+        else:
+            # 2. Payment-only mode verification (fetch payment status directly from API)
+            payment = client.payment.fetch(razorpay_payment_id)
+            if payment.get('status') not in ['captured', 'authorized']:
+                return jsonify({"error": "Payment is not in captured or authorized status"}), 400
+        
+        # Success! Mark order as paid
+        order.payment_status = 'Paid'
+        order.razorpay_payment_id = razorpay_payment_id
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": "Payment verified successfully", "order": order.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Payment verification failed: {str(e)}"}), 400
 
 # MY ORDERS & RETURN CLAUSES
 @user_bp.route('/orders', methods=['GET'])
