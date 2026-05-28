@@ -1291,7 +1291,7 @@ const Reports: React.FC = () => {
                         <td className="px-4 py-3 text-right font-medium text-slate-900">₹{rec.taxableValue.toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 font-bold text-slate-700">
-                            {rec.gstRate}%
+                            {Number(rec.gstRate).toFixed(2).replace(/\.00$/, '')}%
                           </span>
                         </td>
                         <td className="px-4 py-3 text-right text-slate-600">₹{rec.cgst.toFixed(2)}</td>

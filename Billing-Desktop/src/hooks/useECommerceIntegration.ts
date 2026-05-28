@@ -200,6 +200,12 @@ export const useECommerceIntegration = () => {
             const billItems: BillItem[] = [];
             let totalAmount = 0;
 
+            const taxableAmount = Math.max(0, Number(order.final_amount || 0) - Number(order.gst_amount || 0));
+            const derivedGstRateRaw = taxableAmount > 0
+              ? (Number(order.gst_amount || 0) / taxableAmount) * 100
+              : Number(settings.gstPercentage || 18);
+            const derivedGstRate = Number(derivedGstRateRaw.toFixed(2));
+
             for (const item of (order.items || [])) {
               // Match product locally on Barcode or SKU code (avoiding database ID collision)
               const product = currentProducts.find(
@@ -217,7 +223,7 @@ export const useECommerceIntegration = () => {
                   quantity: item.quantity,
                   unitPrice: item.price,
                   discount: 0,
-                  gst: product.gst || settings.gstPercentage || 18,
+                  gst: derivedGstRate,
                   totalPrice: itemTotal,
                   product, // store reference to product for rendering
                   productImage: item.product_image
@@ -239,9 +245,12 @@ export const useECommerceIntegration = () => {
             const customerObj = currentCustomers.find(c => c.id === customerId);
 
             // Create POS Customer Bill for records
+            const onlineOrderNumber = (order as any).online_order_number ?? order.id;
+            const formattedOrderNumber = String(onlineOrderNumber).padStart(6, '0');
+
             db.createBill({
               id: 0,
-              billNumber: `EC-CUST-${order.id}`,
+              billNumber: `EC-CUST-${formattedOrderNumber}`,
               customerId,
               customer: customerObj,
               totalAmount: totalAmount,

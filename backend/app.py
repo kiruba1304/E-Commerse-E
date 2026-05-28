@@ -3,7 +3,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection
+from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -228,6 +228,8 @@ def seed_database():
     with app.app_context():
         db.create_all()
         ensure_shop_billing_heartbeat_column()
+        ensure_online_order_sequence_columns()
+        backfill_online_order_numbers()
 
         # Check if already seeded
         if SuperAdmin.query.first() is not None:
@@ -463,6 +465,42 @@ def ensure_shop_billing_heartbeat_column():
         columns = [row[1] for row in result.fetchall()]
         if 'last_billing_heartbeat_at' not in columns:
             connection.execute(text("ALTER TABLE shops ADD COLUMN last_billing_heartbeat_at DATETIME"))
+
+
+def ensure_online_order_sequence_columns():
+    with db.engine.begin() as connection:
+        shop_result = connection.execute(text("PRAGMA table_info(shops)"))
+        shop_columns = [row[1] for row in shop_result.fetchall()]
+        if 'last_online_order_number' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN last_online_order_number INTEGER DEFAULT 0"))
+
+        order_result = connection.execute(text("PRAGMA table_info(orders)"))
+        order_columns = [row[1] for row in order_result.fetchall()]
+        if 'online_order_number' not in order_columns:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN online_order_number INTEGER"))
+
+
+def backfill_online_order_numbers():
+    try:
+        shops = Shop.query.all()
+        for shop in shops:
+            current_max = db.session.query(db.func.coalesce(db.func.max(Order.online_order_number), 0)).filter(Order.shop_id == shop.id).scalar() or 0
+            counter = max(int(shop.last_online_order_number or 0), int(current_max))
+            pending_orders = (
+                Order.query
+                .filter_by(shop_id=shop.id, online_order_number=None, status='Pending')
+                .order_by(Order.created_at.asc(), Order.id.asc())
+                .all()
+            )
+            for order in pending_orders:
+                counter += 1
+                order.online_order_number = counter
+            if counter != int(shop.last_online_order_number or 0):
+                shop.last_online_order_number = counter
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Online order sequence backfill skipped: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():

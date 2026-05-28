@@ -720,6 +720,9 @@ def create_order():
         discount_amount=round(discount_amount + super_coins_used, 2),
         tracking_info=razorpay_order_id
     )
+
+    shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
+    order.online_order_number = shop.last_online_order_number
     
     for item in order_items:
         order.items.append(item)
@@ -739,14 +742,19 @@ def create_order():
     db.session.commit()
 
     # Log purchase
-    log_user_action(user_id, user.username, f"Placed order #{order.id} (Amount: {order.final_amount}, Method: {payment_method})", shop_id)
+    log_user_action(
+        user_id,
+        user.username,
+        f"Placed order #{order.online_order_number or order.id} (Amount: {order.final_amount}, Method: {payment_method})",
+        shop_id,
+    )
     
     # Notify shop admin of new order
     notif = Notification(
         recipient_type='admin',
         recipient_id=None,
         title="New Order Received",
-        message=f"Order #{order.id} was placed by {user.name or user.username} for a total of {order.final_amount}.",
+        message=f"Order #{order.online_order_number or order.id} was placed by {user.name or user.username} for a total of {order.final_amount}.",
         shop_id=shop_id
     )
     db.session.add(notif)

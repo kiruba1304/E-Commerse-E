@@ -84,6 +84,68 @@ def manage_shop():
 
     if request.method == 'GET':
         return jsonify(shop.serialize()), 200
+    data = request.get_json() or {}
+    if 'name' in data:
+        shop.name = data['name']
+    if 'logo_url' in data:
+        shop.logo_url = data['logo_url']
+    if 'contact_email' in data:
+        shop.contact_email = data['contact_email']
+    if 'contact_phone' in data:
+        shop.contact_phone = data['contact_phone']
+    if 'privacy_policy' in data:
+        shop.privacy_policy = data['privacy_policy']
+    if 'address' in data:
+        shop.address = data['address']
+    if 'sms_api_key' in data:
+        shop.sms_api_key = data['sms_api_key']
+    if 'whatsapp_api_key' in data:
+        shop.whatsapp_api_key = data['whatsapp_api_key']
+    if 'razorpay_key_id' in data:
+        shop.razorpay_key_id = data['razorpay_key_id']
+    if 'razorpay_key_secret' in data:
+        shop.razorpay_key_secret = data['razorpay_key_secret']
+    if 'billing_api_key' in data:
+        shop.billing_api_key = data['billing_api_key']
+    if 'gst_percentage' in data:
+        try:
+            shop.gst_percentage = float(data['gst_percentage'])
+        except ValueError:
+            return jsonify({"error": "Invalid GST percentage value"}), 400
+    if 'gst_inclusive' in data:
+        shop.gst_inclusive = bool(data['gst_inclusive'])
+    if 'saree_models' in data:
+        shop.saree_models = data['saree_models']
+    if 'banners' in data:
+        shop.banners = data['banners']
+    if 'smtp_host' in data:
+        shop.smtp_host = data['smtp_host']
+    if 'smtp_port' in data:
+        try:
+            shop.smtp_port = int(data['smtp_port']) if data['smtp_port'] else None
+        except ValueError:
+            return jsonify({"error": "Invalid SMTP port value"}), 400
+    if 'smtp_user' in data:
+        shop.smtp_user = data['smtp_user']
+    if 'smtp_password' in data:
+        shop.smtp_password = data['smtp_password']
+    if 'smtp_use_tls' in data:
+        shop.smtp_use_tls = bool(data['smtp_use_tls'])
+    if 'smtp_sender_name' in data:
+        shop.smtp_sender_name = data['smtp_sender_name']
+    if 'email_templates' in data:
+        shop.email_templates = data['email_templates']
+    if 'color_palette' in data:
+        shop.color_palette = data['color_palette']
+    if 'customization_min_quantity' in data:
+        try:
+            shop.customization_min_quantity = int(data['customization_min_quantity'])
+        except ValueError:
+            return jsonify({"error": "Invalid customization minimum quantity"}), 400
+
+    db.session.commit()
+    log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
+    return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
 
 
 @admin_bp.route('/billing-status', methods=['GET'])
@@ -149,69 +211,6 @@ def billing_status_page():
     '''
 
     return render_template_string(html, api_key_json=api_key_json)
-
-    data = request.get_json() or {}
-    if 'name' in data:
-        shop.name = data['name']
-    if 'logo_url' in data:
-        shop.logo_url = data['logo_url']
-    if 'contact_email' in data:
-        shop.contact_email = data['contact_email']
-    if 'contact_phone' in data:
-        shop.contact_phone = data['contact_phone']
-    if 'privacy_policy' in data:
-        shop.privacy_policy = data['privacy_policy']
-    if 'address' in data:
-        shop.address = data['address']
-    if 'sms_api_key' in data:
-        shop.sms_api_key = data['sms_api_key']
-    if 'whatsapp_api_key' in data:
-        shop.whatsapp_api_key = data['whatsapp_api_key']
-    if 'razorpay_key_id' in data:
-        shop.razorpay_key_id = data['razorpay_key_id']
-    if 'razorpay_key_secret' in data:
-        shop.razorpay_key_secret = data['razorpay_key_secret']
-    if 'billing_api_key' in data:
-        shop.billing_api_key = data['billing_api_key']
-    if 'gst_percentage' in data:
-        try:
-            shop.gst_percentage = float(data['gst_percentage'])
-        except ValueError:
-            return jsonify({"error": "Invalid GST percentage value"}), 400
-    if 'gst_inclusive' in data:
-        shop.gst_inclusive = bool(data['gst_inclusive'])
-    if 'saree_models' in data:
-        shop.saree_models = data['saree_models']
-    if 'banners' in data:
-        shop.banners = data['banners']
-    if 'smtp_host' in data:
-        shop.smtp_host = data['smtp_host']
-    if 'smtp_port' in data:
-        try:
-            shop.smtp_port = int(data['smtp_port']) if data['smtp_port'] else None
-        except ValueError:
-            return jsonify({"error": "Invalid SMTP port value"}), 400
-    if 'smtp_user' in data:
-        shop.smtp_user = data['smtp_user']
-    if 'smtp_password' in data:
-        shop.smtp_password = data['smtp_password']
-    if 'smtp_use_tls' in data:
-        shop.smtp_use_tls = bool(data['smtp_use_tls'])
-    if 'smtp_sender_name' in data:
-        shop.smtp_sender_name = data['smtp_sender_name']
-    if 'email_templates' in data:
-        shop.email_templates = data['email_templates']
-    if 'color_palette' in data:
-        shop.color_palette = data['color_palette']
-    if 'customization_min_quantity' in data:
-        try:
-            shop.customization_min_quantity = int(data['customization_min_quantity'])
-        except ValueError:
-            return jsonify({"error": "Invalid customization minimum quantity"}), 400
-
-    db.session.commit()
-    log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
-    return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
 
 @admin_bp.route('/shop/test-smtp', methods=['POST'])
 @role_required(['admin'])

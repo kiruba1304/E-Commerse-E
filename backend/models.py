@@ -48,6 +48,7 @@ class Shop(db.Model):
     razorpay_key_secret = db.Column(db.String(255), nullable=True)
     billing_api_key = db.Column(db.String(255), nullable=True)
     last_billing_heartbeat_at = db.Column(db.DateTime, nullable=True)
+    last_online_order_number = db.Column(db.Integer, default=0, nullable=False)
     
     # Super coin configuration
     super_coin_enabled = db.Column(db.Boolean, default=True)
@@ -215,6 +216,7 @@ class Shop(db.Model):
             "razorpay_key_secret": self.razorpay_key_secret,
             "billing_api_key": self.billing_api_key,
             "last_billing_heartbeat_at": self.last_billing_heartbeat_at.isoformat() if self.last_billing_heartbeat_at else None,
+            "last_online_order_number": self.last_online_order_number,
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
             "gst_percentage": self.gst_percentage,
@@ -451,6 +453,7 @@ class Order(db.Model):
     payment_method = db.Column(db.String(50), default='COD') # COD, UPI
     payment_status = db.Column(db.String(50), default='Pending') # Pending, Paid
     tracking_info = db.Column(db.String(255), nullable=True)
+    online_order_number = db.Column(db.Integer, nullable=True)
     shipping_address = db.Column(db.Text, nullable=False)
     billing_phone = db.Column(db.String(50), nullable=True)
     
@@ -478,6 +481,7 @@ class Order(db.Model):
             "user_name": self.user.name if self.user else "Unknown User",
             "shop_id": self.shop_id,
             "shop_name": self.shop.name if self.shop else "Unknown Shop",
+            "online_order_number": self.online_order_number,
             "total_amount": self.total_amount,
             "final_amount": self.final_amount,
             "status": self.status,
