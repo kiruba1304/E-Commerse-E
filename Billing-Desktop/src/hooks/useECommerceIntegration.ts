@@ -6,6 +6,27 @@ export const useECommerceIntegration = () => {
   const db = useDatabase();
   const isSyncingRef = useRef(false);
 
+  const sendHeartbeat = async () => {
+    try {
+      const settingsRaw = localStorage.getItem('app_settings');
+      if (!settingsRaw) return;
+
+      const settings = JSON.parse(settingsRaw);
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+
+      if (!apiUrl || !apiKey) return;
+
+      await fetch(`${apiUrl}/billing/sync/heartbeat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey })
+      });
+    } catch {
+      // Heartbeat is best-effort only.
+    }
+  };
+
   const performSync = async () => {
     if (isSyncingRef.current) return;
     isSyncingRef.current = true;
@@ -30,6 +51,8 @@ export const useECommerceIntegration = () => {
       }
 
       console.log('Starting E-Commerce Bidirectional Sync...');
+
+      await sendHeartbeat();
 
       // -------------------------------------------------------------
       // 1. SYNC PRODUCTS (BIDIRECTIONAL)
@@ -317,6 +340,12 @@ export const useECommerceIntegration = () => {
 
     timer = setTimeout(tick, 1000);
 
+    const heartbeatTimer = setInterval(() => {
+      sendHeartbeat();
+    }, 20000);
+
+    sendHeartbeat();
+
     // Bind custom window event listener for manual triggers from Settings page
     const handleManualSync = async () => {
       await performSync();
@@ -326,6 +355,7 @@ export const useECommerceIntegration = () => {
 
     return () => {
       clearTimeout(timer);
+      clearInterval(heartbeatTimer);
       window.removeEventListener('trigger-ecommerce-sync', handleManualSync);
     };
   }, [db]);

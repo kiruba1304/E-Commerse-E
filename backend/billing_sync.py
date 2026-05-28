@@ -1,15 +1,26 @@
 import uuid
 from flask import Blueprint, jsonify, request
 from models import db, Shop, Product, Category, Order, OrderItem, User
-from datetime import datetime
+from datetime import datetime, timedelta
 
 billing_sync_bp = Blueprint('billing_sync_bp', __name__)
+
+BILLING_ONLINE_WINDOW_SECONDS = 75
 
 def get_shop_by_api_key(api_key):
     if not api_key:
         return None
     cleaned_key = str(api_key).strip()
     return Shop.query.filter(db.func.lower(Shop.billing_api_key) == cleaned_key.lower()).first()
+
+def serialize_billing_status(shop):
+    last_seen = shop.last_billing_heartbeat_at
+    is_online = bool(last_seen and (datetime.now() - last_seen) <= timedelta(seconds=BILLING_ONLINE_WINDOW_SECONDS))
+    return {
+        "is_online": is_online,
+        "last_seen_at": last_seen.isoformat() if last_seen else None,
+        "offline_after_seconds": BILLING_ONLINE_WINDOW_SECONDS,
+    }
 
 @billing_sync_bp.route('/validate', methods=['POST'])
 def validate_api_key():
@@ -18,7 +29,44 @@ def validate_api_key():
     shop = get_shop_by_api_key(api_key)
     if not shop:
         return jsonify({"success": False, "error": "Invalid API key"}), 401
-    return jsonify({"success": True, "shop_name": shop.name, "shop_id": shop.id}), 200
+    return jsonify({
+        "success": True,
+        "shop_name": shop.name,
+        "shop_id": shop.id,
+        "billing_status": serialize_billing_status(shop)
+    }), 200
+
+@billing_sync_bp.route('/heartbeat', methods=['POST'])
+def billing_heartbeat():
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+
+    shop.last_billing_heartbeat_at = datetime.now()
+
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "billing_status": serialize_billing_status(shop)}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@billing_sync_bp.route('/status', methods=['GET', 'POST'])
+def billing_status():
+    data = request.get_json(silent=True) or {}
+    api_key = request.args.get('api_key') or data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+
+    return jsonify({
+        "success": True,
+        "shop_id": shop.id,
+        "shop_name": shop.name,
+        "billing_status": serialize_billing_status(shop)
+    }), 200
 
 @billing_sync_bp.route('/products', methods=['POST'])
 def sync_products():

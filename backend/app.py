@@ -5,6 +5,7 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection
 from dotenv import load_dotenv
+from sqlalchemy import text
 
 import razorpay
 
@@ -226,6 +227,7 @@ def opac_list_collections():
 def seed_database():
     with app.app_context():
         db.create_all()
+        ensure_shop_billing_heartbeat_column()
 
         # Check if already seeded
         if SuperAdmin.query.first() is not None:
@@ -454,6 +456,13 @@ def seed_database():
 
         db.session.commit()
         print("Database seeding completed successfully.")
+
+def ensure_shop_billing_heartbeat_column():
+    with db.engine.begin() as connection:
+        result = connection.execute(text("PRAGMA table_info(shops)"))
+        columns = [row[1] for row in result.fetchall()]
+        if 'last_billing_heartbeat_at' not in columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN last_billing_heartbeat_at DATETIME"))
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():

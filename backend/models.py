@@ -47,6 +47,7 @@ class Shop(db.Model):
     razorpay_key_id = db.Column(db.String(255), nullable=True)
     razorpay_key_secret = db.Column(db.String(255), nullable=True)
     billing_api_key = db.Column(db.String(255), nullable=True)
+    last_billing_heartbeat_at = db.Column(db.DateTime, nullable=True)
     
     # Super coin configuration
     super_coin_enabled = db.Column(db.Boolean, default=True)
@@ -213,6 +214,7 @@ class Shop(db.Model):
             "razorpay_key_id": self.razorpay_key_id,
             "razorpay_key_secret": self.razorpay_key_secret,
             "billing_api_key": self.billing_api_key,
+            "last_billing_heartbeat_at": self.last_billing_heartbeat_at.isoformat() if self.last_billing_heartbeat_at else None,
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
             "gst_percentage": self.gst_percentage,

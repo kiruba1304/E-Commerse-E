@@ -40,6 +40,12 @@ def migrate():
     else:
         print("Column 'billing_api_key' already exists in table 'shops'.")
 
+    if 'last_billing_heartbeat_at' not in shop_columns:
+        print("Adding column 'last_billing_heartbeat_at' to table 'shops'...")
+        cursor.execute("ALTER TABLE shops ADD COLUMN last_billing_heartbeat_at DATETIME")
+    else:
+        print("Column 'last_billing_heartbeat_at' already exists in table 'shops'.")
+
     # 3. Migrate orders table
     cursor.execute("PRAGMA table_info(orders)")
     order_columns = [col[1] for col in cursor.fetchall()]

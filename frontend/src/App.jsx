@@ -728,6 +728,7 @@ export default function App() {
   const [adminHelpTickets, setAdminHelpTickets] = useState([]);
   const [adminLogs, setAdminLogs] = useState([]);
   const [adminLogTab, setAdminLogTab] = useState('all'); // 'all' | 'system' | 'smtp'
+  const [billingStatus, setBillingStatus] = useState(null);
   const [adminSmsLogs, setAdminSmsLogs] = useState([]);
   const [gstReport, setGstReport] = useState(null);
   const [gstFilterDate, setGstFilterDate] = useState("");
@@ -1827,6 +1828,7 @@ export default function App() {
         loadAdminProducts();
         loadAdminShop();
       }
+      if (activePanel === 'billing_heartbeat') loadBillingHeartbeat();
     }
   }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear]);
 
@@ -1836,6 +1838,22 @@ export default function App() {
       const data = await res.json();
       if (res.ok) setAdminShop(data);
     } catch (e) {}
+  };
+
+  const loadBillingHeartbeat = async () => {
+    try {
+      if (!adminShop || !adminShop.billing_api_key) {
+        setBillingStatus({ error: 'No billing API key configured' });
+        return;
+      }
+      const url = `${API_BASE}/billing/sync/status?api_key=${encodeURIComponent(adminShop.billing_api_key)}`;
+      const res = await fetch(url, { headers: getHeaders() });
+      const j = await res.json();
+      if (res.ok) setBillingStatus(j.billing_status || null);
+      else setBillingStatus({ error: j.error || 'Unable to fetch status' });
+    } catch (e) {
+      setBillingStatus({ error: e.message || 'Network error' });
+    }
   };
 
   const handleUpdateAdminShop = async (e) => {
@@ -6987,6 +7005,9 @@ export default function App() {
             <span className={`sidebar-link ${activePanel === 'logs' ? 'active' : ''}`} onClick={() => setActivePanel("logs")}>
               <FileText size={18} /> Store Audit Trail
             </span>
+            <span className={`sidebar-link ${activePanel === 'billing_heartbeat' ? 'active' : ''}`} onClick={() => setActivePanel("billing_heartbeat")}>
+              <ShieldCheck size={18} /> Billing Heartbeat
+            </span>
             <span className="sidebar-link logout-btn" onClick={handleLogout}>
               <LogOut size={18} /> Logout
             </span>
@@ -7786,6 +7807,31 @@ export default function App() {
                   Save Shop System Configurations <Check size={18} />
                 </button>
               </form>
+            )}
+
+            {/* Billing Heartbeat panel */}
+            {activePanel === 'billing_heartbeat' && (
+              <div className="glass-panel animate-fade-in" style={{ padding: '20px' }}>
+                <h2 style={{ fontWeight: 800, fontSize: '1.6rem', marginBottom: '8px' }}>Billing Desktop Heartbeat</h2>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '12px' }}>Shows whether the Billing Desktop is currently online and when it was last seen.</p>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                  <div style={{ width: 14, height: 14, borderRadius: 8, background: billingStatus && billingStatus.is_online ? '#22c55e' : '#ef4444' }} />
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{billingStatus && billingStatus.is_online ? 'Online' : (billingStatus && billingStatus.error ? 'Error' : 'Offline')}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{billingStatus && billingStatus.last_seen_at ? `Last seen: ${billingStatus.last_seen_at}` : (billingStatus && billingStatus.error ? billingStatus.error : 'Last seen: N/A')}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn-primary" onClick={loadBillingHeartbeat} style={{ marginRight: 8 }}>Refresh Now</button>
+                  <button className="btn-secondary" onClick={() => { setBillingStatus(null); }}>Clear</button>
+                </div>
+
+                <div style={{ marginTop: 18 }} className="responsive-table-container">
+                  <pre style={{ whiteSpace: 'pre-wrap', background: '#0f1724', color: '#e6edf3', padding: 12, borderRadius: 6 }}>{JSON.stringify(billingStatus, null, 2)}</pre>
+                </div>
+              </div>
             )}
 
             {/* Categories Management panel */}

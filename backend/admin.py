@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, render_template_string
 from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection, CustomizationOrder
 from auth_middleware import generate_token, token_required, role_required
 from datetime import datetime, timezone
@@ -84,6 +84,71 @@ def manage_shop():
 
     if request.method == 'GET':
         return jsonify(shop.serialize()), 200
+
+
+@admin_bp.route('/billing-status', methods=['GET'])
+@role_required(['admin'])
+def billing_status_page():
+    """Serve a small admin page that polls the billing sync status for the current shop."""
+    shop = Shop.query.get(request.user['shop_id'])
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    api_key = shop.billing_api_key or ''
+    api_key_json = json.dumps(api_key)
+
+    html = '''
+    <!doctype html>
+    <html>
+        <head>
+            <meta charset="utf-8" />
+            <title>Billing App Status</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 24px; }
+                .status { display:flex; align-items:center; gap:12px; }
+                .dot { width:14px; height:14px; border-radius:50%; background:#999 }
+                .online { background: #22c55e }
+                .offline { background: #ef4444 }
+            </style>
+        </head>
+        <body>
+            <h2>Billing Desktop Presence</h2>
+            <div class="status">
+                <div id="dot" class="dot offline"></div>
+                <div>
+                    <div id="state">Checking...</div>
+                    <div id="last">Last seen: N/A</div>
+                </div>
+            </div>
+
+            <script>
+                const apiKey = {{ api_key_json|safe }};
+                async function fetchStatus(){
+                    try{
+                        const url = '/api/billing/sync/status?api_key=' + encodeURIComponent(apiKey);
+                        const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                        if (!res.ok) throw new Error('Network');
+                        const j = await res.json();
+                        const st = j.billing_status || {};
+                        const isOnline = !!st.is_online;
+                        document.getElementById('dot').className = 'dot ' + (isOnline ? 'online' : 'offline');
+                        document.getElementById('state').textContent = isOnline ? 'Online' : 'Offline';
+                        document.getElementById('last').textContent = 'Last seen: ' + (st.last_seen_at || 'N/A');
+                    }catch(e){
+                        document.getElementById('dot').className = 'dot offline';
+                        document.getElementById('state').textContent = 'Error';
+                        document.getElementById('last').textContent = '';
+                    }
+                }
+
+                fetchStatus();
+                setInterval(fetchStatus, 10000);
+            </script>
+        </body>
+    </html>
+    '''
+
+    return render_template_string(html, api_key_json=api_key_json)
 
     data = request.get_json() or {}
     if 'name' in data:
