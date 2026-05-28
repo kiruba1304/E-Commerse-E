@@ -3457,7 +3457,23 @@ export default function App() {
                   <h4 style={{ fontWeight: 700, color: '#475569', marginBottom: '6px' }}>BILL TO:</h4>
                   <p style={{ fontWeight: 'bold', color: '#0f172a' }}>{invoiceOrder.user_name}</p>
                   <p style={{ color: '#64748b' }}>Phone: {invoiceOrder.billing_phone}</p>
-                  <p style={{ color: '#64748b' }}>Shipping: {invoiceOrder.shipping_address}</p>
+                  <div
+                    title={invoiceOrder.shipping_address}
+                    style={{
+                      color: '#64748b',
+                      maxWidth: '400px',
+                      maxHeight: '3.6rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'normal'
+                    }}
+                  >
+                    Shipping: {invoiceOrder.shipping_address}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <h4 style={{ fontWeight: 700, color: '#475569', marginBottom: '6px' }}>PAYMENT METHOD:</h4>
@@ -8827,7 +8843,25 @@ export default function App() {
                                     ))}
                                   </div>
                                 </td>
-                                <td>{o.shipping_address}</td>
+                                <td>
+                                  <div
+                                    title={o.shipping_address}
+                                    style={{
+                                      maxWidth: '260px',
+                                      maxHeight: '3.6rem',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      wordBreak: 'break-word',
+                                      whiteSpace: 'normal',
+                                      color: 'var(--text-muted)'
+                                    }}
+                                  >
+                                    {o.shipping_address}
+                                  </div>
+                                </td>
                                 <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>₹{o.final_amount}</td>
                                 <td>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
