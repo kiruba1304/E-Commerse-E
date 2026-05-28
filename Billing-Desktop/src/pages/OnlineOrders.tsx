@@ -43,12 +43,13 @@ const OnlineOrders: React.FC = () => {
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 shadow-soft">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Order ID</th>
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Date</th>
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Customer</th>
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Ordered Items</th>
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Total / Payment</th>
+                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Actions</th>
                   <th className="px-4 py-4 text-left font-semibold text-slate-700">Status</th>
                 </tr>
               </thead>
@@ -107,6 +108,75 @@ const OnlineOrders: React.FC = () => {
                             {order.paymentMethod || 'ONLINE'}
                           </span>
                         </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => {
+                            // generate and print shipping label
+                            const settingsRaw = localStorage.getItem('app_settings');
+                            const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+                            const storeName = settings.storeName || settings.store || 'Store';
+                            const storeAddress = settings.address || '';
+                            const storePhone = settings.phone || '';
+
+                            const customerName = customer?.name || 'Customer';
+                            const customerAddress = customer?.address || order.customer?.address || order.shippingAddress || '';
+                            const customerPhone = customer?.phone || order.customer?.phone || '';
+
+                            const win = window.open('', '_blank');
+                            if (!win) return;
+
+                            // helper escape
+                            function escapeHtml(s: any) {
+                              if (!s) return '';
+                              return String(s)
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
+                                .replace(/'/g, '&#39;');
+                            }
+
+                            const paymentType = (order.paymentMethod || '').toString().toLowerCase() === 'cod' ? 'COD' : 'Prepaid';
+
+                            const html = `
+                              <html>
+                                <head>
+                                  <title>Shipping Label - ${escapeHtml(order.billNumber || '')}</title>
+                                  <style>
+                                    body { font-family: Arial, sans-serif; padding: 12px; }
+                                    .label { width: 380px; border: 1px solid #222; padding: 12px; }
+                                    .section { margin-bottom: 10px; }
+                                    .section h3 { margin:0 0 6px 0; font-size:14px; }
+                                    .pre { white-space: pre-line; font-size:13px; }
+                                    .meta { font-size:12px; color:#444; }
+                                  </style>
+                                </head>
+                                <body>
+                                  <div class="label">
+                                    <div class="section">
+                                      <h3>From:</h3>
+                                      <div class="pre">${escapeHtml(storeName)}\n${escapeHtml(storeAddress)}\n${escapeHtml(storePhone)}</div>
+                                    </div>
+                                    <div class="section">
+                                      <h3>To:</h3>
+                                      <div class="pre">${escapeHtml(customerName)}\n${escapeHtml(customerAddress)}\nMob: ${escapeHtml(customerPhone)}</div>
+                                    </div>
+                                    <div class="meta">Order: ${escapeHtml(order.billNumber || '')} • Date: ${new Date(order.createdAt).toLocaleString()} • Payment: ${escapeHtml(paymentType)}</div>
+                                  </div>
+                                </body>
+                              </html>
+                            `;
+
+                            win.document.write(html);
+                            win.document.close();
+                            win.focus();
+                            setTimeout(() => { win.print(); /* optionally close: win.close(); */ }, 300);
+                          }}
+                          className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-md hover:bg-indigo-700"
+                        >
+                          Print Label
+                        </button>
                       </td>
                       <td className="px-4 py-4">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800">
