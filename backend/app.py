@@ -484,6 +484,13 @@ def ensure_dtdc_columns():
         if 'shipping_label_url' not in order_columns:
             connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_label_url VARCHAR(255)"))
 
+        cust_result = connection.execute(text("PRAGMA table_info(customization_orders)"))
+        cust_columns = [row[1] for row in cust_result.fetchall()]
+        if 'tracking_info' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN tracking_info VARCHAR(255)"))
+        if 'shipping_label_url' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shipping_label_url VARCHAR(255)"))
+
 
 def ensure_online_order_sequence_columns():
     with db.engine.begin() as connection:

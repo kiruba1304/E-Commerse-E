@@ -484,6 +484,7 @@ class Order(db.Model):
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
 
     def serialize(self):
+        user = self.user
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -511,6 +512,12 @@ class Order(db.Model):
             "shipping_label_url": self.shipping_label_url,
             "is_synced": self.is_synced,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "customer": {
+                "name": user.name if user else "Online Customer",
+                "phone": self.billing_phone or (user.contact_phone if user else ""),
+                "email": user.email if user else "",
+                "shipping_address": self.shipping_address
+            },
             "items": [item.serialize() for item in self.items]
         }
 
@@ -782,6 +789,8 @@ class CustomizationOrder(db.Model):
     customization_notes = db.Column(db.Text, nullable=True)
     quantity = db.Column(db.Integer, default=1, nullable=False)
     status = db.Column(db.String(50), default='Pending') # Pending, In Progress, Dispatched, Completed, Rejected
+    tracking_info = db.Column(db.String(255), nullable=True)
+    shipping_label_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref=db.backref('customization_orders_rel', lazy=True))
@@ -799,10 +808,14 @@ class CustomizationOrder(db.Model):
             "product_id": self.product_id,
             "product_name": self.product.name if self.product else "Deleted Product",
             "product_image": self.product.images[0] if self.product and self.product.images else None,
+            "user_phone": self.user.contact_phone if self.user else "N/A",
+            "shipping_address": self.user.addresses[0].get('address') if self.user and self.user.addresses else "N/A",
             "selected_color_name": self.selected_color_name,
             "selected_color_hex": self.selected_color_hex,
             "customization_notes": self.customization_notes,
             "quantity": self.quantity if self.quantity is not None else 1,
             "status": self.status,
+            "tracking_info": self.tracking_info,
+            "shipping_label_url": self.shipping_label_url,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

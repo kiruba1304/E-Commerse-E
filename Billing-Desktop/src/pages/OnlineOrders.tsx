@@ -119,6 +119,8 @@ const OnlineOrders: React.FC = () => {
 
   // Web Sync state
   const [webOrders, setWebOrders] = useState<any[]>([]);
+  const [webCustomizations, setWebCustomizations] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'standard' | 'customization'>('standard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -182,22 +184,41 @@ const OnlineOrders: React.FC = () => {
       
       setIsConfigured(true);
       
+      // Fetch standard orders
       const res = await fetch(`${apiUrl}/billing/sync/orders/list`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ api_key: apiKey })
       });
       
-      if (!res.ok) {
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setWebOrders(data.orders || []);
+        } else {
+          throw new Error(data.error || "Failed to load orders");
+        }
+      } else {
         throw new Error(`Server returned status ${res.status}`);
       }
-      
-      const data = await res.json();
-      if (data.success) {
-        setWebOrders(data.orders || []);
-      } else {
-        throw new Error(data.error || "Failed to load orders");
+
+      // Fetch customization orders
+      try {
+        const custRes = await fetch(`${apiUrl}/billing/sync/customizations/list`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: apiKey })
+        });
+        if (custRes.ok) {
+          const custData = await custRes.json();
+          if (custData.success) {
+            setWebCustomizations(custData.customizations || []);
+          }
+        }
+      } catch (custErr) {
+        console.error("Error loading customization requests:", custErr);
       }
+
     } catch (err: any) {
       console.error("Error loading online orders from e-commerce:", err);
       setError(err.message || "Failed to connect to website backend");
@@ -238,6 +259,99 @@ const OnlineOrders: React.FC = () => {
       }
     } catch (err: any) {
       alert("Error updating order: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Update customization status
+  const handleUpdateCustomizationStatus = async (custId: number, status: string) => {
+    try {
+      setUpdatingId(custId);
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/customizations/${custId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, status })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadOrders();
+      } else {
+        alert(data.error || "Failed to update customization status");
+      }
+    } catch (err: any) {
+      alert("Error updating customization: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Dispatch custom order
+  const handleDispatchCustomOrder = async (custId: number) => {
+    const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
+    const trackingInfo = prompt("Enter tracking number/details:", `Hub Courier Tracker ID: ${trackId}`);
+    if (trackingInfo === null) return;
+    
+    try {
+      setUpdatingId(custId);
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/customizations/${custId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, status: 'Dispatched', tracking_info: trackingInfo })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await loadOrders();
+      } else {
+        alert(data.error || "Failed to dispatch customization order");
+      }
+    } catch (err: any) {
+      alert("Error dispatching customization order: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Book DTDC Shipment for Customization
+  const handleBookCustomDtdcShipping = async (custId: number) => {
+    const weightStr = prompt("Enter package weight in kg:", "0.5");
+    if (weightStr === null) return;
+    const weight = parseFloat(weightStr) || 0.5;
+    
+    try {
+      setUpdatingId(custId);
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/customizations/${custId}/book-shipping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, weight_kg: weight })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`DTDC shipment booked successfully! AWB: ${data.customization.tracking_info.split('AWB:')[1]?.trim() || data.customization.tracking_info}`);
+        await loadOrders();
+        if (data.customization.shipping_label_url) {
+          window.open(data.customization.shipping_label_url, '_blank');
+        }
+      } else {
+        alert(data.error || "Failed to book DTDC shipment for customization");
+      }
+    } catch (err: any) {
+      alert("Error booking DTDC shipping for customization: " + err.message);
     } finally {
       setUpdatingId(null);
     }
@@ -332,7 +446,7 @@ const OnlineOrders: React.FC = () => {
     } else {
       // Fallback: map local SQLite bills to order objects
       list = onlineOrders.map(b => {
-        const customer = customers.find(c => c.id === b.customerId);
+        const customer = b.customer || customers.find(c => c.id === b.customerId);
         return {
           id: b.id,
           isLocalFallback: true,
@@ -485,6 +599,137 @@ const OnlineOrders: React.FC = () => {
     setTimeout(() => { win.print(); }, 300);
   };
 
+  const displayedCustomizations = useMemo(() => {
+    const getStatusPriority = (status: string) => {
+      const s = String(status || '').trim();
+      if (s === 'Pending') return 1;
+      if (s === 'In Progress') return 2;
+      if (s === 'Dispatched') return 3;
+      if (s === 'Completed') return 4;
+      if (s === 'Rejected') return 5;
+      return 6;
+    };
+
+    return [...webCustomizations].sort((a, b) => {
+      const pA = getStatusPriority(a.status);
+      const pB = getStatusPriority(b.status);
+      
+      const groupA = pA <= 3 ? 0 : 1;
+      const groupB = pB <= 3 ? 0 : 1;
+      
+      if (groupA !== groupB) {
+        return groupA - groupB;
+      }
+      
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [webCustomizations]);
+
+  const handlePrintLocalCustomLabel = (cust: any) => {
+    const settingsRaw = localStorage.getItem('app_settings');
+    const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+    const storeName = settings.storeName || settings.store || 'Store';
+    const storeAddress = settings.address || '';
+    const storePhone = settings.phone || '';
+
+    const customerName = cust.user_name || 'Customer';
+    const customerAddress = cust.shipping_address || '';
+    const customerPhone = cust.user_phone || '';
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    function escapeHtml(s: any) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const barcodeValue = `CUST-${String(cust.id).padStart(6, '0')}`;
+    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize);
+
+    const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
+    const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
+
+    const html = `
+      <html>
+        <head>
+          <title>Custom Label - ${escapeHtml(barcodeValue)}</title>
+          <style>
+            @page { size: ${size.width} ${size.height}; margin: 0; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            * { box-sizing: border-box; }
+            .label { width: 100%; height: 100%; box-sizing: border-box; border: 1.5px solid #111; padding: ${layout.padding}; display: flex; flex-direction: column; gap: ${layout.gap}; overflow: hidden; background: #fff; }
+            .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #111; padding-bottom: 4px; }
+            .brand { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+            .brand-name { margin: 0; font-size: ${layout.headingSize}; line-height: 1; font-weight: 700; letter-spacing: 0.03em; color: #111; text-transform: uppercase; }
+            .brand-subtitle { margin: 0; font-size: calc(${layout.metaSize} - 1px); line-height: 1.1; color: #555; }
+            .label-id { margin: 0; font-size: ${layout.metaSize}; line-height: 1.1; font-weight: 700; color: #111; text-align: right; }
+            .section { display: flex; flex-direction: column; gap: 1px; }
+            .section h3 { margin: 0; font-size: calc(${layout.headingSize} - 1px); line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; color: #111; }
+            .address-box { border: 1px solid #222; border-radius: 4px; padding: 4px 5px; background: #fafafa; }
+            .pre { white-space: pre-line; font-size: calc(${layout.bodySize} - 1px); line-height: ${layout.lineHeight}; font-weight: 600; color: #111; }
+            .from .pre { font-size: calc(${layout.bodySize} - 2px); }
+            .to .pre { font-size: calc(${layout.bodySize} - 1px); line-height: 1.14; }
+            .custom-details { border: 1px dashed #7a4ea5; border-radius: 4px; padding: 4px; margin-top: 2px; font-size: calc(${layout.bodySize} - 1px); background: #fdfcff; color: #5c3580; }
+            .custom-title { font-weight: bold; text-transform: uppercase; font-size: calc(${layout.metaSize} - 1px); margin-bottom: 2px; }
+            .barcode-wrap { margin-top: 2px; display: flex; justify-content: center; align-items: center; }
+            .barcode-wrap svg { display: block; margin: 0 auto; width: auto; max-width: 80%; height: auto; }
+            .meta { margin-top: auto; font-size: ${layout.metaSize}; color: #111; line-height: 1.25; border-top: 1px solid #111; padding-top: 4px; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
+            .meta span { white-space: nowrap; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <div class="header">
+              <div class="brand">
+                <div class="brand-name">Custom Order</div>
+                <div class="brand-subtitle">Special Handcrafted Request</div>
+              </div>
+              <div class="label-id">${escapeHtml(barcodeValue)}</div>
+            </div>
+            <div class="section from">
+              <h3>From</h3>
+              <div class="address-box">
+                <div class="pre">${escapeHtml(storeName)}\n${escapeHtml(storeAddress)}\n${escapeHtml(storePhone)}</div>
+              </div>
+            </div>
+            <div class="section to">
+              <h3>To</h3>
+              <div class="address-box">
+                <div class="pre">${escapeHtml(customerName)}\n${escapeHtml(customerAddress)}\nMob: ${escapeHtml(customerPhone)}</div>
+              </div>
+            </div>
+            <div class="custom-details">
+              <div class="custom-title">Customization Details</div>
+              <div><strong>Product:</strong> ${escapeHtml(cust.product_name)} (Qty: ${cust.quantity})</div>
+              <div><strong>Color:</strong> ${escapeHtml(cust.selected_color_name)} (${escapeHtml(cust.selected_color_hex)})</div>
+              <div><strong>Notes:</strong> ${escapeHtml(cust.customization_notes || 'None')}</div>
+            </div>
+            <div class="barcode-wrap">${barcodeSvg}</div>
+            <div class="meta">
+              <span>Request ID: ${escapeHtml(barcodeValue)}</span>
+              <span>${new Date(cust.created_at).toLocaleString()}</span>
+              <span>PREPAID</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 300);
+  };
+
   return (
     <div className="min-h-full rounded-[2rem] bg-white/70 p-5 shadow-soft backdrop-blur-sm lg:p-8">
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -496,11 +741,36 @@ const OnlineOrders: React.FC = () => {
       </div>
 
       <div className="card border border-white/60 bg-white/85 shadow-soft">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-500" /> Recent Webhook Orders
-          </h2>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-100 pb-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-500" /> Webhook Orders & Requests
+            </h2>
+            <p className="text-xs text-slate-500">Manage standard sales and custom fashion requests from your website.</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex gap-1.5 p-1 bg-slate-100 rounded-full border border-slate-200/60 shadow-inner">
+              <button
+                onClick={() => setActiveTab('standard')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all ${
+                  activeTab === 'standard'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Standard
+              </button>
+              <button
+                onClick={() => setActiveTab('customization')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all ${
+                  activeTab === 'customization'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Customizations
+              </button>
+            </div>
             {isConfigured && (
               <button 
                 onClick={loadOrders}
@@ -524,7 +794,9 @@ const OnlineOrders: React.FC = () => {
                 ))}
               </select>
             </label>
-            <span className="badge bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold rounded-full">{displayedOrders.length} Orders</span>
+            <span className="badge bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold rounded-full">
+              {activeTab === 'standard' ? displayedOrders.length : displayedCustomizations.length} {activeTab === 'standard' ? 'Orders' : 'Customizations'}
+            </span>
           </div>
         </div>
 
@@ -546,232 +818,426 @@ const OnlineOrders: React.FC = () => {
           </div>
         )}
 
-        {displayedOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Package className="h-16 w-16 text-slate-300 mb-4" />
-            <h3 className="text-xl font-medium text-slate-900">No online orders yet</h3>
-            <p className="text-slate-500 max-w-md mt-2">
-              Orders from your e-commerce platform will appear here automatically when they sync with your store.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 shadow-soft">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80">
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Order ID</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Date</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Customer</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Ordered Items</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Total / Payment</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Fulfillment Actions</th>
-                  <th className="px-4 py-4 text-left font-semibold text-slate-700">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedOrders.map((order) => {
-                  const displayOrderNumber = order.online_order_number 
-                    ? `#${String(order.online_order_number).padStart(6, '0')}` 
-                    : (order.billNumber ? order.billNumber.replace('EC-CUST-', '#') : `#${order.id}`);
-
-                  return (
-                    <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-4 font-bold text-indigo-950">
-                        {displayOrderNumber}
-                        {order.isLocalFallback && (
-                          <div className="text-[10px] text-slate-400 font-normal mt-0.5">cached POS receipt</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
-                        {new Date(order.created_at || order.createdAt).toLocaleString()}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="font-semibold text-slate-900">{order.customer?.name || 'Online Customer'}</div>
-                        <div className="text-xs text-slate-500">{order.customer?.phone || order.customer?.email}</div>
-                        {order.customer?.shipping_address && (
-                          <div className="text-xs text-slate-400 max-w-[200px] truncate mt-1" title={order.customer.shipping_address}>
-                            {order.customer.shipping_address}
+        {activeTab === 'customization' ? (
+          displayedCustomizations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Package className="h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-xl font-medium text-slate-900">No customization requests yet</h3>
+              <p className="text-slate-500 max-w-md mt-2">
+                Custom design requests from your e-commerce platform will appear here when customers make custom orders.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 shadow-soft">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Request ID</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Date</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Customer Details</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Product</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Customization Requirements</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Fulfillment Actions</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedCustomizations.map((cust) => {
+                    const displayId = `#CUST-${String(cust.id).padStart(6, '0')}`;
+                    return (
+                      <tr key={cust.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-4 font-bold text-indigo-950">
+                          {displayId}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">
+                          {new Date(cust.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-slate-900">{cust.user_name}</div>
+                          <div className="text-xs text-slate-500">{cust.user_phone || cust.user_email}</div>
+                          {cust.shipping_address && cust.shipping_address !== 'N/A' && (
+                            <div className="text-xs text-slate-400 max-w-[200px] truncate mt-1" title={cust.shipping_address}>
+                              {cust.shipping_address}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            {cust.product_image ? (
+                              <img 
+                                src={cust.product_image} 
+                                alt={cust.product_name} 
+                                className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 shrink-0 font-bold text-[10px]">
+                                N/A
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-semibold text-slate-900 text-sm truncate max-w-[180px]" title={cust.product_name}>
+                                {cust.product_name}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                Qty: {cust.quantity} • ₹{parseFloat(cust.product?.price || 0).toFixed(2)}
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="space-y-3 my-1">
-                          {order.items?.map((item: any) => {
-                            const imageUrl = item.product_image || item.productImage;
-                            return (
-                              <div key={item.id} className="flex items-center gap-3">
-                                {imageUrl ? (
-                                  <img 
-                                    src={imageUrl} 
-                                    alt={item.product_name} 
-                                    className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
-                                  />
-                                ) : (
-                                  <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 shrink-0 font-bold text-[10px]">
-                                    N/A
-                                  </div>
-                                )}
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-slate-900 text-sm truncate max-w-[180px]" title={item.product_name}>
-                                    {item.product_name}
-                                  </div>
-                                  <div className="text-xs text-slate-500">
-                                    Qty: {item.quantity} • ₹{item.price}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="font-bold text-slate-900">₹{parseFloat(order.final_amount).toFixed(2)}</div>
-                        <div className="mt-1">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
-                            order.payment_method?.toLowerCase() === 'cod' 
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200' 
-                              : 'bg-blue-100 text-blue-800 border border-blue-200'
-                          }`}>
-                            {order.payment_method || 'ONLINE'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col gap-2 min-w-[160px] align-right items-stretch">
-                          {/* Accept/Reject for Pending COD */}
-                          {order.status === 'Pending' && order.payment_method?.toLowerCase() === 'cod' && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleUpdateStatus(order.id, 'Accepted')}
-                                disabled={updatingId === order.id}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
-                              >
-                                <Check className="h-3 w-3" /> Accept
-                              </button>
-                              <button
-                                onClick={() => handleRejectOrder(order.id)}
-                                disabled={updatingId === order.id}
-                                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
-                              >
-                                <X className="h-3 w-3" /> Reject
-                              </button>
+                        </td>
+                        <td className="px-4 py-4 text-sm">
+                          {cust.selected_color_name && (
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-xs font-semibold text-slate-500">Color:</span>
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-700">
+                                <span 
+                                  className="h-2.5 w-2.5 rounded-full border border-black/10 shrink-0" 
+                                  style={{ backgroundColor: cust.selected_color_hex || '#fff' }}
+                                />
+                                {cust.selected_color_name}
+                              </span>
                             </div>
                           )}
-
-                          {/* Dispatch & DTDC shipment for Accepted or Prepaid Pending */}
-                          {(order.status === 'Accepted' || (order.status === 'Pending' && order.payment_method?.toLowerCase() !== 'cod')) && (
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                onClick={() => handleDispatchOrder(order.id)}
-                                disabled={updatingId === order.id}
-                                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-sm"
-                              >
-                                Dispatch Order
-                              </button>
-                              <button
-                                onClick={() => handleBookDtdcShipping(order.id)}
-                                disabled={updatingId === order.id}
-                                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
-                              >
-                                <Truck className="h-3.5 w-3.5" /> Book DTDC
-                              </button>
+                          {cust.customization_notes ? (
+                            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-100 p-2 rounded-lg max-w-[220px] whitespace-pre-wrap">
+                              {cust.customization_notes}
                             </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No notes provided</span>
                           )}
-
-                          {/* Confirm delivery / print labels for Dispatched */}
-                          {order.status === 'Dispatched' && (
-                            <div className="flex flex-col gap-1.5">
-                              <button
-                                onClick={() => handleConfirmDelivery(order.id)}
-                                disabled={updatingId === order.id}
-                                className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
-                              >
-                                <Check className="h-3.5 w-3.5" /> Confirm Delivery
-                              </button>
-                              {order.shipping_label_url && (
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-2 min-w-[160px] align-right items-stretch">
+                            {/* Pending State */}
+                            {cust.status === 'Pending' && (
+                              <div className="flex gap-2">
                                 <button
-                                  onClick={() => window.open(order.shipping_label_url, '_blank')}
-                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                  onClick={() => handleUpdateCustomizationStatus(cust.id, 'In Progress')}
+                                  disabled={updatingId === cust.id}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
                                 >
-                                  <Printer className="h-3.5 w-3.5" /> Print DTDC Label
-                                </button>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Returns workflow for Customer Received */}
-                          {order.status === 'Customer Received' && order.return_request_status === 'Pending' && (
-                            <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-2 flex flex-col gap-1.5">
-                              <div className="text-[10px] font-bold text-rose-800 uppercase flex items-center gap-1">
-                                <RotateCcw className="h-3 w-3" /> Return Requested
-                              </div>
-                              <div className="text-[10px] text-slate-600 line-clamp-2" title={order.return_reason}>
-                                Reason: "{order.return_reason}"
-                              </div>
-                              {order.return_image_url && (
-                                <a 
-                                  href={order.return_image_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer" 
-                                  className="text-[10px] text-indigo-600 underline block mb-0.5"
-                                >
-                                  View Proof Image
-                                </a>
-                              )}
-                              <div className="flex gap-1.5">
-                                <button
-                                  onClick={() => handleResolveReturn(order.id, 'Approved')}
-                                  disabled={updatingId === order.id}
-                                  className="flex-1 rounded bg-emerald-600 py-1 text-[10px] font-semibold text-white hover:bg-emerald-700"
-                                >
-                                  Approve
+                                  Accept
                                 </button>
                                 <button
-                                  onClick={() => handleResolveReturn(order.id, 'Rejected')}
-                                  disabled={updatingId === order.id}
-                                  className="flex-1 rounded bg-rose-600 py-1 text-[10px] font-semibold text-white hover:bg-rose-700"
+                                  onClick={() => {
+                                    if (window.confirm("Are you sure you want to reject this customization?")) {
+                                      handleUpdateCustomizationStatus(cust.id, 'Rejected');
+                                    }
+                                  }}
+                                  disabled={updatingId === cust.id}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
                                 >
                                   Reject
                                 </button>
                               </div>
+                            )}
+
+                            {/* In Progress State */}
+                            {cust.status === 'In Progress' && (
+                              <div className="flex flex-col gap-1.5">
+                                <button
+                                  onClick={() => handleDispatchCustomOrder(cust.id)}
+                                  disabled={updatingId === cust.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-sm"
+                                >
+                                  Dispatch Custom Order
+                                </button>
+                                <button
+                                  onClick={() => handleBookCustomDtdcShipping(cust.id)}
+                                  disabled={updatingId === cust.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                                >
+                                  <Truck className="h-3.5 w-3.5" /> Book DTDC
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Dispatched State */}
+                            {cust.status === 'Dispatched' && (
+                              <div className="flex flex-col gap-1.5">
+                                <button
+                                  onClick={() => handleUpdateCustomizationStatus(cust.id, 'Completed')}
+                                  disabled={updatingId === cust.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Confirm Completed
+                                </button>
+                                {cust.shipping_label_url && (
+                                  <button
+                                    onClick={() => window.open(cust.shipping_label_url, '_blank')}
+                                    className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
+                                  >
+                                    <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Print Label Actions */}
+                            <button
+                              onClick={() => handlePrintLocalCustomLabel(cust)}
+                              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                              <Printer className="h-3.5 w-3.5" /> Local Custom Label
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${
+                            cust.status === 'Completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            cust.status === 'Dispatched' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                            cust.status === 'In Progress' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                            cust.status === 'Rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                            'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            {cust.status === 'Completed' && <CheckCircle className="h-3.5 w-3.5" />}
+                            {cust.status}
+                          </span>
+                          {cust.tracking_info && (
+                            <div className="text-[10px] text-slate-500 font-medium mt-1 truncate max-w-[120px]" title={cust.tracking_info}>
+                              {cust.tracking_info}
                             </div>
                           )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          displayedOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Package className="h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-xl font-medium text-slate-900">No online orders yet</h3>
+              <p className="text-slate-500 max-w-md mt-2">
+                Orders from your e-commerce platform will appear here automatically when they sync with your store.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 shadow-soft">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Order ID</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Date</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Customer</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Ordered Items</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Total / Payment</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Fulfillment Actions</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedOrders.map((order) => {
+                    const displayOrderNumber = order.online_order_number 
+                      ? `#${String(order.online_order_number).padStart(6, '0')}` 
+                      : (order.billNumber ? order.billNumber.replace('EC-CUST-', '#') : `#${order.id}`);
 
-                          {/* Standard Local Invoice Label Print */}
-                          <button
-                            onClick={() => handlePrintLocalLabel(order)}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-                          >
-                            <Printer className="h-3.5 w-3.5" /> Local Invoice Label
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${
-                          order.status === 'Customer Received' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                          order.status === 'Dispatched' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                          order.status === 'Accepted' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                          order.status === 'Rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                          order.status === 'Returned' ? 'bg-red-100 text-red-800 border border-red-200' :
-                          'bg-amber-100 text-amber-800 border border-amber-200'
-                        }`}>
-                          {order.status === 'Customer Received' && <CheckCircle className="h-3.5 w-3.5" />}
-                          {order.status}
-                        </span>
-                        {order.return_request_status && order.return_request_status !== 'None' && order.return_request_status !== 'Pending' && (
-                          <div className={`text-[10px] font-bold mt-1 uppercase ${
-                            order.return_request_status === 'Approved' ? 'text-emerald-600' : 'text-rose-600'
-                          }`}>
-                            Return {order.return_request_status}
+                    return (
+                      <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-4 font-bold text-indigo-950">
+                          {displayOrderNumber}
+                          {order.isLocalFallback && (
+                            <div className="text-[10px] text-slate-400 font-normal mt-0.5">cached POS receipt</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">
+                          {new Date(order.created_at || order.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-slate-900">{order.customer?.name || 'Online Customer'}</div>
+                          <div className="text-xs text-slate-500">{order.customer?.phone || order.customer?.email}</div>
+                          {order.customer?.shipping_address && (
+                            <div className="text-xs text-slate-400 max-w-[200px] truncate mt-1" title={order.customer.shipping_address}>
+                              {order.customer.shipping_address}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="space-y-3 my-1">
+                            {order.items?.map((item: any) => {
+                              const imageUrl = item.product_image || item.productImage;
+                              return (
+                                <div key={item.id} className="flex items-center gap-3">
+                                  {imageUrl ? (
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={item.product_name} 
+                                      className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 shrink-0 font-bold text-[10px]">
+                                      N/A
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-slate-900 text-sm truncate max-w-[180px]" title={item.product_name}>
+                                      {item.product_name}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      Qty: {item.quantity} • ₹{item.price}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="font-bold text-slate-900">₹{parseFloat(order.final_amount).toFixed(2)}</div>
+                          <div className="mt-1">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                              order.payment_method?.toLowerCase() === 'cod' 
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                            }`}>
+                              {order.payment_method || 'ONLINE'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-2 min-w-[160px] align-right items-stretch">
+                            {/* Accept/Reject for Pending COD */}
+                            {order.status === 'Pending' && order.payment_method?.toLowerCase() === 'cod' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateStatus(order.id, 'Accepted')}
+                                  disabled={updatingId === order.id}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                                >
+                                  <Check className="h-3 w-3" /> Accept
+                                </button>
+                                <button
+                                  onClick={() => handleRejectOrder(order.id)}
+                                  disabled={updatingId === order.id}
+                                  className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
+                                >
+                                  <X className="h-3 w-3" /> Reject
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Dispatch & DTDC shipment for Accepted or Prepaid Pending */}
+                            {(order.status === 'Accepted' || (order.status === 'Pending' && order.payment_method?.toLowerCase() !== 'cod')) && (
+                              <div className="flex flex-col gap-1.5">
+                                <button
+                                  onClick={() => handleDispatchOrder(order.id)}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-sm"
+                                >
+                                  Dispatch Order
+                                </button>
+                                <button
+                                  onClick={() => handleBookDtdcShipping(order.id)}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-indigo-600 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                                >
+                                  <Truck className="h-3.5 w-3.5" /> Book DTDC
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Confirm delivery / print labels for Dispatched */}
+                            {order.status === 'Dispatched' && (
+                              <div className="flex flex-col gap-1.5">
+                                <button
+                                  onClick={() => handleConfirmDelivery(order.id)}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Confirm Delivery
+                                </button>
+                                {order.shipping_label_url && (
+                                  <button
+                                    onClick={() => window.open(order.shipping_label_url, '_blank')}
+                                    className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                  >
+                                    <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Returns workflow for Customer Received */}
+                            {order.status === 'Customer Received' && order.return_request_status === 'Pending' && (
+                              <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-2 flex flex-col gap-1.5">
+                                <div className="text-[10px] font-bold text-rose-800 uppercase flex items-center gap-1">
+                                  <RotateCcw className="h-3 w-3" /> Return Requested
+                                </div>
+                                <div className="text-[10px] text-slate-600 line-clamp-2" title={order.return_reason}>
+                                  Reason: "{order.return_reason}"
+                                </div>
+                                {order.return_image_url && (
+                                  <a 
+                                    href={order.return_image_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="text-[10px] text-indigo-600 underline block mb-0.5"
+                                  >
+                                    View Proof Image
+                                  </a>
+                                )}
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => handleResolveReturn(order.id, 'Approved')}
+                                    disabled={updatingId === order.id}
+                                    className="flex-1 rounded bg-emerald-600 py-1 text-[10px] font-semibold text-white hover:bg-emerald-700"
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleResolveReturn(order.id, 'Rejected')}
+                                    disabled={updatingId === order.id}
+                                    className="flex-1 rounded bg-rose-600 py-1 text-[10px] font-semibold text-white hover:bg-rose-700"
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Standard Local Invoice Label Print */}
+                            <button
+                              onClick={() => handlePrintLocalLabel(order)}
+                              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                            >
+                              <Printer className="h-3.5 w-3.5" /> Local Invoice Label
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${
+                            order.status === 'Customer Received' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                            order.status === 'Dispatched' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                            order.status === 'Accepted' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                            order.status === 'Rejected' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                            order.status === 'Returned' ? 'bg-red-100 text-red-800 border border-red-200' :
+                            'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}>
+                            {order.status === 'Customer Received' && <CheckCircle className="h-3.5 w-3.5" />}
+                            {order.status}
+                          </span>
+                          {order.tracking_info && (
+                            <div className="text-[10px] text-slate-500 font-medium mt-1 truncate max-w-[120px]" title={order.tracking_info}>
+                              {order.tracking_info}
+                            </div>
+                          )}
+                          {order.return_request_status && order.return_request_status !== 'None' && order.return_request_status !== 'Pending' && (
+                            <div className={`text-[10px] font-bold mt-1 uppercase ${
+                              order.return_request_status === 'Approved' ? 'text-emerald-600' : 'text-rose-600'
+                            }`}>
+                              Return {order.return_request_status}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
     </div>

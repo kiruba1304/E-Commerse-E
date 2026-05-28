@@ -1,6 +1,6 @@
 import uuid
 from flask import Blueprint, jsonify, request
-from models import db, Shop, Product, Category, Order, OrderItem, User
+from models import db, Shop, Product, Category, Order, OrderItem, User, CustomizationOrder
 from datetime import datetime, timedelta
 
 billing_sync_bp = Blueprint('billing_sync_bp', __name__)
@@ -487,4 +487,127 @@ def resolve_order_return(order_id):
         "success": True,
         "message": f"Return request {decision.lower()} successfully from POS",
         "order": order.serialize()
+    }), 200
+
+@billing_sync_bp.route('/customizations/list', methods=['POST'])
+def list_customizations():
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    custs = CustomizationOrder.query.filter_by(shop_id=shop.id).order_by(CustomizationOrder.created_at.desc()).all()
+    return jsonify({
+        "success": True,
+        "customizations": [c.serialize() for c in custs]
+    }), 200
+
+@billing_sync_bp.route('/customizations/<int:cust_id>/status', methods=['POST'])
+def update_customization_status(cust_id):
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    new_status = data.get('status')
+    if not new_status:
+        return jsonify({"error": "Status is required"}), 400
+        
+    cust.status = new_status
+    if new_status == 'Dispatched':
+        cust.tracking_info = data.get('tracking_info', cust.tracking_info)
+        cust.shipping_label_url = data.get('shipping_label_url', cust.shipping_label_url)
+        
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "message": f"Customization order status updated to '{new_status}' successfully",
+        "customization": cust.serialize()
+    }), 200
+
+@billing_sync_bp.route('/customizations/<int:cust_id>/book-shipping', methods=['POST'])
+def book_customization_shipping(cust_id):
+    import requests
+    import secrets
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    weight_kg = float(data.get('weight_kg', 0.5))
+    prod_price = cust.product.price if cust.product else 1000.0
+    declared_value = float(data.get('declared_value', prod_price * cust.quantity))
+    
+    client_code = shop.dtdc_client_code
+    api_key_dtdc = shop.dtdc_api_key
+    api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
+    
+    awb_number = None
+    label_url = None
+    
+    consignee_address = cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A"
+    
+    if client_code and api_key_dtdc and client_code != "YOUR_DTDC_CLIENT_CODE" and not api_url.startswith("http://dummy"):
+        try:
+            payload = {
+                "client_code": client_code,
+                "consignee": {
+                    "name": cust.user.name or cust.user.username if cust.user else "Customer",
+                    "phone": cust.user.contact_phone if cust.user else "",
+                    "address": consignee_address,
+                    "pincode": data.get('consignee_pincode', '')
+                },
+                "shipper": {
+                    "name": shop.name,
+                    "phone": shop.contact_phone or "",
+                    "address": shop.address or ""
+                },
+                "package": {
+                    "weight_kg": weight_kg,
+                    "declared_value": declared_value,
+                    "payment_mode": "Prepaid"
+                }
+            }
+            headers = {
+                "X-DTDC-API-KEY": api_key_dtdc,
+                "Content-Type": "application/json"
+            }
+            res = requests.post(api_url, json=payload, headers=headers, timeout=10)
+            res_json = res.json()
+            if res.status_code in [200, 201] and res_json.get('status') == 'success':
+                awb_number = res_json.get('awb_number')
+                label_url = res_json.get('label_url')
+            else:
+                print(f"DTDC Customization Live API Error: {res.text}")
+        except Exception as e:
+            print(f"DTDC Customization Booking Exception: {e}")
+            
+    if not awb_number:
+        awb_number = f"D{secrets.token_hex(4).upper()}"
+        host = request.host_url
+        if not host.endswith('/'):
+            host += '/'
+        label_url = f"{host}api/admin/customizations/{cust.id}/shipping-label"
+        
+    cust.status = 'Dispatched'
+    cust.tracking_info = f"DTDC AWB: {awb_number}"
+    cust.shipping_label_url = label_url
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "DTDC shipment booked successfully for customization from POS",
+        "customization": cust.serialize()
     }), 200
