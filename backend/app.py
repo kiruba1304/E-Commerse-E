@@ -478,11 +478,25 @@ def ensure_dtdc_columns():
             connection.execute(text("ALTER TABLE shops ADD COLUMN dtdc_api_key VARCHAR(255)"))
         if 'dtdc_api_url' not in shop_columns:
             connection.execute(text("ALTER TABLE shops ADD COLUMN dtdc_api_url VARCHAR(255)"))
+        if 'return_window_days' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN return_window_days INTEGER DEFAULT 7"))
+
+        cat_result = connection.execute(text("PRAGMA table_info(categories)"))
+        cat_columns = [row[1] for row in cat_result.fetchall()]
+        if 'return_window_days' not in cat_columns:
+            connection.execute(text("ALTER TABLE categories ADD COLUMN return_window_days INTEGER"))
+
+        prod_result = connection.execute(text("PRAGMA table_info(products)"))
+        prod_columns = [row[1] for row in prod_result.fetchall()]
+        if 'return_window_days' not in prod_columns:
+            connection.execute(text("ALTER TABLE products ADD COLUMN return_window_days INTEGER"))
 
         order_result = connection.execute(text("PRAGMA table_info(orders)"))
         order_columns = [row[1] for row in order_result.fetchall()]
         if 'shipping_label_url' not in order_columns:
             connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_label_url VARCHAR(255)"))
+        if 'delivered_at' not in order_columns:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN delivered_at DATETIME"))
 
         cust_result = connection.execute(text("PRAGMA table_info(customization_orders)"))
         cust_columns = [row[1] for row in cust_result.fetchall()]

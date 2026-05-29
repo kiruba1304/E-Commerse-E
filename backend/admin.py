@@ -148,6 +148,11 @@ def manage_shop():
             shop.customization_min_quantity = int(data['customization_min_quantity'])
         except ValueError:
             return jsonify({"error": "Invalid customization minimum quantity"}), 400
+    if 'return_window_days' in data:
+        try:
+            shop.return_window_days = int(data['return_window_days'])
+        except ValueError:
+            return jsonify({"error": "Invalid return window days value"}), 400
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -289,12 +294,22 @@ def manage_categories():
     if not name:
         return jsonify({"error": "Category name is required"}), 400
 
+    return_window_days = data.get('return_window_days')
+    if return_window_days is not None and return_window_days != "":
+        try:
+            return_window_days = int(return_window_days)
+        except ValueError:
+            return jsonify({"error": "Invalid return window days value"}), 400
+    else:
+        return_window_days = None
+
     cat = Category(
         name=name,
         description=data.get('description', ''),
         image_url=data.get('image_url', ''),
         shop_id=shop_id,
-        customization_enabled=bool(data.get('customization_enabled', False))
+        customization_enabled=bool(data.get('customization_enabled', False)),
+        return_window_days=return_window_days
     )
     db.session.add(cat)
     db.session.commit()
@@ -331,6 +346,15 @@ def modify_category(cat_id):
         cat.image_url = data['image_url']
     if 'customization_enabled' in data:
         cat.customization_enabled = bool(data['customization_enabled'])
+    if 'return_window_days' in data:
+        val = data['return_window_days']
+        if val is not None and val != "":
+            try:
+                cat.return_window_days = int(val)
+            except ValueError:
+                return jsonify({"error": "Invalid return window days value"}), 400
+        else:
+            cat.return_window_days = None
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated product category '{cat.name}'")
@@ -416,6 +440,15 @@ def manage_products():
     if len(images) > 10:
         return jsonify({"error": "A product can have a maximum of 10 images"}), 400
 
+    return_window_days = data.get('return_window_days')
+    if return_window_days is not None and return_window_days != "":
+        try:
+            return_window_days = int(return_window_days)
+        except ValueError:
+            return jsonify({"error": "Invalid return window days value"}), 400
+    else:
+        return_window_days = None
+
     p = Product(
         name=name,
         description=data.get('description', ''),
@@ -432,7 +465,8 @@ def manage_products():
         customization_enabled=bool(data.get('customization_enabled', False)),
         barcode=data.get('barcode', ''),
         sku_code=data.get('sku_code', ''),
-        hsc_code=data.get('hsc_code', '')
+        hsc_code=data.get('hsc_code', ''),
+        return_window_days=return_window_days
     )
     p.images = images  # sets JSON field via property setter
     
@@ -494,6 +528,15 @@ def modify_product(prod_id):
         p.sku_code = data['sku_code']
     if 'hsc_code' in data:
         p.hsc_code = data['hsc_code']
+    if 'return_window_days' in data:
+        val = data['return_window_days']
+        if val is not None and val != "":
+            try:
+                p.return_window_days = int(val)
+            except ValueError:
+                return jsonify({"error": "Invalid return window days value"}), 400
+        else:
+            p.return_window_days = None
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")
@@ -635,6 +678,7 @@ def update_order_status(order_id):
         
         # Handle SuperCoin additions if transitioned to Customer Received
         if status == 'Customer Received' and order.status != 'Customer Received':
+            order.delivered_at = datetime.now()
             if order.payment_method == 'COD':
                 order.payment_status = 'Paid'
             # Add supercoins to user profile

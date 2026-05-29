@@ -289,6 +289,7 @@ def sync_pos_bills():
             gst_inclusive=bool(bill.get('gstInclusive', False)),
             discount_amount=float(bill.get('totalDiscount') or 0.0),
             is_synced=True, # synced from POS source
+            delivered_at=created_at,
             created_at=created_at
         )
         db.session.add(order)
@@ -358,6 +359,9 @@ def update_order_status(order_id):
     new_status = data.get('status')
     if not new_status:
         return jsonify({"error": "Status is required"}), 400
+        
+    if new_status == 'Customer Received' and order.status != 'Customer Received':
+        order.delivered_at = datetime.now()
         
     order.status = new_status
     if new_status == 'Dispatched':

@@ -3,7 +3,7 @@ import {
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
-  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare,
+  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer
 } from 'lucide-react';
 
@@ -806,9 +806,9 @@ export default function App() {
   });
   
   // Admin edits/creations
-  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "" });
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
-  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "" });
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "" });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
   const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
@@ -2117,14 +2117,19 @@ export default function App() {
       const method = isEdit ? 'PUT' : 'POST';
       const endpoint = isEdit ? `/admin/categories/${categoryForm.id}` : '/admin/categories';
 
+      const payload = {
+        ...categoryForm,
+        return_window_days: categoryForm.return_window_days !== "" ? parseInt(categoryForm.return_window_days) : null
+      };
+
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method,
         headers: getHeaders(),
-        body: JSON.stringify(categoryForm)
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         addToast("Category Saved", `Category '${categoryForm.name}' updated.`, "success");
-        setCategoryForm({ id: null, name: "", description: "", image_url: "" });
+        setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "" });
         loadAdminCategories();
       }
     } catch (e) {}
@@ -2214,7 +2219,8 @@ export default function App() {
         promo_discount: productForm.promo_discount ? parseFloat(productForm.promo_discount) : 0,
         bulk_sale_price: productForm.bulk_sale_price ? parseFloat(productForm.bulk_sale_price) : null,
         min_quantity: productForm.min_quantity ? parseInt(productForm.min_quantity) : null,
-        images: productForm.images.filter(img => img.trim() !== "")
+        images: productForm.images.filter(img => img.trim() !== ""),
+        return_window_days: productForm.return_window_days !== "" ? parseInt(productForm.return_window_days) : null
       };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -2224,7 +2230,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Catalog Updated", `Product saved.`, "success");
-        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "" });
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
         loadAdminProducts();
       } else {
         const err = await res.json();
@@ -6638,111 +6644,269 @@ export default function App() {
             {/* Orders list panel */}
             {activePanel === 'orders' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Order History</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(154, 132, 200, 0.15)', paddingBottom: '16px', marginBottom: '12px' }}>
+                  <div>
+                    <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 700, fontSize: '2rem', color: '#2b0b57', margin: 0 }}>Order History</h2>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage your purchases, view invoices, and track return requests.</p>
+                  </div>
+                  <div style={{ borderRadius: '12px', padding: '6px 16px', background: 'rgba(154, 132, 200, 0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(154, 132, 200, 0.15)', fontWeight: 600, fontSize: '0.85rem' }}>
+                    {myOrders.length} {myOrders.length === 1 ? 'Order' : 'Orders'}
+                  </div>
+                </div>
                 
                 {myOrders.length > 0 ? (
                   myOrders.map(o => (
-                    <div key={o.id} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div key={o.id} className="glass-panel" style={{ 
+                      borderRadius: '16px', 
+                      border: '1px solid rgba(154, 132, 200, 0.15)', 
+                      overflow: 'hidden', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      background: '#ffffff',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      {/* Card Header Info */}
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                        background: 'linear-gradient(135deg, rgba(245, 237, 255, 0.3) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                        borderBottom: '1px solid #f0e6fc', 
+                        padding: '18px 24px', 
+                        gap: '16px', 
+                        alignItems: 'center' 
+                      }}>
                         <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ORDER ID</span>
-                          <h5 style={{ fontWeight: 800 }}>{getDisplayOrderNumber(o)}</h5>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Order Reference</span>
+                          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>{getDisplayOrderNumber(o)}</span>
                         </div>
                         <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>DATE</span>
-                          <h5>{new Date(o.created_at).toLocaleDateString()}</h5>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Date Placed</span>
+                          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                            {o.created_at && !isNaN(new Date(o.created_at).getTime()) 
+                              ? new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
+                              : 'N/A'}
+                          </span>
                         </div>
                         <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>TOTAL PAID</span>
-                          <h5 style={{ color: 'var(--accent-secondary)' }}>₹{o.final_amount}</h5>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Mode</span>
+                          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: o.payment_method === 'COD' ? '#f59e0b' : '#10b981', display: 'inline-block' }} />
+                            {o.payment_method || 'Online / Card'}
+                          </span>
                         </div>
                         <div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>STATUS</span>
-                          <div>
-                            <span className={`badge ${
-                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                            }`}>
-                              {o.status}
-                            </span>
-                          </div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Paid Total</span>
+                          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent-secondary)' }}>₹{Number(o.final_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <span className={`badge ${
+                            o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                          }`} style={{ padding: '6px 12px', borderRadius: '20px', letterSpacing: '0.5px', fontSize: '0.75rem', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+                            {o.status}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Items */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {o.items && o.items.map(item => (
-                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                            <span>{item.product_name} <strong style={{ color: 'var(--text-muted)' }}>x {item.quantity}</strong></span>
-                            <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                      {/* Card Content */}
+                      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Items */}
+                        <div>
+                          <h6 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px' }}>Items Summary</h6>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {o.items && o.items.map(item => (
+                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#faf8ff', borderRadius: '10px', border: '1px solid #f3ecfb' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(154, 132, 200, 0.1)', color: 'var(--accent-primary)', overflow: 'hidden', border: '1px solid #f0e6fc' }}>
+                                    {item.product_image ? (
+                                      <img src={item.product_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      <ShoppingBag size={18} />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', display: 'block' }}>{item.product_name}</span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price: ₹{Number(item.price).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                  <span style={{ background: 'rgba(154, 132, 200, 0.12)', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 700, padding: '4px 8px', borderRadius: '6px' }}>
+                                    x{item.quantity}
+                                  </span>
+                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', minWidth: '85px', textAlign: 'right' }}>
+                                    ₹{(item.price * item.quantity).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-
-                      {/* Return filing clause */}
-                      {o.status === 'Customer Received' && o.return_request_status === 'None' && (
-                        <div className="return-box" style={{ margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                          <div>
-                            <h5 style={{ fontWeight: 800, color: 'var(--accent-danger)', marginBottom: '4px' }}>Need to return this product?</h5>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>You can request a return and refund for this order.</p>
-                          </div>
-                          <button 
-                            onClick={() => setActiveReturnOrder(o)} 
-                            className="btn-danger" 
-                            style={{ padding: '8px 16px', fontSize: '0.8rem', fontWeight: 600 }}
-                          >
-                            File Return Request
-                          </button>
                         </div>
-                      )}
 
-                      {o.return_request_status !== 'None' && (
-                        <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                          <div>
-                            Return Request Status: <strong style={{ textTransform: 'uppercase' }}>{o.return_request_status}</strong>
-                            {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', marginBottom: 0 }}>Reason: "{o.return_reason}"</p>}
-                          </div>
-                          {o.return_image_url && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verification Photo</span>
-                              <img 
-                                src={o.return_image_url} 
-                                alt="Verification" 
-                                style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(239, 68, 68, 0.2)' }}
-                                onClick={() => setExpandedImage(o.return_image_url)}
-                                title="Click to expand"
-                              />
+                        {/* Return Filing Clause */}
+                        {o.status === 'Customer Received' && o.return_request_status === 'None' && (() => {
+                          const orderReturnWindow = o.items && o.items.length > 0 
+                            ? Math.max(...o.items.map(item => item.return_window_days ?? 7)) 
+                            : 7;
+                          const deliveryDateVal = o.delivered_at || o.created_at;
+                          const deliveryDate = deliveryDateVal ? new Date(deliveryDateVal) : null;
+                          const hasValidDeliveryDate = deliveryDate && !isNaN(deliveryDate.getTime());
+                          const currentDate = new Date();
+                          const elapsedDays = hasValidDeliveryDate 
+                            ? Math.floor((currentDate - deliveryDate) / (1000 * 60 * 60 * 24))
+                            : 0;
+                          const isExpired = hasValidDeliveryDate ? elapsedDays > orderReturnWindow : true;
+                          const expiryDateStr = hasValidDeliveryDate
+                            ? new Date(deliveryDate.getTime() + orderReturnWindow * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            : 'N/A';
+
+                          if (isExpired) {
+                            return (
+                              <div style={{ margin: 0, padding: '14px 20px', background: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <AlertCircle size={18} style={{ color: '#9ca3af' }} />
+                                  <div>
+                                    <h5 style={{ fontWeight: 700, color: '#4b5563', marginBottom: '2px', fontSize: '0.85rem' }}>Return Window Closed</h5>
+                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
+                                      The {orderReturnWindow}-day return policy expired on {expiryDateStr}.
+                                    </p>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: '20px' }}>Expired</span>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div style={{ margin: 0, padding: '16px 20px', background: 'rgba(232, 78, 126, 0.03)', borderRadius: '12px', border: '1px dashed rgba(232, 78, 126, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <RotateCcw size={18} style={{ color: 'var(--accent-danger)' }} />
+                                  <div>
+                                    <h5 style={{ fontWeight: 700, color: '#222222', marginBottom: '2px', fontSize: '0.85rem' }}>Easy Returns Available</h5>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                                      Policy window: <strong>{orderReturnWindow} days</strong>. You have <strong>{Math.max(0, orderReturnWindow - elapsedDays)} days</strong> left to file a return request (valid until {expiryDateStr}).
+                                    </p>
+                                  </div>
+                                </div>
+                                <button 
+                                  onClick={() => setActiveReturnOrder(o)} 
+                                  className="btn-danger" 
+                                  style={{ padding: '8px 16px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px' }}
+                                >
+                                  File Return Request
+                                </button>
+                              </div>
+                            );
+                          }
+                        })()}
+
+                        {/* Active Return Status Details */}
+                        {o.return_request_status !== 'None' && (
+                          <div style={{ 
+                            padding: '16px 20px', 
+                            background: o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.04)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(245, 158, 11, 0.04)', 
+                            borderRadius: '12px', 
+                            fontSize: '0.8rem', 
+                            border: `1px solid ${o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`, 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            flexWrap: 'wrap', 
+                            gap: '12px' 
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {o.return_request_status === 'Approved' ? (
+                                <ShieldCheck size={18} style={{ color: '#10b981' }} />
+                              ) : (
+                                <AlertCircle size={18} style={{ color: o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }} />
+                              )}
+                              <div>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Return Request Status</span>
+                                <strong style={{ textTransform: 'uppercase', fontSize: '0.85rem', color: o.return_request_status === 'Approved' ? '#10b981' : o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }}>
+                                  {o.return_request_status}
+                                </strong>
+                                {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', marginBottom: 0 }}>Reason: "{o.return_reason}"</p>}
+                              </div>
                             </div>
+                            {o.return_image_url && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verification Photo</span>
+                                <img 
+                                  src={o.return_image_url} 
+                                  alt="Verification" 
+                                  style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(0,0,0,0.1)' }}
+                                  onClick={() => setExpandedImage(o.return_image_url)}
+                                  title="Click to expand"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Logistics info */}
+                        {o.tracking_info && (
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '10px', 
+                            padding: '12px 16px', 
+                            background: 'rgba(154, 132, 200, 0.05)', 
+                            borderRadius: '10px', 
+                            border: '1px solid rgba(154, 132, 200, 0.15)',
+                            fontSize: '0.8rem',
+                            color: 'var(--accent-primary)'
+                          }}>
+                            <Truck size={16} />
+                            <span>Logistics Tracking: <strong style={{ fontWeight: 700 }}>{o.tracking_info}</strong></span>
+                          </div>
+                        )}
+
+                        {/* Actions block */}
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'flex-end', 
+                          alignItems: 'center', 
+                          borderTop: '1px solid #f0e6fc', 
+                          paddingTop: '16px', 
+                          marginTop: '8px' 
+                        }}>
+                          {o.payment_method === 'COD' && o.status === 'Pending' ? (
+                            <span style={{ fontSize: '0.8rem', color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.2)', fontWeight: 600 }}>
+                              <Clock size={14} /> Invoice pending admin acceptance
+                            </span>
+                          ) : o.payment_method === 'COD' && o.status === 'Rejected' ? (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)', fontWeight: 600 }}>
+                              <X size={14} /> Order Rejected
+                            </span>
+                          ) : (
+                            <button 
+                              onClick={() => setInvoiceOrder(o)} 
+                              className="btn-secondary" 
+                              style={{ 
+                                padding: '8px 20px', 
+                                fontSize: '0.75rem', 
+                                borderRadius: '6px', 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '6px',
+                                borderColor: 'rgba(154, 132, 200, 0.4)',
+                                color: 'var(--accent-primary)'
+                              }}
+                            >
+                              <FileText size={14} /> View Tax Invoice
+                            </button>
                           )}
                         </div>
-                      )}
-
-                      {o.tracking_info && (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-secondary)' }}>
-                          Tracking Logistics: <strong>{o.tracking_info}</strong>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '12px', marginTop: '8px', alignItems: 'center' }}>
-                        {o.payment_method === 'COD' && o.status === 'Pending' ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.05)', padding: '6px 12px', borderRadius: '4px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                            <FileText size={15} style={{ color: '#f59e0b' }} /> Invoice pending admin acceptance
-                          </span>
-                        ) : o.payment_method === 'COD' && o.status === 'Rejected' ? (
-                          <span style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 12px', borderRadius: '4px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                            <FileText size={15} style={{ color: 'var(--accent-danger)' }} /> Order Rejected
-                          </span>
-                        ) : (
-                          <button onClick={() => setInvoiceOrder(o)} className="btn-secondary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                            <FileText size={16} /> View Tax Invoice
-                          </button>
-                        )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-                    <ShoppingBag size={48} style={{ margin: '0 auto 12px' }} />
-                    <p>No orders logged under this user session yet.</p>
+                  <div style={{ textAlign: 'center', padding: '64px 24px', background: '#fafafa', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                    <ShoppingBag size={48} style={{ margin: '0 auto 16px', color: 'var(--accent-primary)', opacity: 0.6 }} />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>No Orders Found</h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto' }}>You haven't placed any orders yet. Visit the catalog to explore our latest fashion collections.</p>
                   </div>
                 )}
               </div>
@@ -8157,6 +8321,15 @@ export default function App() {
                       />
                     </div>
                   </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Return Window (Days)</label>
+                    <input 
+                      type="number" 
+                      placeholder="e.g., 10 (Leave blank for shop default)"
+                      value={categoryForm.return_window_days !== null && categoryForm.return_window_days !== undefined ? categoryForm.return_window_days : ""}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, return_window_days: e.target.value }))}
+                    />
+                  </div>
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                     Save Category <Check size={16} />
                   </button>
@@ -8181,7 +8354,7 @@ export default function App() {
                             <td>{c.description}</td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setCategoryForm(c)} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setCategoryForm({ ...c, return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "" })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteCategory(c.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -8438,7 +8611,7 @@ export default function App() {
                   </div>
 
                   {/* Billing POS Integration Codes */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SKU Code (POS Inventory)</label>
                       <input 
@@ -8464,6 +8637,15 @@ export default function App() {
                         placeholder="e.g., 890123456789"
                         value={productForm.barcode || ""}
                         onChange={e => setProductForm(prev => ({ ...prev, barcode: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Return Window (Days)</label>
+                      <input 
+                        type="number" 
+                        placeholder="e.g., 7 (Optional)"
+                        value={productForm.return_window_days !== null && productForm.return_window_days !== undefined ? productForm.return_window_days : ""}
+                        onChange={e => setProductForm(prev => ({ ...prev, return_window_days: e.target.value }))}
                       />
                     </div>
                   </div>
@@ -8681,7 +8863,7 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "" })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "", return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "" })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -9553,7 +9735,7 @@ export default function App() {
                                 // Find item in product list and open edit form
                                 const p = adminProducts.find(x => x.id === al.id);
                                 if (p) {
-                                  setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""] });
+                                  setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "" });
                                   setActivePanel("products");
                                   addToast("Modify Stock", "Input updated stock quantity in the catalog form below.", "info");
                                 }
@@ -10805,6 +10987,63 @@ export default function App() {
                               });
                               if (res.ok) {
                                 addToast("Setting Saved", "Minimum custom order quantity updated.", "success");
+                                loadAdminShop();
+                              } else {
+                                addToast("Save Failed", "Failed to update settings.", "danger");
+                              }
+                            } catch (err) {
+                              addToast("Error", err.message, "danger");
+                            }
+                          }}
+                          className="btn-primary"
+                          style={{
+                            padding: '10px 16px',
+                            fontSize: '0.85rem',
+                            background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                            border: 'none',
+                            borderRadius: '8px'
+                          }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Default Return Window (Days) Configurator */}
+                    <div className="glass-panel" style={{ padding: '20px' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '8px', color: '#2b0b57' }}>Default Return Window</h3>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                        Set the default return window in days for products. This is used if category or product specific window is not defined.
+                      </p>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          value={(adminShop && adminShop.return_window_days !== undefined && adminShop.return_window_days !== null) ? adminShop.return_window_days : 7}
+                          onChange={e => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setAdminShop(prev => ({ ...prev, return_window_days: val }));
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle)',
+                            outline: 'none'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`${API_BASE}/admin/shop`, {
+                                method: 'PUT',
+                                headers: getHeaders(),
+                                body: JSON.stringify({ return_window_days: adminShop.return_window_days })
+                              });
+                              if (res.ok) {
+                                addToast("Setting Saved", "Default return window days updated.", "success");
                                 loadAdminShop();
                               } else {
                                 addToast("Save Failed", "Failed to update settings.", "danger");

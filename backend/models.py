@@ -75,6 +75,7 @@ class Shop(db.Model):
     email_templates_json = db.Column(db.Text, nullable=True)
     color_palette_json = db.Column(db.Text, nullable=True)
     customization_min_quantity = db.Column(db.Integer, default=1, nullable=False)
+    return_window_days = db.Column(db.Integer, default=7, nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -233,6 +234,7 @@ class Shop(db.Model):
             "banners": self.banners,
             "color_palette": self.color_palette,
             "customization_min_quantity": self.customization_min_quantity if self.customization_min_quantity is not None else 1,
+            "return_window_days": self.return_window_days,
             "smtp_host": self.smtp_host,
             "smtp_port": self.smtp_port,
             "smtp_user": self.smtp_user,
@@ -342,6 +344,7 @@ class Category(db.Model):
     image_url = db.Column(db.Text, nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     customization_enabled = db.Column(db.Boolean, default=False)
+    return_window_days = db.Column(db.Integer, nullable=True)
 
     products = db.relationship('Product', backref='category', lazy=True)
 
@@ -352,7 +355,8 @@ class Category(db.Model):
             "description": self.description,
             "image_url": self.image_url,
             "shop_id": self.shop_id,
-            "customization_enabled": self.customization_enabled or False
+            "customization_enabled": self.customization_enabled or False,
+            "return_window_days": self.return_window_days
         }
 
 class Product(db.Model):
@@ -378,6 +382,7 @@ class Product(db.Model):
     barcode = db.Column(db.String(100), nullable=True)
     sku_code = db.Column(db.String(100), nullable=True)
     hsc_code = db.Column(db.String(100), nullable=True)
+    return_window_days = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -418,6 +423,7 @@ class Product(db.Model):
             "barcode": self.barcode or "",
             "sku_code": self.sku_code or "",
             "hsc_code": self.hsc_code or "",
+            "return_window_days": self.return_window_days,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -478,6 +484,7 @@ class Order(db.Model):
     return_image_url = db.Column(db.Text, nullable=True)
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
     shipping_label_url = db.Column(db.String(255), nullable=True)
+    delivered_at = db.Column(db.DateTime, nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -511,6 +518,7 @@ class Order(db.Model):
             "razorpay_payment_id": self.razorpay_payment_id,
             "shipping_label_url": self.shipping_label_url,
             "is_synced": self.is_synced,
+            "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "customer": {
                 "name": user.name if user else "Online Customer",
@@ -540,11 +548,20 @@ class OrderItem(db.Model):
         category_name = "Uncategorized"
         barcode = ""
         sku_code = ""
+        return_window_days = 7
         if self.product:
             product_image = self.product.images[0] if self.product.images else None
             category_name = self.product.category.name if self.product.category else "Uncategorized"
             barcode = self.product.barcode or ""
             sku_code = self.product.sku_code or ""
+            
+            # Compute return window days with fallback
+            if self.product.return_window_days is not None:
+                return_window_days = self.product.return_window_days
+            elif self.product.category and self.product.category.return_window_days is not None:
+                return_window_days = self.product.category.return_window_days
+            elif self.product.shop and self.product.shop.return_window_days is not None:
+                return_window_days = self.product.shop.return_window_days
         return {
             "id": self.id,
             "order_id": self.order_id,
@@ -555,7 +572,8 @@ class OrderItem(db.Model):
             "product_image": product_image,
             "category_name": category_name,
             "barcode": barcode,
-            "sku_code": sku_code
+            "sku_code": sku_code,
+            "return_window_days": return_window_days
         }
 
 class CartItem(db.Model):

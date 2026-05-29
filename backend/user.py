@@ -901,6 +901,29 @@ def request_order_return(order_id):
     if not reason:
         return jsonify({"error": "Return reason is required"}), 400
 
+    # Calculate return eligibility
+    delivered_date = order.delivered_at or order.created_at
+    elapsed_days = (datetime.now() - delivered_date).days
+
+    # Calculate max return window for order items
+    max_window = 7
+    if order.items:
+        windows = []
+        for item in order.items:
+            item_window = 7
+            if item.product:
+                if item.product.return_window_days is not None:
+                    item_window = item.product.return_window_days
+                elif item.product.category and item.product.category.return_window_days is not None:
+                    item_window = item.product.category.return_window_days
+                elif item.product.shop and item.product.shop.return_window_days is not None:
+                    item_window = item.product.shop.return_window_days
+            windows.append(item_window)
+        max_window = max(windows) if windows else 7
+
+    if elapsed_days > max_window:
+        return jsonify({"error": f"Return window of {max_window} days has expired ({elapsed_days} days elapsed since delivery)."}), 400
+
     order.return_request_status = 'Pending'
     order.return_reason = reason
     order.return_image_url = return_image_url
