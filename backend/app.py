@@ -513,7 +513,7 @@ def backfill_online_order_numbers():
             counter = max(int(shop.last_online_order_number or 0), int(current_max))
             pending_orders = (
                 Order.query
-                .filter_by(shop_id=shop.id, online_order_number=None, status='Pending')
+                .filter_by(shop_id=shop.id, online_order_number=None)
                 .order_by(Order.created_at.asc(), Order.id.asc())
                 .all()
             )

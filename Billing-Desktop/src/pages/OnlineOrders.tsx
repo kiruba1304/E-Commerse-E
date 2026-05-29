@@ -132,6 +132,13 @@ const buildBarcodeSvg = (value: string, labelSize: string, displayValue = false)
   return new XMLSerializer().serializeToString(svg);
 };
 
+const getDisplayOrderNumber = (order: any) => {
+  if (!order) return '';
+  return order.online_order_number 
+    ? `#${String(order.online_order_number).padStart(6, '0')}` 
+    : (order.billNumber ? order.billNumber.replace('EC-CUST-', '#') : `#${order.id}`);
+};
+
 const OnlineOrders: React.FC = () => {
   const { bills } = useBills();
   const { customers } = useCustomers();
@@ -522,7 +529,7 @@ const OnlineOrders: React.FC = () => {
   // Dual-mode mapping
   const displayedOrders = useMemo(() => {
     let list = [];
-    if (isConfigured && webOrders.length > 0) {
+    if (isConfigured && !error) {
       list = [...webOrders];
     } else {
       // Fallback: map local SQLite bills to order objects
@@ -579,7 +586,7 @@ const OnlineOrders: React.FC = () => {
       const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [isConfigured, webOrders, onlineOrders, customers]);
+  }, [isConfigured, error, webOrders, onlineOrders, customers]);
 
   // Local printer label routine (reused)
   const handlePrintLocalLabel = async (order: any) => {
@@ -607,7 +614,7 @@ const OnlineOrders: React.FC = () => {
     }
 
     const paymentType = (order.payment_method || '').toString().toLowerCase() === 'cod' ? 'COD' : 'Prepaid';
-    const barcodeValue = String(order.billNumber || `#${order.id}`).trim();
+    const barcodeValue = getDisplayOrderNumber(order).trim();
     const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize, false);
     const qrCodeDataUrl = await QRCode.toDataURL(barcodeValue, { margin: 1, width: 120 });
 
@@ -903,7 +910,7 @@ const OnlineOrders: React.FC = () => {
                 </div>
                 <div class="order-info-item">
                   <span class="lbl">Order ID:</span>
-                  <span class="val-bold">${escapeHtml(order.billNumber || `#${order.id}`)}</span>
+                  <span class="val-bold">${escapeHtml(getDisplayOrderNumber(order))}</span>
                 </div>
               </div>
             </div>
@@ -1644,9 +1651,7 @@ const OnlineOrders: React.FC = () => {
                 </thead>
                 <tbody>
                   {displayedOrders.map((order) => {
-                    const displayOrderNumber = order.online_order_number 
-                      ? `#${String(order.online_order_number).padStart(6, '0')}` 
-                      : (order.billNumber ? order.billNumber.replace('EC-CUST-', '#') : `#${order.id}`);
+                    const displayOrderNumber = getDisplayOrderNumber(order);
 
                     return (
                       <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">

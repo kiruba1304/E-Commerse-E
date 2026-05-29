@@ -117,7 +117,7 @@ export const useECommerceIntegration = () => {
       const syncedBillsRaw = localStorage.getItem('synced_bill_numbers');
       const syncedBillNumbers: string[] = syncedBillsRaw ? JSON.parse(syncedBillsRaw) : [];
 
-      const unsyncedBills = localBills.filter(b => !syncedBillNumbers.includes(b.billNumber));
+      const unsyncedBills = localBills.filter(b => !syncedBillNumbers.includes(b.billNumber) && b.salesChannel !== 'ecommerce');
 
       if (unsyncedBills.length > 0) {
         const allCustomers = db.getCustomers();

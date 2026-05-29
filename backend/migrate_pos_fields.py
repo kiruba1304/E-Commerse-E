@@ -70,12 +70,12 @@ def migrate():
 
     # 4. Backfill sequential online order numbers for pending website orders
     print("Backfilling online order numbers for pending website orders...")
-    cursor.execute("SELECT id, shop_id, COALESCE(last_online_order_number, 0) FROM shops")
+    cursor.execute("SELECT id, COALESCE(last_online_order_number, 0) FROM shops")
     shop_rows = cursor.fetchall()
-    shop_counter = {row[1]: row[2] or 0 for row in shop_rows}
+    shop_counter = {row[0]: row[1] or 0 for row in shop_rows}
 
     cursor.execute(
-        "SELECT id, shop_id FROM orders WHERE online_order_number IS NULL AND status = 'Pending' ORDER BY shop_id, created_at, id"
+        "SELECT id, shop_id FROM orders WHERE online_order_number IS NULL ORDER BY shop_id, created_at, id"
     )
     pending_orders = cursor.fetchall()
 

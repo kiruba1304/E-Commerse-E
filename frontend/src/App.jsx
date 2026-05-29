@@ -83,6 +83,11 @@ const getDisplayOrderNumber = (o) => {
     : `#${o.id}`;
 };
 
+const getDisplayCustomizationNumber = (c) => {
+  if (!c) return '';
+  return `#CUST-${String(c.id).padStart(6, '0')}`;
+};
+
 const renderCollectionTitle = (name) => {
   const parts = name.split('&');
   if (parts.length > 1) {
@@ -6949,7 +6954,7 @@ export default function App() {
                     <tbody>
                       {userCustomizations.map(cust => (
                         <tr key={cust.id}>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{cust.id}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{getDisplayCustomizationNumber(cust)}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <img src={cust.product_image || null} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
@@ -10422,7 +10427,7 @@ export default function App() {
                       <tbody>
                         {adminCustomizations.map(cust => (
                           <tr key={cust.id}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{cust.id}</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{getDisplayCustomizationNumber(cust)}</td>
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 600 }}>{cust.user_name}</span>
@@ -10472,7 +10477,7 @@ export default function App() {
                                       body: JSON.stringify({ status: newStatus })
                                     });
                                     if (res.ok) {
-                                      addToast("Status Updated", `Customization #${cust.id} status changed to ${newStatus}.`, "success");
+                                      addToast("Status Updated", `Customization ${getDisplayCustomizationNumber(cust)} status changed to ${newStatus}.`, "success");
                                       loadAdminCustomizations();
                                     } else {
                                       addToast("Error", "Failed to update status.", "danger");

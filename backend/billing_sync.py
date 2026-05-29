@@ -218,6 +218,10 @@ def sync_pos_bills():
         if not bill_no:
             continue
             
+        # Check if this is an e-commerce order bill synced back
+        if bill_no.startswith('EC-CUST-'):
+            continue
+            
         # Check if this bill was already synced as an Order
         existing = Order.query.filter_by(shop_id=shop.id, tracking_info=bill_no).first()
         if existing:
