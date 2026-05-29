@@ -76,6 +76,13 @@ const getCategoryIcon = (name) => {
   return <Award size={20} style={{ color: '#7a4ea5' }} />;
 };
 
+const getDisplayOrderNumber = (o) => {
+  if (!o) return '';
+  return o.online_order_number 
+    ? `#${String(o.online_order_number).padStart(6, '0')}` 
+    : `#${o.id}`;
+};
+
 const renderCollectionTitle = (name) => {
   const parts = name.split('&');
   if (parts.length > 1) {
@@ -3451,7 +3458,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px' }}>
                 <div>
                   <h2 style={{ fontWeight: 800, fontSize: '1.6rem', color: '#0f172a' }}>TAX INVOICE</h2>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Order reference ID: #{invoiceOrder.id}</p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Order reference ID: {getDisplayOrderNumber(invoiceOrder)}</p>
                   <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Date: {new Date(invoiceOrder.created_at).toLocaleDateString()}</p>
                 </div>
                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
@@ -3629,7 +3636,7 @@ export default function App() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                   <span style={{ color: '#64748b' }}>Order ID Ref:</span>
-                  <span style={{ fontWeight: 700, color: '#1e293b' }}>#{activeTransactionOrder.id}</span>
+                  <span style={{ fontWeight: 700, color: '#1e293b' }}>{getDisplayOrderNumber(activeTransactionOrder)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                   <span style={{ color: '#64748b' }}>Customer Name:</span>
@@ -6502,7 +6509,7 @@ export default function App() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                         <div>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ORDER ID</span>
-                          <h5 style={{ fontWeight: 800 }}>#{o.id}</h5>
+                          <h5 style={{ fontWeight: 800 }}>{getDisplayOrderNumber(o)}</h5>
                         </div>
                         <div>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>DATE</span>
@@ -8580,7 +8587,7 @@ export default function App() {
                         <tbody>
                           {adminOrders.filter(o => o.return_request_status === 'Pending').map(o => (
                             <tr key={o.id}>
-                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{getDisplayOrderNumber(o)}</td>
                               <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                                 {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
                               </td>
@@ -8817,7 +8824,7 @@ export default function App() {
                             {filteredAdminOrders.map(o => (
                               <tr key={o.id}>
                                 <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>
-                                  <div>#{o.id}</div>
+                                  <div>{getDisplayOrderNumber(o)}</div>
                                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '2px' }}>
                                     {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
                                   </div>
@@ -9184,7 +9191,7 @@ export default function App() {
                             }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                                 <div>
-                                  <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>Order #{o.id}</strong>
+                                  <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>Order {getDisplayOrderNumber(o)}</strong>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '12px' }}>
                                     {o.created_at ? new Date(o.created_at).toLocaleDateString() : 'N/A'}
                                   </span>
@@ -10310,7 +10317,7 @@ export default function App() {
                           const orderNetSales = o.final_amount - o.gst_amount;
                           return (
                             <tr key={o.id}>
-                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                              <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{getDisplayOrderNumber(o)}</td>
                               <td>{o.created_at ? new Date(o.created_at).toLocaleString() : 'N/A'}</td>
                               <td>{o.user_name || 'N/A'}</td>
                               <td>
@@ -11274,7 +11281,7 @@ export default function App() {
                     <tbody>
                       {superOrders.map(o => (
                         <tr key={o.id}>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>#{o.id}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{getDisplayOrderNumber(o)}</td>
                           <td style={{ fontWeight: 'bold' }}>{o.shop_name}</td>
                           <td>{o.user_name}</td>
                           <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>₹{o.final_amount}</td>
