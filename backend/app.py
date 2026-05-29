@@ -19,7 +19,7 @@ from user import user_bp
 from billing_sync import billing_sync_bp
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=["http://localhost:5173", "https://vishnex.com", "https://back.vishnex.com"])
 
 # Initialize Razorpay Client
 # Replace with your actual Test Key ID and Secret
