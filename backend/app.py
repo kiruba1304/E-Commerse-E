@@ -490,6 +490,21 @@ def ensure_dtdc_columns():
             connection.execute(text("ALTER TABLE customization_orders ADD COLUMN tracking_info VARCHAR(255)"))
         if 'shipping_label_url' not in cust_columns:
             connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shipping_label_url VARCHAR(255)"))
+        if 'quoted_price' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN quoted_price FLOAT"))
+        if 'quote_status' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN quote_status VARCHAR(50) DEFAULT 'Pending'"))
+        if 'shipping_address' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shipping_address TEXT"))
+        if 'billing_phone' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN billing_phone VARCHAR(50)"))
+        if 'payment_method' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN payment_method VARCHAR(50) DEFAULT 'COD'"))
+        if 'payment_status' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN payment_status VARCHAR(50) DEFAULT 'Pending'"))
+        if 'razorpay_payment_id' not in cust_columns:
+            connection.execute(text("ALTER TABLE customization_orders ADD COLUMN razorpay_payment_id VARCHAR(100)"))
+
 
 
 def ensure_online_order_sequence_columns():

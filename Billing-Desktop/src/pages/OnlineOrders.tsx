@@ -147,6 +147,8 @@ const OnlineOrders: React.FC = () => {
   // Web Sync state
   const [webOrders, setWebOrders] = useState<any[]>([]);
   const [webCustomizations, setWebCustomizations] = useState<any[]>([]);
+  const [quoteInputs, setQuoteInputs] = useState<Record<number, string>>({});
+
   const [activeTab, setActiveTab] = useState<'standard' | 'customization' | 'returns'>('standard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -329,7 +331,42 @@ const OnlineOrders: React.FC = () => {
     }
   };
 
+  // Send customization quote
+  const handleSendQuote = async (custId: number, price: string) => {
+    const numericPrice = parseFloat(price);
+    if (isNaN(numericPrice) || numericPrice <= 0) {
+      alert("Please enter a valid price greater than zero.");
+      return;
+    }
+    
+    try {
+      setUpdatingId(custId);
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/customizations/${custId}/quote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, quoted_price: numericPrice })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Price quote updated successfully!");
+        await loadOrders();
+      } else {
+        alert(data.error || "Failed to update price quote");
+      }
+    } catch (err: any) {
+      alert("Error sending quote: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   // OpenLink utility
+
   const openLink = (url: string) => {
     const api = (window as any).electronAPI;
     if (api && api.openExternal) {
@@ -1016,10 +1053,11 @@ const OnlineOrders: React.FC = () => {
     const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
     const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
 
-    const prodPrice = cust.product?.price || 0.0;
-    const finalAmount = prodPrice * cust.quantity;
+    const unitPrice = cust.quoted_price ?? (cust.product?.price || 0.0);
+    const finalAmount = unitPrice * cust.quantity;
 
     const html = `
+
       <html>
         <head>
           <title>DTDC Custom Shipping Label - ${escapeHtml(barcodeValue)}</title>
@@ -1265,10 +1303,11 @@ const OnlineOrders: React.FC = () => {
     const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
     const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
 
-    const prodPrice = cust.product?.price || 0.0;
-    const finalAmount = prodPrice * cust.quantity;
+    const unitPrice = cust.quoted_price ?? (cust.product?.price || 0.0);
+    const finalAmount = unitPrice * cust.quantity;
 
     const html = `
+
       <html>
         <head>
           <title>Custom Label - ${escapeHtml(barcodeValue)}</title>
@@ -1581,10 +1620,12 @@ const OnlineOrders: React.FC = () => {
                     <th className="px-4 py-4 text-left font-semibold text-slate-700">Customer Details</th>
                     <th className="px-4 py-4 text-left font-semibold text-slate-700">Product</th>
                     <th className="px-4 py-4 text-left font-semibold text-slate-700">Customization Requirements</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Pricing / Quote</th>
                     <th className="px-4 py-4 text-left font-semibold text-slate-700">Fulfillment Actions</th>
                     <th className="px-4 py-4 text-left font-semibold text-slate-700">Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {displayedCustomizations.map((cust) => {
                     const displayId = `#CUST-${String(cust.id).padStart(6, '0')}`;
@@ -1647,6 +1688,66 @@ const OnlineOrders: React.FC = () => {
                             </div>
                           ) : (
                             <span className="text-xs text-slate-400 italic">No notes provided</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {(!cust.quote_status || cust.quote_status === 'Pending') && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-500">₹</span>
+                              <input 
+                                type="number" 
+                                placeholder="0.00 / pc"
+                                value={quoteInputs[cust.id] || ''}
+                                onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
+                                className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-xs font-medium text-slate-800 placeholder-slate-400 outline-none focus:border-indigo-500"
+                              />
+                              <button
+                                onClick={() => handleSendQuote(cust.id, quoteInputs[cust.id])}
+                                className="rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm"
+                              >
+                                Send
+                              </button>
+                            </div>
+                          )}
+                          {cust.quote_status === 'Quoted' && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-bold text-slate-900">₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                              <span className="text-xs text-slate-500 font-semibold">Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">Awaiting Customer Response</span>
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <input 
+                                  type="number" 
+                                  placeholder="Update / pc"
+                                  value={quoteInputs[cust.id] || ''}
+                                  onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
+                                  className="w-16 rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs font-medium text-slate-800 outline-none focus:border-indigo-500"
+                                />
+                                <button
+                                  onClick={() => handleSendQuote(cust.id, quoteInputs[cust.id])}
+                                  className="rounded bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 hover:bg-indigo-100 transition-all"
+                                >
+                                  Update
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {cust.quote_status === 'Accepted' && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-bold text-slate-950">₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                              <span className="text-xs text-emerald-600 font-bold">Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full w-max mt-1">
+                                <Check className="h-3 w-3" /> Accepted
+                              </span>
+                            </div>
+                          )}
+                          {cust.quote_status === 'Rejected' && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-bold text-slate-400 line-through">₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                              <span className="text-xs text-rose-600 font-bold line-through">Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-full w-max mt-1">
+                                <X className="h-3 w-3" /> Rejected
+                              </span>
+                            </div>
                           )}
                         </td>
                         <td className="px-4 py-4">

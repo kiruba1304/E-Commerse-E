@@ -1593,3 +1593,28 @@ def update_customization_status(cust_id):
         log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated status of Customization #{cust_id} to '{cust.status}'")
         
     return jsonify({"message": "Customization request updated successfully", "customization": cust.serialize()}), 200
+
+@admin_bp.route('/customizations/<int:cust_id>/quote', methods=['PUT'])
+@role_required(['admin'])
+def update_customization_quote(cust_id):
+    shop_id = request.user['shop_id']
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop_id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    data = request.get_json() or {}
+    quoted_price = data.get('quoted_price')
+    if quoted_price is None:
+        return jsonify({"error": "quoted_price is required"}), 400
+        
+    try:
+        cust.quoted_price = float(quoted_price)
+        cust.quote_status = 'Quoted'
+        db.session.commit()
+        
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Quoted price of ₹{cust.quoted_price:.2f} for Customization #{cust_id}")
+        return jsonify({"message": "Price quote sent successfully", "customization": cust.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to save price quote: {str(e)}"}), 500
+

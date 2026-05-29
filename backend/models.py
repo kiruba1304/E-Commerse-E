@@ -791,6 +791,13 @@ class CustomizationOrder(db.Model):
     status = db.Column(db.String(50), default='Pending') # Pending, In Progress, Dispatched, Completed, Rejected
     tracking_info = db.Column(db.String(255), nullable=True)
     shipping_label_url = db.Column(db.String(255), nullable=True)
+    quoted_price = db.Column(db.Float, nullable=True)
+    quote_status = db.Column(db.String(50), default='Pending') # Pending, Quoted, Accepted, Rejected
+    shipping_address = db.Column(db.Text, nullable=True)
+    billing_phone = db.Column(db.String(50), nullable=True)
+    payment_method = db.Column(db.String(50), default='COD')
+    payment_status = db.Column(db.String(50), default='Pending')
+    razorpay_payment_id = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     user = db.relationship('User', backref=db.backref('customization_orders_rel', lazy=True))
@@ -808,8 +815,8 @@ class CustomizationOrder(db.Model):
             "product_id": self.product_id,
             "product_name": self.product.name if self.product else "Deleted Product",
             "product_image": self.product.images[0] if self.product and self.product.images else None,
-            "user_phone": self.user.contact_phone if self.user else "N/A",
-            "shipping_address": self.user.addresses[0].get('address') if self.user and self.user.addresses else "N/A",
+            "user_phone": self.billing_phone or (self.user.contact_phone if self.user else "N/A"),
+            "shipping_address": self.shipping_address or (self.user.addresses[0].get('address') if self.user and self.user.addresses else "N/A"),
             "selected_color_name": self.selected_color_name,
             "selected_color_hex": self.selected_color_hex,
             "customization_notes": self.customization_notes,
@@ -817,5 +824,11 @@ class CustomizationOrder(db.Model):
             "status": self.status,
             "tracking_info": self.tracking_info,
             "shipping_label_url": self.shipping_label_url,
+            "quoted_price": self.quoted_price,
+            "quote_status": self.quote_status,
+            "billing_phone": self.billing_phone,
+            "payment_method": self.payment_method,
+            "payment_status": self.payment_status,
+            "razorpay_payment_id": self.razorpay_payment_id,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

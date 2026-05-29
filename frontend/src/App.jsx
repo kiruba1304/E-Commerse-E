@@ -704,6 +704,7 @@ export default function App() {
   const [userHelpTickets, setUserHelpTickets] = useState([]);
   const [userNotifications, setUserNotifications] = useState([]);
   const [checkoutData, setCheckoutData] = useState({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
+  const [activeCustomizationCheckout, setActiveCustomizationCheckout] = useState(null);
   const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
   const [newTicket, setNewTicket] = useState({ shop_id: "", subject: "", message: "" });
 
@@ -823,7 +824,9 @@ export default function App() {
   const [submittingCustomOrder, setSubmittingCustomOrder] = useState(false);
   const [userCustomizations, setUserCustomizations] = useState([]);
   const [adminCustomizations, setAdminCustomizations] = useState([]);
+  const [quoteInputs, setQuoteInputs] = useState({});
   const [sharingProduct, setSharingProduct] = useState(null);
+
 
   // Super Admin Workspace states
   const [superShops, setSuperShops] = useState([]);
@@ -989,6 +992,13 @@ export default function App() {
       }
     }
   }, [currentView, user]);
+
+  // Reset customization checkout state if navigated away from checkout
+  useEffect(() => {
+    if (currentView !== 'checkout') {
+      setActiveCustomizationCheckout(null);
+    }
+  }, [currentView]);
 
   // INITIAL LOADS (OPAC)
   useEffect(() => {
@@ -1499,6 +1509,27 @@ export default function App() {
     } catch (e) {}
   };
 
+  const handleQuoteAction = async (custId, action) => {
+    if (!window.confirm(`Are you sure you want to ${action} this price quote?`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/user/customizations/${custId}/quote-action`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Quote Updated", `You have successfully ${action}ed the quote.`, "success");
+        loadUserCustomizations();
+      } else {
+        addToast("Error", data.error || `Failed to ${action} quote.`, "danger");
+      }
+    } catch (err) {
+      addToast("Error", err.message, "danger");
+    }
+  };
+
+
   const loadUserHelpTickets = async () => {
     try {
       const res = await fetch(`${API_BASE}/user/help-tickets`, { headers: getHeaders() });
@@ -1720,7 +1751,11 @@ export default function App() {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_BASE}/user/orders`, {
+      const checkoutUrl = activeCustomizationCheckout
+        ? `${API_BASE}/user/customizations/${activeCustomizationCheckout.id}/checkout`
+        : `${API_BASE}/user/orders`;
+
+      const res = await fetch(checkoutUrl, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ ...checkoutData, shop_id: activeShopId })
@@ -1729,11 +1764,19 @@ export default function App() {
       if (res.ok) {
         const clearCheckoutFields = () => {
           setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
+          const wasCustom = !!activeCustomizationCheckout;
+          setActiveCustomizationCheckout(null);
           refreshUserProfile();
-          setActivePanel("orders");
+          if (wasCustom) {
+            loadUserCustomizations();
+            setActivePanel("customizations");
+            setCurrentView("user_dashboard");
+          } else {
+            setActivePanel("orders");
+          }
         };
 
-        if (data.order.payment_method === 'UPI') {
+        if ((activeCustomizationCheckout ? data.customization.payment_method : data.order.payment_method) === 'UPI') {
           // Dynamic script loader for Razorpay Checkout
           const loadRazorpay = () => {
             return new Promise((resolve) => {
@@ -1764,24 +1807,40 @@ export default function App() {
             amount: data.amount_paise,
             currency: 'INR',
             name: currentShop ? currentShop.name : "Nobaraa",
-            description: `Order Payment #${data.order.id}`,
+            description: activeCustomizationCheckout
+              ? `Customization Payment #${data.customization.id}`
+              : `Order Payment #${data.order.id}`,
             handler: async function (paymentResponse) {
               try {
-                const verifyRes = await fetch(`${API_BASE}/user/orders/verify`, {
+                const verifyUrl = activeCustomizationCheckout
+                  ? `${API_BASE}/user/customizations/${activeCustomizationCheckout.id}/verify`
+                  : `${API_BASE}/user/orders/verify`;
+
+                const verifyBody = activeCustomizationCheckout
+                  ? {
+                      razorpay_order_id: paymentResponse.razorpay_order_id || null,
+                      razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                      razorpay_signature: paymentResponse.razorpay_signature || null
+                    }
+                  : {
+                      order_id: data.order.id,
+                      razorpay_order_id: paymentResponse.razorpay_order_id || null,
+                      razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                      razorpay_signature: paymentResponse.razorpay_signature || null
+                    };
+
+                const verifyRes = await fetch(verifyUrl, {
                   method: 'POST',
                   headers: getHeaders(),
-                  body: JSON.stringify({
-                    order_id: data.order.id,
-                    razorpay_order_id: paymentResponse.razorpay_order_id || null,
-                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                    razorpay_signature: paymentResponse.razorpay_signature || null
-                  })
+                  body: JSON.stringify(verifyBody)
                 });
                 
                 const verifyData = await verifyRes.json();
                 if (verifyRes.ok) {
                   addToast("Payment Successful", "Your payment has been successfully verified! Order confirmed.", "success");
-                  setInvoiceOrder(verifyData.order);
+                  if (!activeCustomizationCheckout) {
+                    setInvoiceOrder(verifyData.order);
+                  }
                   clearCheckoutFields();
                 } else {
                   addToast("Payment Verification Failed", verifyData.error || "Failed to verify payment signature.", "danger");
@@ -1800,7 +1859,7 @@ export default function App() {
             },
             modal: {
               ondismiss: function () {
-                addToast("Payment Cancelled", "Payment window closed. You can complete the payment later in your Orders history.", "warning");
+                addToast("Payment Cancelled", "Payment window closed. You can complete the payment later.", "warning");
                 clearCheckoutFields();
               }
             }
@@ -1814,7 +1873,9 @@ export default function App() {
           paymentObject.open();
         } else {
           // Standard COD checkout or mock completion fallback
-          if (data.order.payment_method === 'COD') {
+          if (activeCustomizationCheckout) {
+            addToast("Custom Order Confirmed", "Your custom order request is accepted and in progress.", "success");
+          } else if (data.order.payment_method === 'COD') {
             addToast("Order Confirmed", "Your purchase is successful. Invoice will be generated after admin accepts the order.", "success");
           } else {
             addToast("Order Confirmed", "Your purchase is successful. Invoice generated.", "success");
@@ -2595,6 +2656,30 @@ export default function App() {
     } catch (e) {}
   };
 
+  const handleSendQuote = async (custId, price) => {
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      addToast("Invalid Price", "Please enter a valid price greater than zero.", "warning");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/admin/customizations/${custId}/quote`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ quoted_price: parseFloat(price) })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Quote Sent", "Price quote sent successfully to customer.", "success");
+        loadAdminCustomizations();
+      } else {
+        addToast("Error", data.error || "Failed to send price quote.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", err.message, "danger");
+    }
+  };
+
+
 
   // SUPER ADMIN ACTION ROUTINES
   useEffect(() => {
@@ -2766,9 +2851,11 @@ export default function App() {
   };
 
   // Checkout Calculations
-  const checkoutSubtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-  const checkoutSuperCoinDiscount = checkoutData.use_super_coins ? checkoutSubtotal * 0.15 : 0;
-  const checkoutCouponDiscount = checkoutData.coupon_code ? checkoutSubtotal * 0.05 : 0;
+  const checkoutSubtotal = activeCustomizationCheckout
+    ? (activeCustomizationCheckout.quoted_price * activeCustomizationCheckout.quantity)
+    : cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const checkoutSuperCoinDiscount = !activeCustomizationCheckout && checkoutData.use_super_coins ? checkoutSubtotal * 0.15 : 0;
+  const checkoutCouponDiscount = !activeCustomizationCheckout && checkoutData.coupon_code ? checkoutSubtotal * 0.05 : 0;
   const checkoutDiscountedAmount = Math.max(0, checkoutSubtotal - checkoutSuperCoinDiscount - checkoutCouponDiscount);
   const checkoutGstRate = currentShop?.gst_percentage ?? 18.0;
   const checkoutGstInclusive = currentShop?.gst_inclusive ?? false;
@@ -4563,16 +4650,49 @@ export default function App() {
                   <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '16px' }}>
                     <h3 style={{ fontSize: '1.1rem', color: '#388e3c', margin: '0 0 16px 0', fontWeight: 600 }}>Guaranteed Free Delivery</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {cart.map(ci => (
-                        <div key={ci.id} style={{ display: 'flex', gap: '16px' }}>
-                          <img src={ci.product.images[0] || null} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
+                      {activeCustomizationCheckout ? (
+                        <div style={{ display: 'flex', gap: '16px' }}>
+                          <img 
+                            src={activeCustomizationCheckout.product_image || null} 
+                            alt={activeCustomizationCheckout.product_name} 
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} 
+                          />
                           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                            <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>{ci.product.name}</div>
-                            <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>₹{ci.product.price.toFixed(2)}</div>
-                            <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px' }}>Quantity: {ci.quantity}</div>
+                            <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>
+                              {activeCustomizationCheckout.product_name} (Customization Order)
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.8rem', color: '#666' }}>Color:</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '10px', background: '#f5edff', fontSize: '0.75rem', fontWeight: 600 }}>
+                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: activeCustomizationCheckout.selected_color_hex }} />
+                                {activeCustomizationCheckout.selected_color_name}
+                              </span>
+                            </div>
+                            {activeCustomizationCheckout.customization_notes && (
+                              <div style={{ fontSize: '0.8rem', color: '#555', background: '#f9f9f9', padding: '4px 8px', borderRadius: '4px', border: '1px solid #eee', marginBottom: '4px', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                                {activeCustomizationCheckout.customization_notes}
+                              </div>
+                            )}
+                            <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>
+                              ₹{parseFloat(activeCustomizationCheckout.quoted_price || 0).toFixed(2)} / pc
+                            </div>
+                            <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px' }}>
+                              Quantity: {activeCustomizationCheckout.quantity}
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      ) : (
+                        cart.map(ci => (
+                          <div key={ci.id} style={{ display: 'flex', gap: '16px' }}>
+                            <img src={ci.product.images[0] || null} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                              <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>{ci.product.name}</div>
+                              <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>₹{ci.product.price.toFixed(2)}</div>
+                              <div style={{ color: '#666', fontSize: '0.85rem', marginTop: '4px' }}>Quantity: {ci.quantity}</div>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
@@ -4601,20 +4721,20 @@ export default function App() {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#444' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Items ({cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
-                    <span>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}</span>
+                    <span>Items ({activeCustomizationCheckout ? activeCustomizationCheckout.quantity : cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
+                    <span>₹{(activeCustomizationCheckout ? (activeCustomizationCheckout.quoted_price * activeCustomizationCheckout.quantity) : cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)).toFixed(2)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Delivery:</span>
                     <span>₹0.00</span>
                   </div>
-                  {checkoutData.use_super_coins && (
+                  {!activeCustomizationCheckout && checkoutData.use_super_coins && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
                       <span>SuperCoin Discount:</span>
                       <span>-₹{(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.15).toFixed(2)}</span>
                     </div>
                   )}
-                  {checkoutData.coupon_code && (
+                  {!activeCustomizationCheckout && checkoutData.coupon_code && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
                       <span>Coupon Discount:</span>
                       <span>-₹{checkoutCouponDiscount.toFixed(2)}</span>
@@ -6959,6 +7079,7 @@ export default function App() {
                         <th>Selected Color</th>
                         <th>Measurements / Sizing Notes</th>
                         <th>Quantity</th>
+                        <th>Pricing / Quote</th>
                         <th>Status</th>
                         <th>Date Submitted</th>
                       </tr>
@@ -6986,6 +7107,50 @@ export default function App() {
                             {cust.quantity || 1}
                           </td>
                           <td>
+                            {(!cust.quote_status || cust.quote_status === 'Pending') && (
+                              <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Awaiting Quote</span>
+                            )}
+                            {cust.quote_status === 'Quoted' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 800, color: '#7a4ea5', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                                  <button
+                                    onClick={() => {
+                                      setActiveCustomizationCheckout(cust);
+                                      setCurrentView('checkout');
+                                    }}
+                                    className="btn-primary"
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', fontWeight: 600 }}
+                                  >
+                                    Accept
+                                  </button>
+                                  <button
+                                    onClick={() => handleQuoteAction(cust.id, 'reject')}
+                                    className="btn-secondary"
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ef4444', color: '#fff', fontWeight: 600 }}
+                                  >
+                                    Reject
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {cust.quote_status === 'Accepted' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✓ Accepted</span>
+                              </div>
+                            )}
+                            {cust.quote_status === 'Rejected' && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.95rem', textDecoration: 'line-through' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, textDecoration: 'line-through' }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✗ Rejected</span>
+                              </div>
+                            )}
+                          </td>
+                          <td>
                             <span style={{ 
                               padding: '4px 8px', 
                               borderRadius: '4px', 
@@ -7003,7 +7168,7 @@ export default function App() {
                       ))}
                       {userCustomizations.length === 0 && (
                         <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
+                          <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
                         </tr>
                       )}
                     </tbody>
@@ -10459,6 +10624,7 @@ export default function App() {
                           <th>Product</th>
                           <th>Bespoke Details</th>
                           <th>Qty</th>
+                          <th>Pricing / Quote</th>
                           <th>Status</th>
                           <th>Actions</th>
                         </tr>
@@ -10490,6 +10656,63 @@ export default function App() {
                             </td>
                             <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>
                               {cust.quantity || 1}
+                            </td>
+                            <td>
+                              {(!cust.quote_status || cust.quote_status === 'Pending') && (
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>₹</span>
+                                  <input 
+                                    type="number" 
+                                    placeholder="0.00 / pc"
+                                    value={quoteInputs[cust.id] || ''}
+                                    onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
+                                    style={{ width: '70px', padding: '6px 8px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid #dcdcdc' }}
+                                  />
+                                  <button
+                                    onClick={() => handleSendQuote(cust.id, quoteInputs[cust.id])}
+                                    className="btn-primary"
+                                    style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#fff', fontWeight: 600 }}
+                                  >
+                                    Send
+                                  </button>
+                                </div>
+                              )}
+                              {cust.quote_status === 'Quoted' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#7a4ea5' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Awaiting response</span>
+                                  <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                                    <input 
+                                      type="number" 
+                                      placeholder="New / pc"
+                                      value={quoteInputs[cust.id] || ''}
+                                      onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
+                                      style={{ width: '60px', padding: '4px 6px', fontSize: '0.7rem', borderRadius: '6px', border: '1px solid #dcdcdc' }}
+                                    />
+                                    <button
+                                      onClick={() => handleSendQuote(cust.id, quoteInputs[cust.id])}
+                                      style={{ padding: '4px 8px', fontSize: '0.7rem', borderRadius: '6px', border: 'none', cursor: 'pointer', background: '#7a4ea5', color: '#fff' }}
+                                    >
+                                      Update
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {cust.quote_status === 'Accepted' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold' }}>✓ Accepted</span>
+                                </div>
+                              )}
+                              {cust.quote_status === 'Rejected' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, textDecoration: 'line-through' }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 'bold' }}>✗ Rejected</span>
+                                </div>
+                              )}
                             </td>
                             <td>
                               <span style={{ 
@@ -10537,7 +10760,7 @@ export default function App() {
                         ))}
                         {adminCustomizations.length === 0 && (
                           <tr>
-                            <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No customization requests received yet.</td>
+                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>No customization requests received yet.</td>
                           </tr>
                         )}
                       </tbody>

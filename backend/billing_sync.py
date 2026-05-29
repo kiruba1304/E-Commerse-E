@@ -535,6 +535,33 @@ def update_customization_status(cust_id):
         "customization": cust.serialize()
     }), 200
 
+@billing_sync_bp.route('/customizations/<int:cust_id>/quote', methods=['POST'])
+def update_customization_quote(cust_id):
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    quoted_price = data.get('quoted_price')
+    if quoted_price is None:
+        return jsonify({"error": "quoted_price is required"}), 400
+        
+    cust.quoted_price = float(quoted_price)
+    cust.quote_status = 'Quoted'
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": f"Customization order quote set to ₹{cust.quoted_price} successfully",
+        "customization": cust.serialize()
+    }), 200
+
+
 @billing_sync_bp.route('/customizations/<int:cust_id>/book-shipping', methods=['POST'])
 def book_customization_shipping(cust_id):
     import requests
@@ -561,7 +588,7 @@ def book_customization_shipping(cust_id):
     awb_number = None
     label_url = None
     
-    consignee_address = cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A"
+    consignee_address = cust.shipping_address or (cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A")
     
     if client_code and api_key_dtdc and client_code != "YOUR_DTDC_CLIENT_CODE" and not api_url.startswith("http://dummy"):
         try:
@@ -569,7 +596,7 @@ def book_customization_shipping(cust_id):
                 "client_code": client_code,
                 "consignee": {
                     "name": cust.user.name or cust.user.username if cust.user else "Customer",
-                    "phone": cust.user.contact_phone if cust.user else "",
+                    "phone": cust.billing_phone or (cust.user.contact_phone if cust.user else ""),
                     "address": consignee_address,
                     "pincode": data.get('consignee_pincode', '')
                 },

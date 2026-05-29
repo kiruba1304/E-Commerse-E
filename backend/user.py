@@ -1082,3 +1082,292 @@ def get_user_customizations():
     user_id = request.user['user_id']
     custs = CustomizationOrder.query.filter_by(user_id=user_id).order_by(CustomizationOrder.created_at.desc()).all()
     return jsonify([c.serialize() for c in custs]), 200
+
+@user_bp.route('/customizations/<int:cust_id>/quote-action', methods=['PUT'])
+@role_required(['user'])
+def customization_quote_action(cust_id):
+    user_id = request.user['user_id']
+    username = request.user['username']
+    cust = CustomizationOrder.query.filter_by(id=cust_id, user_id=user_id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    data = request.get_json() or {}
+    action = data.get('action') # 'accept' or 'reject'
+    if action not in ['accept', 'reject']:
+        return jsonify({"error": "action must be 'accept' or 'reject'"}), 400
+        
+    try:
+        if action == 'accept':
+            if cust.quote_status != 'Quoted':
+                return jsonify({"error": "Quote not in Quoted status"}), 400
+            cust.quote_status = 'Accepted'
+            cust.status = 'In Progress'
+            log_user_action(user_id, username, f"Accepted quote for Customization Request #{cust_id}", shop_id=cust.shop_id)
+        else:
+            cust.quote_status = 'Rejected'
+            cust.status = 'Rejected'
+            log_user_action(user_id, username, f"Rejected quote for Customization Request #{cust_id}", shop_id=cust.shop_id)
+            
+        db.session.commit()
+        return jsonify({"message": f"Quote {action}ed successfully", "customization": cust.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to perform quote action: {str(e)}"}), 500
+
+
+@user_bp.route('/customizations/<int:cust_id>/checkout', methods=['POST'])
+@role_required(['user'])
+def customization_checkout(cust_id):
+    user_id = request.user['user_id']
+    user = User.query.get(user_id)
+    cust = CustomizationOrder.query.filter_by(id=cust_id, user_id=user_id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+
+    if cust.quote_status != 'Quoted':
+        return jsonify({"error": "This customization request does not have an active quote to checkout."}), 400
+
+    data = request.get_json() or {}
+    shipping_address = data.get('shipping_address')
+    billing_phone = data.get('billing_phone')
+    payment_method = data.get('payment_method', 'COD') # COD, UPI
+
+    if not shipping_address:
+        return jsonify({"error": "Shipping address is required"}), 400
+
+    shop = Shop.query.get(cust.shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    # Calculate Totals
+    # Note: quoted_price is the unit price (per piece). Total = quoted_price * quantity
+    subtotal = float(cust.quoted_price or 0.0) * int(cust.quantity or 1)
+    
+    # Calculate shop-configured GST percentage (defaults to 18.0%)
+    gst_rate = getattr(shop, 'gst_percentage', 18.0) / 100.0
+    gst_inclusive = getattr(shop, 'gst_inclusive', False)
+    if gst_inclusive:
+        final_amount = subtotal
+        gst_amount = final_amount * gst_rate / (1 + gst_rate)
+    else:
+        gst_amount = subtotal * gst_rate
+        final_amount = subtotal + gst_amount
+
+    # Save details to customization order
+    cust.shipping_address = shipping_address
+    cust.billing_phone = billing_phone or user.contact_phone
+    cust.payment_method = payment_method
+    cust.payment_status = 'Pending'
+
+    # Set last used address default
+    address_id = data.get('address_id')
+    if address_id:
+        user.last_used_address_id = address_id
+    else:
+        # Match shipping_address and billing_phone to user's saved addresses
+        for addr in user.addresses:
+            if addr.get('address') == shipping_address and addr.get('phone') == billing_phone:
+                user.last_used_address_id = addr.get('id')
+                break
+
+    # If UPI checkout
+    if payment_method == 'UPI':
+        razorpay_order_id = None
+        razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+        razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+        
+        if razorpay_key_id and razorpay_key_secret and razorpay_key_id != 'YOUR_RAZORPAY_KEY_ID':
+            try:
+                import razorpay
+                client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+                paise = int(round(final_amount * 100))
+                r_order = client.order.create({
+                    "amount": paise,
+                    "currency": "INR",
+                    "receipt": f"cust_rcpt_{secrets.token_hex(4)}",
+                    "payment_capture": 1
+                })
+                razorpay_order_id = r_order['id']
+            except Exception as e:
+                print(f"Razorpay order creation failed for customization: {e}")
+
+        # Store Razorpay order ID in tracking_info
+        if razorpay_order_id:
+            cust.tracking_info = razorpay_order_id
+        else:
+            # Generate dummy mock order ID for testing if key not configured
+            cust.tracking_info = f"mock_order_{secrets.token_hex(6)}"
+
+        # Generate standard Order record
+        order = Order(
+            user_id=user_id,
+            shop_id=cust.shop_id,
+            total_amount=round(subtotal, 2),
+            final_amount=round(final_amount, 2),
+            status='Pending',
+            payment_method=payment_method,
+            payment_status='Pending',
+            shipping_address=shipping_address,
+            billing_phone=billing_phone or user.contact_phone,
+            gst_amount=round(gst_amount, 2),
+            gst_inclusive=gst_inclusive,
+            discount_amount=0.0,
+            tracking_info=cust.tracking_info,
+            is_synced=False
+        )
+        
+        shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
+        order.online_order_number = shop.last_online_order_number
+
+        order_item = OrderItem(
+            product_id=cust.product_id,
+            product_name=f"{cust.product.name if cust.product else 'Bespoke Item'} (Customized: {cust.selected_color_name or ''})",
+            price=cust.quoted_price,
+            quantity=cust.quantity
+        )
+        order.items.append(order_item)
+        db.session.add(order)
+        db.session.commit()
+
+        return jsonify({
+            "customization": cust.serialize(),
+            "razorpay_order_id": cust.tracking_info,
+            "razorpay_key_id": razorpay_key_id,
+            "amount_paise": int(round(final_amount * 100)),
+            "user_name": user.name or user.username,
+            "user_email": user.email,
+            "user_phone": cust.billing_phone or ""
+        }), 201
+
+    # COD checkout
+    cust.quote_status = 'Accepted'
+    cust.status = 'In Progress'
+    cust.tracking_info = f"CUST-CHECKOUT-{cust.id}"
+
+    # Generate standard Order record
+    order = Order(
+        user_id=user_id,
+        shop_id=cust.shop_id,
+        total_amount=round(subtotal, 2),
+        final_amount=round(final_amount, 2),
+        status='Accepted',
+        payment_method=payment_method,
+        payment_status='Pending',
+        shipping_address=shipping_address,
+        billing_phone=billing_phone or user.contact_phone,
+        gst_amount=round(gst_amount, 2),
+        gst_inclusive=gst_inclusive,
+        discount_amount=0.0,
+        tracking_info=cust.tracking_info,
+        is_synced=False
+    )
+    
+    shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
+    order.online_order_number = shop.last_online_order_number
+
+    order_item = OrderItem(
+        product_id=cust.product_id,
+        product_name=f"{cust.product.name if cust.product else 'Bespoke Item'} (Customized: {cust.selected_color_name or ''})",
+        price=cust.quoted_price,
+        quantity=cust.quantity
+    )
+    order.items.append(order_item)
+    db.session.add(order)
+    db.session.commit()
+
+    # Log purchase
+    log_user_action(
+        user_id,
+        user.username,
+        f"Accepted quote and checked out Customization Request #{cust.id} via COD (Total: {round(final_amount, 2)})",
+        cust.shop_id,
+    )
+
+    return jsonify({
+        "message": "Custom order placed successfully via COD",
+        "customization": cust.serialize()
+    }), 201
+
+
+@user_bp.route('/customizations/<int:cust_id>/verify', methods=['POST'])
+@role_required(['user'])
+def verify_customization_payment(cust_id):
+    user_id = request.user['user_id']
+    username = request.user['username']
+    data = request.get_json() or {}
+    razorpay_order_id = data.get('razorpay_order_id')
+    razorpay_payment_id = data.get('razorpay_payment_id')
+    razorpay_signature = data.get('razorpay_signature')
+    
+    if not razorpay_payment_id:
+        return jsonify({"error": "Missing payment verification details"}), 400
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, user_id=user_id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    # Verify payment
+    shop = Shop.query.get(cust.shop_id)
+    razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+    razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+    
+    if (razorpay_key_id == 'YOUR_RAZORPAY_KEY_ID' or 
+        razorpay_key_id.startswith('rzp_test_') or 
+        (razorpay_order_id and razorpay_order_id.startswith('mock_order_')) or
+        (cust.tracking_info and cust.tracking_info.startswith('mock_order_'))):
+        # Auto-approve checkout for default test credentials
+        cust.payment_status = 'Paid'
+        cust.razorpay_payment_id = razorpay_payment_id
+        cust.quote_status = 'Accepted'
+        cust.status = 'In Progress'
+        
+        # Update linked standard Order
+        order = Order.query.filter_by(shop_id=cust.shop_id, tracking_info=cust.tracking_info).first()
+        if order:
+            order.payment_status = 'Paid'
+            order.status = 'Accepted'
+            order.razorpay_payment_id = razorpay_payment_id
+            
+        db.session.commit()
+        
+        log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid/Test Mode)", shop_id=cust.shop_id)
+        return jsonify({"success": True, "message": "Payment verified successfully (Test Mode)", "customization": cust.serialize()}), 200
+        
+    try:
+        import razorpay
+        client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+        
+        if razorpay_order_id and razorpay_signature:
+            params_dict = {
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            }
+            client.utility.verify_payment_signature(params_dict)
+        else:
+            payment = client.payment.fetch(razorpay_payment_id)
+            if payment.get('status') not in ['captured', 'authorized']:
+                return jsonify({"error": "Payment is not in captured or authorized status"}), 400
+        
+        # Success!
+        cust.payment_status = 'Paid'
+        cust.razorpay_payment_id = razorpay_payment_id
+        cust.quote_status = 'Accepted'
+        cust.status = 'In Progress'
+        
+        # Update linked standard Order
+        order = Order.query.filter_by(shop_id=cust.shop_id, tracking_info=cust.tracking_info).first()
+        if order:
+            order.payment_status = 'Paid'
+            order.status = 'Accepted'
+            order.razorpay_payment_id = razorpay_payment_id
+            
+        db.session.commit()
+        
+        log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid)", shop_id=cust.shop_id)
+        return jsonify({"success": True, "message": "Payment verified successfully", "customization": cust.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Payment signature verification failed: {str(e)}"}), 400
+
