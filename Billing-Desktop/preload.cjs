@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadJson: (fileName, directory) => ipcRenderer.invoke('load-json', { fileName, directory }),
   getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
   minimizeWindow: () => ipcRenderer.invoke('window-minimize'),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
   onAppClose: (callback) => ipcRenderer.on('app-close', () => callback()),
   closeApp: () => ipcRenderer.send('close-app'),
   showAlert: (message, title) => ipcRenderer.sendSync('show-alert-sync', { message, title }),

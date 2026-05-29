@@ -126,6 +126,14 @@ const OnlineOrders: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
+  // Modal states for prompts
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'dispatch' | 'dispatch_custom' | 'book_dtdc' | 'book_custom_dtdc' | null>(null);
+  const [modalTargetId, setModalTargetId] = useState<number | null>(null);
+  const [modalInputValue, setModalInputValue] = useState('');
+  const [modalPlaceholder, setModalPlaceholder] = useState('');
+  const [modalTitle, setModalTitle] = useState('');
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem('app_settings');
@@ -291,12 +299,94 @@ const OnlineOrders: React.FC = () => {
     }
   };
 
-  // Dispatch custom order
-  const handleDispatchCustomOrder = async (custId: number) => {
+  // OpenLink utility
+  const openLink = (url: string) => {
+    const api = (window as any).electronAPI;
+    if (api && api.openExternal) {
+      api.openExternal(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+  // Dispatch custom order (Open Modal)
+  const handleDispatchCustomOrder = (custId: number) => {
     const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
-    const trackingInfo = prompt("Enter tracking number/details:", `Hub Courier Tracker ID: ${trackId}`);
-    if (trackingInfo === null) return;
-    
+    setModalTitle("Dispatch Custom Order");
+    setModalPlaceholder(`Hub Courier Tracker ID: ${trackId}`);
+    setModalInputValue(`Hub Courier Tracker ID: ${trackId}`);
+    setModalType('dispatch_custom');
+    setModalTargetId(custId);
+    setModalOpen(true);
+  };
+
+  // Book DTDC Shipment for Customization (Open Modal)
+  const handleBookCustomDtdcShipping = (custId: number) => {
+    setModalTitle("Book Custom DTDC Shipment");
+    setModalPlaceholder("0.5");
+    setModalInputValue("0.5");
+    setModalType('book_custom_dtdc');
+    setModalTargetId(custId);
+    setModalOpen(true);
+  };
+
+  // Dispatch generic order (Open Modal)
+  const handleDispatchOrder = (orderId: number) => {
+    const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
+    setModalTitle("Dispatch Order");
+    setModalPlaceholder(`Hub Courier Tracker ID: ${trackId}`);
+    setModalInputValue(`Hub Courier Tracker ID: ${trackId}`);
+    setModalType('dispatch');
+    setModalTargetId(orderId);
+    setModalOpen(true);
+  };
+
+  // Book DTDC Shipment (Open Modal)
+  const handleBookDtdcShipping = (orderId: number) => {
+    setModalTitle("Book DTDC Shipment");
+    setModalPlaceholder("0.5");
+    setModalInputValue("0.5");
+    setModalType('book_dtdc');
+    setModalTargetId(orderId);
+    setModalOpen(true);
+  };
+
+  // Execute actual actions
+  const executeDispatchOrder = async (orderId: number, trackingInfo: string) => {
+    await handleUpdateStatus(orderId, 'Dispatched', { tracking_info: trackingInfo });
+  };
+
+  const executeBookDtdcShipping = async (orderId: number, weight: number) => {
+    try {
+      setUpdatingId(orderId);
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/orders/${orderId}/book-shipping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, weight_kg: weight })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert(`DTDC shipment booked successfully! AWB: ${data.order.tracking_info.split('AWB:')[1]?.trim() || data.order.tracking_info}`);
+        await loadOrders();
+        if (data.order.shipping_label_url) {
+          openLink(data.order.shipping_label_url);
+        }
+      } else {
+        alert(data.error || "Failed to book DTDC shipment");
+      }
+    } catch (err: any) {
+      alert("Error booking DTDC shipping: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const executeDispatchCustomOrder = async (custId: number, trackingInfo: string) => {
     try {
       setUpdatingId(custId);
       const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
@@ -322,12 +412,7 @@ const OnlineOrders: React.FC = () => {
     }
   };
 
-  // Book DTDC Shipment for Customization
-  const handleBookCustomDtdcShipping = async (custId: number) => {
-    const weightStr = prompt("Enter package weight in kg:", "0.5");
-    if (weightStr === null) return;
-    const weight = parseFloat(weightStr) || 0.5;
-    
+  const executeBookCustomDtdcShipping = async (custId: number, weight: number) => {
     try {
       setUpdatingId(custId);
       const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
@@ -345,7 +430,7 @@ const OnlineOrders: React.FC = () => {
         alert(`DTDC shipment booked successfully! AWB: ${data.customization.tracking_info.split('AWB:')[1]?.trim() || data.customization.tracking_info}`);
         await loadOrders();
         if (data.customization.shipping_label_url) {
-          window.open(data.customization.shipping_label_url, '_blank');
+          openLink(data.customization.shipping_label_url);
         }
       } else {
         alert(data.error || "Failed to book DTDC shipment for customization");
@@ -357,13 +442,24 @@ const OnlineOrders: React.FC = () => {
     }
   };
 
-  // Dispatch generic order
-  const handleDispatchOrder = async (orderId: number) => {
-    const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
-    const trackingInfo = prompt("Enter tracking number/details:", `Hub Courier Tracker ID: ${trackId}`);
-    if (trackingInfo === null) return;
+  const handleModalSubmit = async () => {
+    if (!modalTargetId || !modalType) return;
+    const value = modalInputValue.trim();
     
-    await handleUpdateStatus(orderId, 'Dispatched', { tracking_info: trackingInfo });
+    // Reset modal state
+    setModalOpen(false);
+    
+    if (modalType === 'dispatch') {
+      await executeDispatchOrder(modalTargetId, value);
+    } else if (modalType === 'book_dtdc') {
+      const weight = parseFloat(value) || 0.5;
+      await executeBookDtdcShipping(modalTargetId, weight);
+    } else if (modalType === 'dispatch_custom') {
+      await executeDispatchCustomOrder(modalTargetId, value);
+    } else if (modalType === 'book_custom_dtdc') {
+      const weight = parseFloat(value) || 0.5;
+      await executeBookCustomDtdcShipping(modalTargetId, weight);
+    }
   };
 
   const handleRejectOrder = async (orderId: number) => {
@@ -373,41 +469,6 @@ const OnlineOrders: React.FC = () => {
 
   const handleConfirmDelivery = async (orderId: number) => {
     await handleUpdateStatus(orderId, 'Customer Received');
-  };
-
-  // Book DTDC Shipment
-  const handleBookDtdcShipping = async (orderId: number) => {
-    const weightStr = prompt("Enter package weight in kg:", "0.5");
-    if (weightStr === null) return;
-    const weight = parseFloat(weightStr) || 0.5;
-    
-    try {
-      setUpdatingId(orderId);
-      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
-      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
-      const apiKey = settings.ecommerceApiKey || '';
-      
-      const res = await fetch(`${apiUrl}/billing/sync/orders/${orderId}/book-shipping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKey, weight_kg: weight })
-      });
-      
-      const data = await res.json();
-      if (res.ok && data.success) {
-        alert(`DTDC shipment booked successfully! AWB: ${data.order.tracking_info.split('AWB:')[1]?.trim() || data.order.tracking_info}`);
-        await loadOrders();
-        if (data.order.shipping_label_url) {
-          window.open(data.order.shipping_label_url, '_blank');
-        }
-      } else {
-        alert(data.error || "Failed to book DTDC shipment");
-      }
-    } catch (err: any) {
-      alert("Error booking DTDC shipping: " + err.message);
-    } finally {
-      setUpdatingId(null);
-    }
   };
 
   // Resolve Return request
@@ -963,7 +1024,7 @@ const OnlineOrders: React.FC = () => {
                                 </button>
                                 {cust.shipping_label_url && (
                                   <button
-                                    onClick={() => window.open(cust.shipping_label_url, '_blank')}
+                                    onClick={() => openLink(cust.shipping_label_url)}
                                     className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
                                   >
                                     <Printer className="h-3.5 w-3.5" /> Print DTDC Label
@@ -1150,7 +1211,7 @@ const OnlineOrders: React.FC = () => {
                                 </button>
                                 {order.shipping_label_url && (
                                   <button
-                                    onClick={() => window.open(order.shipping_label_url, '_blank')}
+                                    onClick={() => openLink(order.shipping_label_url)}
                                     className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
                                   >
                                     <Printer className="h-3.5 w-3.5" /> Print DTDC Label
@@ -1169,14 +1230,12 @@ const OnlineOrders: React.FC = () => {
                                   Reason: "{order.return_reason}"
                                 </div>
                                 {order.return_image_url && (
-                                  <a 
-                                    href={order.return_image_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer" 
-                                    className="text-[10px] text-indigo-600 underline block mb-0.5"
+                                  <button
+                                    onClick={() => openLink(order.return_image_url)}
+                                    className="text-[10px] text-indigo-600 underline block mb-0.5 text-left bg-transparent border-none p-0 cursor-pointer"
                                   >
                                     View Proof Image
-                                  </a>
+                                  </button>
                                 )}
                                 <div className="flex gap-1.5">
                                   <button
@@ -1240,6 +1299,47 @@ const OnlineOrders: React.FC = () => {
           )
         )}
       </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+          <div className="w-full max-w-md scale-95 transform rounded-[2rem] border border-white/60 bg-white/95 p-6 shadow-2xl transition-all duration-300">
+            <h3 className="text-xl font-bold text-slate-900">{modalTitle}</h3>
+            <p className="mt-2 text-xs text-slate-500">
+              {modalType?.startsWith('dispatch') 
+                ? "Please enter the shipment tracking number or details to dispatch this order."
+                : "Please enter the weight of the package in kilograms to book the DTDC shipment."}
+            </p>
+            <div className="mt-4">
+              <input
+                type="text"
+                value={modalInputValue}
+                onChange={(e) => setModalInputValue(e.target.value)}
+                placeholder={modalPlaceholder}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleModalSubmit();
+                  if (e.key === 'Escape') setModalOpen(false);
+                }}
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleModalSubmit}
+                className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

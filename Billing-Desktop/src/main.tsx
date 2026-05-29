@@ -8,6 +8,7 @@ declare global {
     electronAPI?: {
       showAlert: (message: string, title?: string) => void;
       showConfirm: (message: string, title?: string) => boolean;
+      openExternal: (url: string) => Promise<boolean>;
     };
   }
 }

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -173,6 +173,20 @@ ipcMain.handle('load-json', async (event, payload) => {
 // IPC: Get User Data Path (Persistent storage)
 ipcMain.handle('get-user-data-path', () => {
   return app.getPath('userData');
+});
+
+// IPC: Open URL in default system browser
+ipcMain.handle('open-external', async (event, url) => {
+  if (url) {
+    try {
+      await shell.openExternal(url);
+      return true;
+    } catch (e) {
+      console.error("Failed to open external URL:", e);
+      return false;
+    }
+  }
+  return false;
 });
 
 // IPC: Minimize main window
