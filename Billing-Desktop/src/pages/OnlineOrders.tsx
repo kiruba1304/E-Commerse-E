@@ -5,6 +5,7 @@ import {
   RefreshCw, RotateCcw, AlertCircle, AlertTriangle 
 } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 const LABEL_SIZES = [
   { value: '3in', label: '3 inch - Thermal label printer' },
@@ -86,14 +87,32 @@ const getInitialLabelSize = () => {
   return '3in';
 };
 
-const buildBarcodeSvg = (value: string, labelSize: string) => {
+const formatDate = (dateInput: any) => {
+  if (!dateInput) return '';
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return '';
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+const formatBarcodeText = (val: string) => {
+  const clean = val.replace(/\s+/g, '');
+  if (/^\d+$/.test(clean)) {
+    return clean.replace(/(.{4})/g, '$1 ').trim();
+  }
+  return val.split('').join(' ');
+};
+
+const buildBarcodeSvg = (value: string, labelSize: string, displayValue = false) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   const targetWidth = labelSize === '3in' ? 175 : labelSize === 'A4' ? 320 : 240;
   const targetHeight = labelSize === '3in' ? 32 : labelSize === 'A4' ? 54 : 40;
 
   JsBarcode(svg, value, {
     format: 'CODE128',
-    displayValue: true,
+    displayValue: displayValue,
     margin: 0,
     width: labelSize === '3in' ? 0.9 : 1.05,
     height: targetHeight,
@@ -105,9 +124,10 @@ const buildBarcodeSvg = (value: string, labelSize: string) => {
     lineColor: '#111'
   });
 
+  const extraHeight = displayValue ? 22 : 0;
   svg.setAttribute('width', String(targetWidth));
-  svg.setAttribute('height', String(targetHeight + 22));
-  svg.setAttribute('viewBox', `0 0 ${targetWidth} ${targetHeight + 22}`);
+  svg.setAttribute('height', String(targetHeight + extraHeight));
+  svg.setAttribute('viewBox', `0 0 ${targetWidth} ${targetHeight + extraHeight}`);
 
   return new XMLSerializer().serializeToString(svg);
 };
@@ -374,7 +394,7 @@ const OnlineOrders: React.FC = () => {
         alert(`DTDC shipment booked successfully! AWB: ${data.order.tracking_info.split('AWB:')[1]?.trim() || data.order.tracking_info}`);
         await loadOrders();
         if (data.order.shipping_label_url) {
-          openLink(data.order.shipping_label_url);
+          handlePrintLocalDtdcLabel(data.order);
         }
       } else {
         alert(data.error || "Failed to book DTDC shipment");
@@ -430,7 +450,7 @@ const OnlineOrders: React.FC = () => {
         alert(`DTDC shipment booked successfully! AWB: ${data.customization.tracking_info.split('AWB:')[1]?.trim() || data.customization.tracking_info}`);
         await loadOrders();
         if (data.customization.shipping_label_url) {
-          openLink(data.customization.shipping_label_url);
+          handlePrintLocalCustomDtdcLabel(data.customization);
         }
       } else {
         alert(data.error || "Failed to book DTDC shipment for customization");
@@ -562,7 +582,7 @@ const OnlineOrders: React.FC = () => {
   }, [isConfigured, webOrders, onlineOrders, customers]);
 
   // Local printer label routine (reused)
-  const handlePrintLocalLabel = (order: any) => {
+  const handlePrintLocalLabel = async (order: any) => {
     const settingsRaw = localStorage.getItem('app_settings');
     const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
     const storeName = settings.storeName || settings.store || 'Store';
@@ -588,7 +608,8 @@ const OnlineOrders: React.FC = () => {
 
     const paymentType = (order.payment_method || '').toString().toLowerCase() === 'cod' ? 'COD' : 'Prepaid';
     const barcodeValue = String(order.billNumber || `#${order.id}`).trim();
-    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize);
+    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize, false);
+    const qrCodeDataUrl = await QRCode.toDataURL(barcodeValue, { margin: 1, width: 120 });
 
     const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
     const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
@@ -596,58 +617,506 @@ const OnlineOrders: React.FC = () => {
     const html = `
       <html>
         <head>
-          <title>Shipping Label - ${escapeHtml(order.billNumber || order.id)}</title>
+          <title>Shipping Label - ${escapeHtml(barcodeValue)}</title>
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
             @page { size: ${size.width} ${size.height}; margin: 0; }
-            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             * { box-sizing: border-box; }
-            .label { width: 100%; height: 100%; box-sizing: border-box; border: 1.5px solid #111; padding: ${layout.padding}; display: flex; flex-direction: column; gap: ${layout.gap}; overflow: hidden; background: #fff; }
-            .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #111; padding-bottom: 4px; }
-            .brand { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-            .brand-name { margin: 0; font-size: ${layout.headingSize}; line-height: 1; font-weight: 700; letter-spacing: 0.03em; color: #111; text-transform: uppercase; }
-            .brand-subtitle { margin: 0; font-size: calc(${layout.metaSize} + 1px); line-height: 1.1; color: #555; }
-            .label-id { margin: 0; font-size: ${layout.metaSize}; line-height: 1.1; font-weight: 700; color: #111; text-align: right; }
-            .section { display: flex; flex-direction: column; gap: 1px; }
-            .section h3 { margin: 0; font-size: calc(${layout.headingSize} + 1px); line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; color: #111; }
-            .section.from { flex: 0 0 auto; }
-            .section.to { flex: 1 1 auto; justify-content: center; }
-            .address-box { border: 1px solid #222; border-radius: 4px; padding: 4px 5px; background: #fafafa; }
-            .pre { white-space: pre-line; font-size: calc(${layout.bodySize} + 1px); line-height: ${layout.lineHeight}; font-weight: 600; color: #111; }
-            .from .pre { font-size: calc(${layout.bodySize} + 2px); }
-            .to .pre { font-size: calc(${layout.bodySize} + 3px); line-height: 1.14; }
-            .barcode-wrap { margin-top: 2px; display: flex; justify-content: center; align-items: center; }
-            .barcode-wrap svg { display: block; margin: 0 auto; width: auto; max-width: 80%; height: auto; }
-            .meta { margin-top: auto; font-size: ${layout.metaSize}; color: #111; line-height: 1.25; border-top: 1px solid #111; padding-top: 4px; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
-            .meta span { white-space: nowrap; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', Arial, sans-serif; background: #fff; color: #000; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 10px; display: flex; align-items: center; justify-content: center; }
+            
+            .label-container { width: 100%; height: 100%; border: 3px solid #000; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+            
+            /* Grid Rows */
+            .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+            .row:last-child { border-bottom: none; }
+            
+            /* Two Column Rows */
+            .col-50 { width: 50%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; gap: 2px; justify-content: flex-start; }
+            .col-50:last-child { border-right: none; }
+            
+            /* Header Row */
+            .row-header { align-items: stretch; }
+            .col-logo { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
+            .logo-icon { width: calc(${layout.headingSize} * 2.2); height: calc(${layout.headingSize} * 2.2); color: #000; }
+            .logo-text { font-size: calc(${layout.metaSize} - 1.5px); font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+            .col-title { width: 66.666%; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; font-size: calc(${layout.headingSize} + 4px); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+            
+            /* Labels & Contents */
+            .lbl { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+            .val-bold { font-size: ${layout.bodySize}; font-weight: 800; text-transform: uppercase; line-height: ${layout.lineHeight}; }
+            .val-text { font-size: calc(${layout.bodySize} - 0.5px); font-weight: 500; line-height: ${layout.lineHeight}; white-space: pre-line; }
+            
+            /* QR & Order Info Row */
+            .col-qr { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; }
+            .qr-code { width: calc(${layout.bodySize} * 5.2); height: calc(${layout.bodySize} * 5.2); display: block; max-width: 100%; height: auto; }
+            .col-order-info { width: 66.666%; padding: ${layout.padding}; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+            .order-info-item { display: flex; flex-direction: column; }
+            
+            /* Barcode Row */
+            .row-barcode { flex-direction: column; align-items: center; justify-content: center; padding: ${layout.padding}; text-align: center; gap: 4px; border-bottom: 2px solid #000; }
+            .barcode-title { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+            .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+            .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+            .barcode-text { font-size: calc(${layout.bodySize} + 1px); font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+            
+            /* Payment & Amount Row */
+            .payment-big { font-size: calc(${layout.headingSize} * 1.8); font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+            
+            /* Footer Row */
+            .row-footer { padding: 4px; justify-content: center; align-items: center; text-align: center; font-size: calc(${layout.metaSize} - 1.5px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafb; }
           </style>
         </head>
         <body>
-          <div class="label">
-            <div class="header">
-              <div class="brand">
-                <div class="brand-name">Shipping Label</div>
-                <div class="brand-subtitle">Auto-generated for dispatch</div>
+          <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+              <div class="col-logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <div class="logo-text">${escapeHtml(storeName)}</div>
               </div>
-              <div class="label-id">${escapeHtml(order.billNumber || order.id)}</div>
+              <div class="col-title">Shipping Label</div>
             </div>
-            <div class="section from">
-              <h3>From</h3>
-              <div class="address-box">
-                <div class="pre">${escapeHtml(storeName)}\n${escapeHtml(storeAddress)}\n${escapeHtml(storePhone)}</div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">From:</span>
+                <span class="val-bold">${escapeHtml(storeName)}</span>
+                <span class="val-text">${escapeHtml(storeAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(storePhone)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">To:</span>
+                <span class="val-bold">${escapeHtml(customerName)}</span>
+                <span class="val-text">${escapeHtml(customerAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(customerPhone)}</span>
               </div>
             </div>
-            <div class="section to">
-              <h3>To</h3>
-              <div class="address-box">
-                <div class="pre">${escapeHtml(customerName)}\n${escapeHtml(customerAddress)}\nMob: ${escapeHtml(customerPhone)}</div>
+            
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Shipping Partner:</span>
+                <span class="val-bold">Local POS Delivery</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Shipping Date:</span>
+                <span class="val-bold">${formatDate(new Date())}</span>
               </div>
             </div>
-            <div class="barcode-wrap">${barcodeSvg}</div>
-            <div class="meta">
-              <span>Order ID: ${escapeHtml(order.billNumber || order.id)}</span>
-              <span>${new Date(order.created_at || order.createdAt).toLocaleString()}</span>
-              <span>${escapeHtml(paymentType)}</span>
+            
+            <!-- Row 4: QR & Order Details -->
+            <div class="row">
+              <div class="col-qr">
+                <img class="qr-code" src="${qrCodeDataUrl}" alt="QR" />
+              </div>
+              <div class="col-order-info">
+                <div class="order-info-item">
+                  <span class="lbl">Order Date:</span>
+                  <span class="val-bold">${formatDate(order.created_at || order.createdAt)}</span>
+                </div>
+                <div class="order-info-item">
+                  <span class="lbl">Order ID:</span>
+                  <span class="val-bold">${escapeHtml(barcodeValue)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+              <span class="barcode-title">Local Invoice Barcode:</span>
+              <div class="barcode-svg-wrap">${barcodeSvg}</div>
+              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Payment Type:</span>
+                <span class="payment-big">${escapeHtml(paymentType)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">${paymentType === 'COD' ? 'COD Amount:' : 'Prepaid Amount:'}</span>
+                <span class="payment-big">₹${parseFloat(order.final_amount).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+              LOCAL OUTLET DELIVERY / SERVICE: STANDARD
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 300);
+  };
+
+  const handlePrintLocalDtdcLabel = async (order: any) => {
+    const settingsRaw = localStorage.getItem('app_settings');
+    const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+    const storeName = settings.storeName || settings.store || 'Store';
+    const storeAddress = settings.address || '';
+    const storePhone = settings.phone || '';
+
+    const customerName = order.customer?.name || 'Customer';
+    const customerAddress = order.customer?.shipping_address || order.customer?.address || '';
+    const customerPhone = order.customer?.phone || '';
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    function escapeHtml(s: any) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const paymentType = (order.payment_method || '').toString().toLowerCase() === 'cod' ? 'COD' : 'Prepaid';
+    const rawTracking = order.tracking_info || '';
+    const awbNumber = rawTracking.includes('AWB:') ? rawTracking.split('AWB:')[1]?.trim() : rawTracking;
+    const barcodeValue = awbNumber || `D${String(order.id).padStart(8, '0')}`;
+    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize, false);
+    const qrCodeDataUrl = await QRCode.toDataURL(barcodeValue, { margin: 1, width: 120 });
+
+    const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
+    const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
+
+    const html = `
+      <html>
+        <head>
+          <title>DTDC Shipping Label - ${escapeHtml(barcodeValue)}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+            @page { size: ${size.width} ${size.height}; margin: 0; }
+            * { box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', Arial, sans-serif; background: #fff; color: #000; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 10px; display: flex; align-items: center; justify-content: center; }
+            
+            .label-container { width: 100%; height: 100%; border: 3px solid #000; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+            
+            /* Grid Rows */
+            .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+            .row:last-child { border-bottom: none; }
+            
+            /* Two Column Rows */
+            .col-50 { width: 50%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; gap: 2px; justify-content: flex-start; }
+            .col-50:last-child { border-right: none; }
+            
+            /* Header Row */
+            .row-header { align-items: stretch; }
+            .col-logo { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
+            .logo-icon { width: calc(${layout.headingSize} * 2.2); height: calc(${layout.headingSize} * 2.2); color: #000; }
+            .logo-text { font-size: calc(${layout.metaSize} - 1.5px); font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+            .col-title { width: 66.666%; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; font-size: calc(${layout.headingSize} + 4px); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+            
+            /* Labels & Contents */
+            .lbl { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+            .val-bold { font-size: ${layout.bodySize}; font-weight: 800; text-transform: uppercase; line-height: ${layout.lineHeight}; }
+            .val-text { font-size: calc(${layout.bodySize} - 0.5px); font-weight: 500; line-height: ${layout.lineHeight}; white-space: pre-line; }
+            
+            /* QR & Order Info Row */
+            .col-qr { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; }
+            .qr-code { width: calc(${layout.bodySize} * 5.2); height: calc(${layout.bodySize} * 5.2); display: block; max-width: 100%; height: auto; }
+            .col-order-info { width: 66.666%; padding: ${layout.padding}; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+            .order-info-item { display: flex; flex-direction: column; }
+            
+            /* Barcode Row */
+            .row-barcode { flex-direction: column; align-items: center; justify-content: center; padding: ${layout.padding}; text-align: center; gap: 4px; border-bottom: 2px solid #000; }
+            .barcode-title { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+            .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+            .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+            .barcode-text { font-size: calc(${layout.bodySize} + 1px); font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+            
+            /* Payment & Amount Row */
+            .payment-big { font-size: calc(${layout.headingSize} * 1.8); font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+            
+            /* Footer Row */
+            .row-footer { padding: 4px; justify-content: center; align-items: center; text-align: center; font-size: calc(${layout.metaSize} - 1.5px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafb; }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+              <div class="col-logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13"></path>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <div class="logo-text">DTDC Express</div>
+              </div>
+              <div class="col-title">Shipping Label</div>
+            </div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">From:</span>
+                <span class="val-bold">${escapeHtml(storeName)}</span>
+                <span class="val-text">${escapeHtml(storeAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(storePhone)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">To:</span>
+                <span class="val-bold">${escapeHtml(customerName)}</span>
+                <span class="val-text">${escapeHtml(customerAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(customerPhone)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Shipping Partner:</span>
+                <span class="val-bold">DTDC Express</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Shipping Date:</span>
+                <span class="val-bold">${formatDate(new Date())}</span>
+              </div>
+            </div>
+            
+            <!-- Row 4: QR & Order Details -->
+            <div class="row">
+              <div class="col-qr">
+                <img class="qr-code" src="${qrCodeDataUrl}" alt="QR" />
+              </div>
+              <div class="col-order-info">
+                <div class="order-info-item">
+                  <span class="lbl">Order Date:</span>
+                  <span class="val-bold">${formatDate(order.created_at || order.createdAt)}</span>
+                </div>
+                <div class="order-info-item">
+                  <span class="lbl">Order ID:</span>
+                  <span class="val-bold">${escapeHtml(order.billNumber || `#${order.id}`)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+              <span class="barcode-title">Shipping Tracking Number:</span>
+              <div class="barcode-svg-wrap">${barcodeSvg}</div>
+              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Payment Type:</span>
+                <span class="payment-big">${escapeHtml(paymentType)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">${paymentType === 'COD' ? 'COD Amount:' : 'Prepaid Amount:'}</span>
+                <span class="payment-big">₹${parseFloat(order.final_amount).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+              DTDC COURIER CARRIER / SERVICE: EXPRESS RESIDENTIAL
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 300);
+  };
+
+  const handlePrintLocalCustomDtdcLabel = async (cust: any) => {
+    const settingsRaw = localStorage.getItem('app_settings');
+    const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+    const storeName = settings.storeName || settings.store || 'Store';
+    const storeAddress = settings.address || '';
+    const storePhone = settings.phone || '';
+
+    const customerName = cust.user_name || 'Customer';
+    const customerAddress = cust.shipping_address || '';
+    const customerPhone = cust.user_phone || '';
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    function escapeHtml(s: any) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    const paymentType = 'Prepaid';
+    const rawTracking = cust.tracking_info || '';
+    const awbNumber = rawTracking.includes('AWB:') ? rawTracking.split('AWB:')[1]?.trim() : rawTracking;
+    const barcodeValue = awbNumber || `CUST-D${String(cust.id).padStart(6, '0')}`;
+    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize, false);
+    const qrCodeDataUrl = await QRCode.toDataURL(barcodeValue, { margin: 1, width: 120 });
+
+    const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
+    const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
+
+    const prodPrice = cust.product?.price || 0.0;
+    const finalAmount = prodPrice * cust.quantity;
+
+    const html = `
+      <html>
+        <head>
+          <title>DTDC Custom Shipping Label - ${escapeHtml(barcodeValue)}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+            @page { size: ${size.width} ${size.height}; margin: 0; }
+            * { box-sizing: border-box; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', Arial, sans-serif; background: #fff; color: #000; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 10px; display: flex; align-items: center; justify-content: center; }
+            
+            .label-container { width: 100%; height: 100%; border: 3px solid #000; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+            
+            /* Grid Rows */
+            .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+            .row:last-child { border-bottom: none; }
+            
+            /* Two Column Rows */
+            .col-50 { width: 50%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; gap: 2px; justify-content: flex-start; }
+            .col-50:last-child { border-right: none; }
+            
+            /* Header Row */
+            .row-header { align-items: stretch; }
+            .col-logo { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
+            .logo-icon { width: calc(${layout.headingSize} * 2.2); height: calc(${layout.headingSize} * 2.2); color: #000; }
+            .logo-text { font-size: calc(${layout.metaSize} - 1.5px); font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+            .col-title { width: 66.666%; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; font-size: calc(${layout.headingSize} + 4px); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+            
+            /* Labels & Contents */
+            .lbl { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+            .val-bold { font-size: ${layout.bodySize}; font-weight: 800; text-transform: uppercase; line-height: ${layout.lineHeight}; }
+            .val-text { font-size: calc(${layout.bodySize} - 0.5px); font-weight: 500; line-height: ${layout.lineHeight}; white-space: pre-line; }
+            
+            /* QR & Order Info Row */
+            .col-qr { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; }
+            .qr-code { width: calc(${layout.bodySize} * 5.2); height: calc(${layout.bodySize} * 5.2); display: block; max-width: 100%; height: auto; }
+            .col-order-info { width: 66.666%; padding: ${layout.padding}; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+            .order-info-item { display: flex; flex-direction: column; }
+            
+            /* Barcode Row */
+            .row-barcode { flex-direction: column; align-items: center; justify-content: center; padding: ${layout.padding}; text-align: center; gap: 4px; border-bottom: 2px solid #000; }
+            .barcode-title { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+            .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+            .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+            .barcode-text { font-size: calc(${layout.bodySize} + 1px); font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+            
+            /* Payment & Amount Row */
+            .payment-big { font-size: calc(${layout.headingSize} * 1.8); font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+            
+            /* Footer Row */
+            .row-footer { padding: 4px; justify-content: center; align-items: center; text-align: center; font-size: calc(${layout.metaSize} - 1.5px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafb; }
+          </style>
+        </head>
+        <body>
+          <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+              <div class="col-logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13"></path>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <div class="logo-text">DTDC Custom</div>
+              </div>
+              <div class="col-title">Shipping Label</div>
+            </div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">From:</span>
+                <span class="val-bold">${escapeHtml(storeName)}</span>
+                <span class="val-text">${escapeHtml(storeAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(storePhone)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">To:</span>
+                <span class="val-bold">${escapeHtml(customerName)}</span>
+                <span class="val-text">${escapeHtml(customerAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(customerPhone)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Shipping Partner:</span>
+                <span class="val-bold">DTDC Express</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Shipping Date:</span>
+                <span class="val-bold">${formatDate(new Date())}</span>
+              </div>
+            </div>
+            
+            <!-- Row 4: QR & Custom Order Info -->
+            <div class="row">
+              <div class="col-qr">
+                <img class="qr-code" src="${qrCodeDataUrl}" alt="QR" />
+              </div>
+              <div class="col-order-info">
+                <div class="order-info-item">
+                  <span class="lbl">Order Date:</span>
+                  <span class="val-bold">${formatDate(cust.created_at || cust.createdAt)}</span>
+                </div>
+                <div class="order-info-item">
+                  <span class="lbl">Order ID:</span>
+                  <span class="val-bold">#CUST-${String(cust.id).padStart(6, '0')}</span>
+                </div>
+                <div class="order-info-item" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 2px;">
+                  <span class="lbl">Specs:</span>
+                  <span class="val-text" style="font-size: 8px;"><strong>${escapeHtml(cust.product_name)}</strong> (Qty: ${cust.quantity})<br/>Color: ${escapeHtml(cust.selected_color_name)}<br/>Notes: ${escapeHtml(cust.customization_notes || 'None')}</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+              <span class="barcode-title">Shipping Tracking Number:</span>
+              <div class="barcode-svg-wrap">${barcodeSvg}</div>
+              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Payment Type:</span>
+                <span class="payment-big">${escapeHtml(paymentType)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Prepaid Amount:</span>
+                <span class="payment-big">₹${parseFloat(finalAmount.toString()).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+              DTDC CUSTOM COURIER / SERVICE: SPECIAL HANDCRAFTED
             </div>
           </div>
         </body>
@@ -688,7 +1157,7 @@ const OnlineOrders: React.FC = () => {
     });
   }, [webCustomizations]);
 
-  const handlePrintLocalCustomLabel = (cust: any) => {
+  const handlePrintLocalCustomLabel = async (cust: any) => {
     const settingsRaw = localStorage.getItem('app_settings');
     const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
     const storeName = settings.storeName || settings.store || 'Store';
@@ -712,73 +1181,157 @@ const OnlineOrders: React.FC = () => {
         .replace(/'/g, '&#39;');
     }
 
+    const paymentType = 'Prepaid';
     const barcodeValue = `CUST-${String(cust.id).padStart(6, '0')}`;
-    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize);
+    const barcodeSvg = buildBarcodeSvg(barcodeValue, labelSize, false);
+    const qrCodeDataUrl = await QRCode.toDataURL(barcodeValue, { margin: 1, width: 120 });
 
     const size = LABEL_DIMENSIONS[labelSize] || LABEL_DIMENSIONS['4x6'];
     const layout = LABEL_LAYOUTS[labelSize] || LABEL_LAYOUTS['4x6'];
+
+    const prodPrice = cust.product?.price || 0.0;
+    const finalAmount = prodPrice * cust.quantity;
 
     const html = `
       <html>
         <head>
           <title>Custom Label - ${escapeHtml(barcodeValue)}</title>
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
             @page { size: ${size.width} ${size.height}; margin: 0; }
-            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: Arial, sans-serif; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             * { box-sizing: border-box; }
-            .label { width: 100%; height: 100%; box-sizing: border-box; border: 1.5px solid #111; padding: ${layout.padding}; display: flex; flex-direction: column; gap: ${layout.gap}; overflow: hidden; background: #fff; }
-            .header { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid #111; padding-bottom: 4px; }
-            .brand { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-            .brand-name { margin: 0; font-size: ${layout.headingSize}; line-height: 1; font-weight: 700; letter-spacing: 0.03em; color: #111; text-transform: uppercase; }
-            .brand-subtitle { margin: 0; font-size: calc(${layout.metaSize} - 1px); line-height: 1.1; color: #555; }
-            .label-id { margin: 0; font-size: ${layout.metaSize}; line-height: 1.1; font-weight: 700; color: #111; text-align: right; }
-            .section { display: flex; flex-direction: column; gap: 1px; }
-            .section h3 { margin: 0; font-size: calc(${layout.headingSize} - 1px); line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; color: #111; }
-            .address-box { border: 1px solid #222; border-radius: 4px; padding: 4px 5px; background: #fafafa; }
-            .pre { white-space: pre-line; font-size: calc(${layout.bodySize} - 1px); line-height: ${layout.lineHeight}; font-weight: 600; color: #111; }
-            .from .pre { font-size: calc(${layout.bodySize} - 2px); }
-            .to .pre { font-size: calc(${layout.bodySize} - 1px); line-height: 1.14; }
-            .custom-details { border: 1px dashed #7a4ea5; border-radius: 4px; padding: 4px; margin-top: 2px; font-size: calc(${layout.bodySize} - 1px); background: #fdfcff; color: #5c3580; }
-            .custom-title { font-weight: bold; text-transform: uppercase; font-size: calc(${layout.metaSize} - 1px); margin-bottom: 2px; }
-            .barcode-wrap { margin-top: 2px; display: flex; justify-content: center; align-items: center; }
-            .barcode-wrap svg { display: block; margin: 0 auto; width: auto; max-width: 80%; height: auto; }
-            .meta { margin-top: auto; font-size: ${layout.metaSize}; color: #111; line-height: 1.25; border-top: 1px solid #111; padding-top: 4px; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; }
-            .meta span { white-space: nowrap; }
+            html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Inter', Arial, sans-serif; background: #fff; color: #000; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 10px; display: flex; align-items: center; justify-content: center; }
+            
+            .label-container { width: 100%; height: 100%; border: 3px solid #000; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+            
+            /* Grid Rows */
+            .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+            .row:last-child { border-bottom: none; }
+            
+            /* Two Column Rows */
+            .col-50 { width: 50%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; gap: 2px; justify-content: flex-start; }
+            .col-50:last-child { border-right: none; }
+            
+            /* Header Row */
+            .row-header { align-items: stretch; }
+            .col-logo { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
+            .logo-icon { width: calc(${layout.headingSize} * 2.2); height: calc(${layout.headingSize} * 2.2); color: #000; }
+            .logo-text { font-size: calc(${layout.metaSize} - 1.5px); font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+            .col-title { width: 66.666%; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; font-size: calc(${layout.headingSize} + 4px); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; text-align: center; }
+            
+            /* Labels & Contents */
+            .lbl { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+            .val-bold { font-size: ${layout.bodySize}; font-weight: 800; text-transform: uppercase; line-height: ${layout.lineHeight}; }
+            .val-text { font-size: calc(${layout.bodySize} - 0.5px); font-weight: 500; line-height: ${layout.lineHeight}; white-space: pre-line; }
+            
+            /* QR & Order Info Row */
+            .col-qr { width: 33.333%; border-right: 2px solid #000; padding: ${layout.padding}; display: flex; align-items: center; justify-content: center; }
+            .qr-code { width: calc(${layout.bodySize} * 5.2); height: calc(${layout.bodySize} * 5.2); display: block; max-width: 100%; height: auto; }
+            .col-order-info { width: 66.666%; padding: ${layout.padding}; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+            .order-info-item { display: flex; flex-direction: column; }
+            
+            /* Barcode Row */
+            .row-barcode { flex-direction: column; align-items: center; justify-content: center; padding: ${layout.padding}; text-align: center; gap: 4px; border-bottom: 2px solid #000; }
+            .barcode-title { font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+            .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+            .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+            .barcode-text { font-size: calc(${layout.bodySize} + 1px); font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+            
+            /* Payment & Amount Row */
+            .payment-big { font-size: calc(${layout.headingSize} * 1.8); font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+            
+            /* Footer Row */
+            .row-footer { padding: 4px; justify-content: center; align-items: center; text-align: center; font-size: calc(${layout.metaSize} - 1.5px); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #fafafb; }
           </style>
         </head>
         <body>
-          <div class="label">
-            <div class="header">
-              <div class="brand">
-                <div class="brand-name">Custom Order</div>
-                <div class="brand-subtitle">Special Handcrafted Request</div>
+          <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+              <div class="col-logo">
+                <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="1" y="3" width="15" height="13"></rect>
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                  <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                  <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                </svg>
+                <div class="logo-text">${escapeHtml(storeName)}</div>
               </div>
-              <div class="label-id">${escapeHtml(barcodeValue)}</div>
+              <div class="col-title">Shipping Label</div>
             </div>
-            <div class="section from">
-              <h3>From</h3>
-              <div class="address-box">
-                <div class="pre">${escapeHtml(storeName)}\n${escapeHtml(storeAddress)}\n${escapeHtml(storePhone)}</div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">From:</span>
+                <span class="val-bold">${escapeHtml(storeName)}</span>
+                <span class="val-text">${escapeHtml(storeAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(storePhone)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">To:</span>
+                <span class="val-bold">${escapeHtml(customerName)}</span>
+                <span class="val-text">${escapeHtml(customerAddress)}</span>
+                <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: ${escapeHtml(customerPhone)}</span>
               </div>
             </div>
-            <div class="section to">
-              <h3>To</h3>
-              <div class="address-box">
-                <div class="pre">${escapeHtml(customerName)}\n${escapeHtml(customerAddress)}\nMob: ${escapeHtml(customerPhone)}</div>
+            
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Shipping Partner:</span>
+                <span class="val-bold">Local POS Delivery</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Shipping Date:</span>
+                <span class="val-bold">${formatDate(new Date())}</span>
               </div>
             </div>
-            <div class="custom-details">
-              <div class="custom-title">Customization Details</div>
-              <div><strong>Product:</strong> ${escapeHtml(cust.product_name)} (Qty: ${cust.quantity})</div>
-              <div><strong>Color:</strong> ${escapeHtml(cust.selected_color_name)} (${escapeHtml(cust.selected_color_hex)})</div>
-              <div><strong>Notes:</strong> ${escapeHtml(cust.customization_notes || 'None')}</div>
+            
+            <!-- Row 4: QR & Custom Order Info -->
+            <div class="row">
+              <div class="col-qr">
+                <img class="qr-code" src="${qrCodeDataUrl}" alt="QR" />
+              </div>
+              <div class="col-order-info">
+                <div class="order-info-item">
+                  <span class="lbl">Order Date:</span>
+                  <span class="val-bold">${formatDate(cust.created_at || cust.createdAt)}</span>
+                </div>
+                <div class="order-info-item">
+                  <span class="lbl">Order ID:</span>
+                  <span class="val-bold">#CUST-${String(cust.id).padStart(6, '0')}</span>
+                </div>
+                <div class="order-info-item" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 2px;">
+                  <span class="lbl">Specs:</span>
+                  <span class="val-text" style="font-size: 8px;"><strong>${escapeHtml(cust.product_name)}</strong> (Qty: ${cust.quantity})<br/>Color: ${escapeHtml(cust.selected_color_name)}<br/>Notes: ${escapeHtml(cust.customization_notes || 'None')}</span>
+                </div>
+              </div>
             </div>
-            <div class="barcode-wrap">${barcodeSvg}</div>
-            <div class="meta">
-              <span>Request ID: ${escapeHtml(barcodeValue)}</span>
-              <span>${new Date(cust.created_at).toLocaleString()}</span>
-              <span>PREPAID</span>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+              <span class="barcode-title">Local Custom Request Barcode:</span>
+              <div class="barcode-svg-wrap">${barcodeSvg}</div>
+              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+              <div class="col-50">
+                <span class="lbl">Payment Type:</span>
+                <span class="payment-big">${escapeHtml(paymentType)}</span>
+              </div>
+              <div class="col-50">
+                <span class="lbl">Prepaid Amount:</span>
+                <span class="val-big">₹${parseFloat(finalAmount.toString()).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+              LOCAL CUSTOM WORKSHOP / SERVICE: OUTLET PICKUP
             </div>
           </div>
         </body>
@@ -1024,7 +1577,7 @@ const OnlineOrders: React.FC = () => {
                                 </button>
                                 {cust.shipping_label_url && (
                                   <button
-                                    onClick={() => openLink(cust.shipping_label_url)}
+                                    onClick={() => handlePrintLocalCustomDtdcLabel(cust)}
                                     className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
                                   >
                                     <Printer className="h-3.5 w-3.5" /> Print DTDC Label
@@ -1211,7 +1764,7 @@ const OnlineOrders: React.FC = () => {
                                 </button>
                                 {order.shipping_label_url && (
                                   <button
-                                    onClick={() => openLink(order.shipping_label_url)}
+                                    onClick={() => handlePrintLocalDtdcLabel(order)}
                                     className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
                                   >
                                     <Printer className="h-3.5 w-3.5" /> Print DTDC Label
