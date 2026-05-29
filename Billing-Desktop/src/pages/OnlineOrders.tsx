@@ -147,7 +147,7 @@ const OnlineOrders: React.FC = () => {
   // Web Sync state
   const [webOrders, setWebOrders] = useState<any[]>([]);
   const [webCustomizations, setWebCustomizations] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'standard' | 'customization'>('standard');
+  const [activeTab, setActiveTab] = useState<'standard' | 'customization' | 'returns'>('standard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
@@ -1229,6 +1229,10 @@ const OnlineOrders: React.FC = () => {
     });
   }, [webCustomizations, dateFilter, startDate, endDate]);
 
+  const displayedReturns = useMemo(() => {
+    return displayedOrders.filter(order => order.return_request_status === 'Pending');
+  }, [displayedOrders]);
+
   const handlePrintLocalCustomLabel = async (cust: any) => {
     const settingsRaw = localStorage.getItem('app_settings');
     const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
@@ -1456,6 +1460,16 @@ const OnlineOrders: React.FC = () => {
               >
                 Customizations
               </button>
+              <button
+                onClick={() => setActiveTab('returns')}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-wide uppercase transition-all ${
+                  activeTab === 'returns'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Returns
+              </button>
             </div>
             {isConfigured && (
               <button 
@@ -1481,7 +1495,7 @@ const OnlineOrders: React.FC = () => {
               </select>
             </label>
             <span className="badge bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold rounded-full">
-              {activeTab === 'standard' ? displayedOrders.length : displayedCustomizations.length} {activeTab === 'standard' ? 'Orders' : 'Customizations'}
+              {activeTab === 'standard' ? displayedOrders.length : activeTab === 'customization' ? displayedCustomizations.length : displayedReturns.length} {activeTab === 'standard' ? 'Orders' : activeTab === 'customization' ? 'Customizations' : 'Returns'}
             </span>
           </div>
         </div>
@@ -1548,7 +1562,7 @@ const OnlineOrders: React.FC = () => {
           )}
         </div>
 
-        {activeTab === 'customization' ? (
+        {activeTab === 'customization' && (
           displayedCustomizations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Package className="h-16 w-16 text-slate-300 mb-4" />
@@ -1735,7 +1749,9 @@ const OnlineOrders: React.FC = () => {
               </table>
             </div>
           )
-        ) : (
+        )}
+
+        {activeTab === 'standard' && (
           displayedOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Package className="h-16 w-16 text-slate-300 mb-4" />
@@ -1956,6 +1972,136 @@ const OnlineOrders: React.FC = () => {
                               Return {order.return_request_status}
                             </div>
                           )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+
+        {activeTab === 'returns' && (
+          displayedReturns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Package className="h-16 w-16 text-slate-300 mb-4" />
+              <h3 className="text-xl font-medium text-slate-900">No return requests found</h3>
+              <p className="text-slate-500 max-w-md mt-2">
+                All customer return requests from your website will appear here for you to approve or reject.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white/80 shadow-soft">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50/80">
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Order ID</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Date</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Buyer</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Returned Products</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Return Reason</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Proof Image</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Refund Value</th>
+                    <th className="px-4 py-4 text-left font-semibold text-slate-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedReturns.map((order) => {
+                    const displayOrderNumber = getDisplayOrderNumber(order);
+
+                    return (
+                      <tr key={order.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-4 font-bold text-indigo-950">
+                          {displayOrderNumber}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-slate-600">
+                          {new Date(order.created_at || order.createdAt).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="font-semibold text-slate-900">{order.customer?.name || 'Online Customer'}</div>
+                          <div className="text-xs text-slate-500">{order.customer?.phone || order.customer?.email}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="space-y-3 my-1">
+                            {order.items?.map((item: any) => {
+                              const imageUrl = item.product_image || item.productImage;
+                              return (
+                                <div key={item.id} className="flex items-center gap-3">
+                                  {imageUrl ? (
+                                    <img 
+                                      src={imageUrl} 
+                                      alt={item.product_name} 
+                                      className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
+                                    />
+                                  ) : (
+                                    <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-400 shrink-0 font-bold text-[10px]">
+                                      N/A
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-slate-900 text-sm truncate max-w-[180px]" title={item.product_name}>
+                                      {item.product_name}
+                                    </div>
+                                    <div className="text-xs text-slate-500">
+                                      Qty: {item.quantity} • ₹{item.price}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-xs">
+                          {order.return_reason ? (
+                            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-100 p-2 rounded-lg max-w-[220px] whitespace-pre-wrap">
+                              {order.return_reason}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No reason provided</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          {order.return_image_url ? (
+                            <div className="flex flex-col gap-1.5 items-start">
+                              <img 
+                                src={order.return_image_url} 
+                                alt="Proof" 
+                                className="h-10 w-10 rounded-lg object-cover border border-slate-200 hover:scale-105 transition-transform cursor-pointer shadow-sm" 
+                                onClick={() => openLink(order.return_image_url)}
+                                title="Click to view full image"
+                              />
+                              <button
+                                onClick={() => openLink(order.return_image_url)}
+                                className="text-[10px] text-indigo-600 hover:underline bg-transparent border-none p-0 cursor-pointer text-left font-semibold"
+                              >
+                                View Proof
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No Image</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="font-bold text-slate-900">₹{parseFloat(order.final_amount).toFixed(2)}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-1.5 min-w-[120px] align-right items-stretch">
+                            <button
+                              onClick={() => handleResolveReturn(order.id, 'Approved')}
+                              disabled={updatingId === order.id}
+                              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                            >
+                              <Check className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleResolveReturn(order.id, 'Rejected')}
+                              disabled={updatingId === order.id}
+                              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
+                            >
+                              <X className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
