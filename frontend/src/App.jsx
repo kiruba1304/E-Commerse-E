@@ -755,17 +755,29 @@ export default function App() {
   const [adminOrderSearch, setAdminOrderSearch] = useState("");
   const [adminReturnsCollapsed, setAdminReturnsCollapsed] = useState(false);
   const [adminOrdersCollapsed, setAdminOrdersCollapsed] = useState(false);
+  const [adminDateFilter, setAdminDateFilter] = useState("all");
 
   const filteredAdminOrders = adminOrders.filter(o => {
     if (!o.created_at) return true;
     const orderDate = new Date(o.created_at);
-    if (adminStartDate) {
-      const start = new Date(adminStartDate + 'T00:00:00');
-      if (orderDate < start) return false;
-    }
-    if (adminEndDate) {
-      const end = new Date(adminEndDate + 'T23:59:59');
-      if (orderDate > end) return false;
+    
+    // Quick Date Filters
+    const now = new Date();
+    if (adminDateFilter === 'today') {
+      if (orderDate.toDateString() !== now.toDateString()) return false;
+    } else if (adminDateFilter === 'month') {
+      if (orderDate.getMonth() !== now.getMonth() || orderDate.getFullYear() !== now.getFullYear()) return false;
+    } else if (adminDateFilter === 'year') {
+      if (orderDate.getFullYear() !== now.getFullYear()) return false;
+    } else if (adminDateFilter === 'custom') {
+      if (adminStartDate) {
+        const start = new Date(adminStartDate + 'T00:00:00');
+        if (orderDate < start) return false;
+      }
+      if (adminEndDate) {
+        const end = new Date(adminEndDate + 'T23:59:59');
+        if (orderDate > end) return false;
+      }
     }
     if (adminOrderSearch) {
       const query = adminOrderSearch.toLowerCase();
@@ -8757,43 +8769,70 @@ export default function App() {
                           </div>
 
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
-                            <input 
-                              type="date" 
-                              value={adminStartDate} 
-                              onChange={(e) => setAdminStartDate(e.target.value)} 
-                              style={{ 
-                                padding: '8px 12px', 
-                                borderRadius: '6px', 
-                                border: '1px solid rgba(154, 132, 200, 0.3)', 
+                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Date Filter</label>
+                            <select
+                              value={adminDateFilter}
+                              onChange={(e) => setAdminDateFilter(e.target.value)}
+                              style={{
+                                padding: '8px 12px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(154, 132, 200, 0.3)',
                                 background: 'rgba(255, 255, 255, 0.8)',
                                 color: 'var(--text-main)',
                                 fontSize: '0.8rem',
                                 outline: 'none'
-                              }} 
-                            />
+                              }}
+                            >
+                              <option value="all">All Dates</option>
+                              <option value="today">Today</option>
+                              <option value="month">This Month</option>
+                              <option value="year">This Year</option>
+                              <option value="custom">Custom Range</option>
+                            </select>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
-                            <input 
-                              type="date" 
-                              value={adminEndDate} 
-                              onChange={(e) => setAdminEndDate(e.target.value)} 
-                              style={{ 
-                                padding: '8px 12px', 
-                                borderRadius: '6px', 
-                                border: '1px solid rgba(154, 132, 200, 0.3)', 
-                                background: 'rgba(255, 255, 255, 0.8)',
-                                color: 'var(--text-main)',
-                                fontSize: '0.8rem',
-                                outline: 'none'
-                              }} 
-                            />
-                          </div>
+
+                          {adminDateFilter === 'custom' && (
+                            <>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
+                                <input 
+                                  type="date" 
+                                  value={adminStartDate} 
+                                  onChange={(e) => setAdminStartDate(e.target.value)} 
+                                  style={{ 
+                                    padding: '8px 12px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                    background: 'rgba(255, 255, 255, 0.8)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.8rem',
+                                    outline: 'none'
+                                  }} 
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
+                                <input 
+                                  type="date" 
+                                  value={adminEndDate} 
+                                  onChange={(e) => setAdminEndDate(e.target.value)} 
+                                  style={{ 
+                                    padding: '8px 12px', 
+                                    borderRadius: '6px', 
+                                    border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                    background: 'rgba(255, 255, 255, 0.8)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '0.8rem',
+                                    outline: 'none'
+                                  }} 
+                                />
+                              </div>
+                            </>
+                          )}
                           
-                          {(adminStartDate || adminEndDate || adminOrderSearch) && (
+                          {(adminStartDate || adminEndDate || adminOrderSearch || adminDateFilter !== "all") && (
                             <button 
-                              onClick={() => { setAdminStartDate(''); setAdminEndDate(''); setAdminOrderSearch(''); }} 
+                              onClick={() => { setAdminStartDate(''); setAdminEndDate(''); setAdminOrderSearch(''); setAdminDateFilter('all'); }} 
                               className="btn-secondary" 
                               style={{ padding: '8px 12px', fontSize: '0.75rem', height: '36px' }}
                             >

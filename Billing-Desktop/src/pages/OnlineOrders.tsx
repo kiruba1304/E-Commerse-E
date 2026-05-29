@@ -152,6 +152,9 @@ const OnlineOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'month' | 'year' | 'custom'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Modal states for prompts
   const [modalOpen, setModalOpen] = useState(false);
@@ -560,6 +563,36 @@ const OnlineOrders: React.FC = () => {
       });
     }
 
+    // Apply Date Filter
+    list = list.filter(order => {
+      const orderDate = new Date(order.created_at || order.createdAt);
+      if (isNaN(orderDate.getTime())) return true;
+      
+      const now = new Date();
+      if (dateFilter === 'today') {
+        return orderDate.toDateString() === now.toDateString();
+      }
+      if (dateFilter === 'month') {
+        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'year') {
+        return orderDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'custom') {
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        if (start) {
+          start.setHours(0, 0, 0, 0);
+          if (orderDate < start) return false;
+        }
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          if (orderDate > end) return false;
+        }
+      }
+      return true;
+    });
+
     const getStatusPriority = (status: string) => {
       const s = String(status || '').trim();
       if (s === 'Pending') return 1;
@@ -586,7 +619,7 @@ const OnlineOrders: React.FC = () => {
       const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [isConfigured, error, webOrders, onlineOrders, customers]);
+  }, [isConfigured, error, webOrders, onlineOrders, customers, dateFilter, startDate, endDate]);
 
   // Local printer label routine (reused)
   const handlePrintLocalLabel = async (order: any) => {
@@ -1147,7 +1180,39 @@ const OnlineOrders: React.FC = () => {
       return 6;
     };
 
-    return [...webCustomizations].sort((a, b) => {
+    let list = [...webCustomizations];
+
+    // Apply Date Filter
+    list = list.filter(cust => {
+      const custDate = new Date(cust.created_at || cust.createdAt);
+      if (isNaN(custDate.getTime())) return true;
+      
+      const now = new Date();
+      if (dateFilter === 'today') {
+        return custDate.toDateString() === now.toDateString();
+      }
+      if (dateFilter === 'month') {
+        return custDate.getMonth() === now.getMonth() && custDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'year') {
+        return custDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'custom') {
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        if (start) {
+          start.setHours(0, 0, 0, 0);
+          if (custDate < start) return false;
+        }
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          if (custDate > end) return false;
+        }
+      }
+      return true;
+    });
+
+    return list.sort((a, b) => {
       const pA = getStatusPriority(a.status);
       const pB = getStatusPriority(b.status);
       
@@ -1162,7 +1227,7 @@ const OnlineOrders: React.FC = () => {
       const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [webCustomizations]);
+  }, [webCustomizations, dateFilter, startDate, endDate]);
 
   const handlePrintLocalCustomLabel = async (cust: any) => {
     const settingsRaw = localStorage.getItem('app_settings');
@@ -1438,6 +1503,50 @@ const OnlineOrders: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Date Filter Toolbar */}
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Filter By Date:</span>
+            {[
+              { value: 'all', label: 'All Orders' },
+              { value: 'today', label: 'Today' },
+              { value: 'month', label: 'This Month' },
+              { value: 'year', label: 'This Year' },
+              { value: 'custom', label: 'Custom Range' }
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setDateFilter(opt.value as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  dateFilter === opt.value
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none shadow-sm"
+              />
+              <span className="text-slate-400 text-xs">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-500 focus:outline-none shadow-sm"
+              />
+            </div>
+          )}
+        </div>
 
         {activeTab === 'customization' ? (
           displayedCustomizations.length === 0 ? (
