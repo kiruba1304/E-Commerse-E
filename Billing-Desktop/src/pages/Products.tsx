@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { read, utils, writeFile } from 'xlsx';
 import { Product } from '../types';
-import { useProducts } from '../hooks/useDatabase';
+import { useProducts, useCategories } from '../hooks/useDatabase';
 
 
 const getGlobalGstSetting = (): number => {
@@ -35,6 +35,7 @@ const getGlobalGstSetting = (): number => {
 
 const Products: React.FC = () => {
   const { products, loading, error, addProduct, updateProduct, deleteProduct, refreshProducts } = useProducts();
+  const { categories } = useCategories();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -76,7 +77,8 @@ const Products: React.FC = () => {
     costPrice: '' as string | number,
     sellingPrice: '' as string | number,
     discount: '' as string | number,
-    barcode: ''
+    barcode: '',
+    categoryName: ''
   });
 
   // Calculate final price whenever relevant fields change
@@ -137,6 +139,7 @@ const Products: React.FC = () => {
         gst: activeGst,
         barcode: formData.barcode,
         finalPrice,
+        categoryName: formData.categoryName
       };
 
       if (editingProduct) {
@@ -164,7 +167,8 @@ const Products: React.FC = () => {
       costPrice: '',
       sellingPrice: '',
       discount: '',
-      barcode: ''
+      barcode: '',
+      categoryName: ''
     });
     setShowAddForm(false);
     setEditingProduct(null);
@@ -181,7 +185,8 @@ const Products: React.FC = () => {
       costPrice: product.costPrice,
       sellingPrice: product.sellingPrice,
       discount: product.discount,
-      barcode: product.barcode
+      barcode: product.barcode,
+      categoryName: product.categoryName || ''
     });
     setEditingProduct(product);
     setShowAddForm(true);
@@ -652,6 +657,24 @@ const Products: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={formData.categoryName}
+                      onChange={(e) => handleInputChange('categoryName', e.target.value)}
+                      className="input w-full"
+                    >
+                      <option value="">Select Category...</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Stock Count
                     </label>
                     <input
@@ -908,6 +931,7 @@ const Products: React.FC = () => {
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">SKU Code</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">HSN Code</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Company</th>
+                  <th className="px-5 py-4 text-left font-semibold text-slate-700">Category</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Stock</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Cost Price</th>
                   <th className="px-5 py-4 text-left font-semibold text-slate-700">Selling Price</th>
@@ -928,6 +952,11 @@ const Products: React.FC = () => {
                     <td className="px-5 py-4 text-slate-700">{product.skuCode || product.productCode || '-'}</td>
                     <td className="px-5 py-4 text-slate-700">{product.hsnCode || '-'}</td>
                     <td className="px-5 py-4 text-slate-700">{product.company}</td>
+                    <td className="px-5 py-4 text-slate-700">
+                      <span className="rounded-full bg-blue-50 border border-blue-200 px-3 py-1 text-xs text-blue-700 font-medium">
+                        {(!product.categoryName || product.categoryName === 'POS Imported') ? 'Uncategorized' : product.categoryName}
+                      </span>
+                    </td>
                     <td className="px-5 py-4">
                       <span className={`badge ${product.count > 10
                         ? 'bg-green-100 text-green-800'

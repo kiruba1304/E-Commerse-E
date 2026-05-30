@@ -55,6 +55,45 @@ export const useECommerceIntegration = () => {
       await sendHeartbeat();
 
       // -------------------------------------------------------------
+      // 0. SYNC CATEGORIES (BIDIRECTIONAL)
+      // -------------------------------------------------------------
+      const localCategories = db.getCategories();
+      const categorySyncRes = await fetch(`${apiUrl}/billing/sync/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          categories: localCategories
+        })
+      });
+
+      if (categorySyncRes.ok) {
+        const catData = await categorySyncRes.json();
+        const webCategories = catData.categories || [];
+
+        for (const wc of webCategories) {
+          const localCat = localCategories.find(
+            lc => lc.name.toLowerCase() === wc.name.toLowerCase()
+          );
+
+          if (localCat) {
+            db.updateCategory(localCat.id, {
+              description: wc.description || '',
+              customizationEnabled: wc.customization_enabled || false,
+              returnWindowDays: wc.return_window_days
+            });
+          } else {
+            db.createCategory({
+              name: wc.name,
+              description: wc.description || '',
+              customizationEnabled: wc.customization_enabled || false,
+              returnWindowDays: wc.return_window_days
+            });
+          }
+        }
+      }
+
+      // -------------------------------------------------------------
       // 1. SYNC PRODUCTS (BIDIRECTIONAL)
       // -------------------------------------------------------------
       const localProducts = db.getProducts();
@@ -78,14 +117,15 @@ export const useECommerceIntegration = () => {
           );
 
           if (localProd) {
-            // Update local product: stock count, price, name, classification code, images
+            // Update local product: stock count, price, name, classification code, images, category
             db.updateProduct(localProd.id, {
               count: wp.stock,
               sellingPrice: wp.price,
               name: wp.name,
               skuCode: wp.sku_code,
               hsnCode: wp.hsc_code,
-              images: wp.images || []
+              images: wp.images || [],
+              categoryName: wp.category_name || ''
             });
           } else {
             // Create product locally since it does not exist
@@ -102,7 +142,8 @@ export const useECommerceIntegration = () => {
               gst: settings.gstPercentage || 18,
               barcode: wp.barcode || `BC-${Date.now()}-${Math.floor(Math.random() * 100)}`,
               finalPrice: wp.price,
-              images: wp.images || []
+              images: wp.images || [],
+              categoryName: wp.category_name || ''
             });
           }
         }

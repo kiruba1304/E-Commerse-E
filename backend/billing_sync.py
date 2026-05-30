@@ -94,6 +94,17 @@ def sync_products():
         cost_price = float(p_in.get('costPrice') or 0.0)
         stock = int(p_in.get('count') or 0)
         hsn_code = p_in.get('hsnCode', '').strip()
+        category_name = p_in.get('categoryName', '').strip()
+        
+        # Get target category id
+        target_category_id = category.id
+        if category_name:
+            p_category = Category.query.filter_by(shop_id=shop.id, name=category_name).first()
+            if not p_category:
+                p_category = Category(name=category_name, shop_id=shop.id)
+                db.session.add(p_category)
+                db.session.commit()
+            target_category_id = p_category.id
         
         # Match product on barcode or sku_code
         product = None
@@ -108,6 +119,7 @@ def sync_products():
             product.price = price
             product.original_price = cost_price if cost_price > 0 else price
             product.stock = stock
+            product.category_id = target_category_id
             if hsn_code:
                 product.hsc_code = hsn_code
             if barcode and not product.barcode:
@@ -124,7 +136,7 @@ def sync_products():
                 barcode=barcode,
                 sku_code=sku_code or f"SKU-{uuid.uuid4().hex[:8].upper()}",
                 hsc_code=hsn_code,
-                category_id=category.id,
+                category_id=target_category_id,
                 shop_id=shop.id,
                 description="Imported from POS Billing desktop app"
             )
@@ -645,4 +657,45 @@ def book_customization_shipping(cust_id):
         "success": True,
         "message": "DTDC shipment booked successfully for customization from POS",
         "customization": cust.serialize()
+    }), 200
+
+
+@billing_sync_bp.route('/categories', methods=['POST'])
+def sync_categories():
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    incoming_categories = data.get('categories', [])
+    
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    for c_in in incoming_categories:
+        name = c_in.get('name', '').strip()
+        if not name:
+            continue
+        description = c_in.get('description', '')
+        
+        # Match category by name
+        category = Category.query.filter_by(shop_id=shop.id, name=name).first()
+        if category:
+            if description and not category.description:
+                category.description = description
+        else:
+            category = Category(
+                name=name,
+                description=description,
+                shop_id=shop.id
+            )
+            db.session.add(category)
+            
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to sync categories: {str(e)}"}), 500
+        
+    web_categories = Category.query.filter_by(shop_id=shop.id).all()
+    return jsonify({
+        "categories": [c.serialize() for c in web_categories]
     }), 200

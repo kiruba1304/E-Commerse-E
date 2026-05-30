@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
+import Categories from './pages/Categories';
 import BarcodeManager from './pages/BarcodeManager';
 import Billing from './pages/Billing';
 import Customers from './pages/Customers';
@@ -15,7 +16,7 @@ import { useDatabase } from './hooks/useDatabase';
 import { useECommerceIntegration } from './hooks/useECommerceIntegration';
 import { Database, FileText, FileCode, FolderDown } from 'lucide-react';
 
-type Page = 'dashboard' | 'products' | 'barcodes' | 'billing' | 'customers' | 'inventory' | 'parties' | 'reports' | 'templates' | 'settings' | 'online_orders';
+type Page = 'dashboard' | 'products' | 'categories' | 'barcodes' | 'billing' | 'customers' | 'inventory' | 'parties' | 'reports' | 'templates' | 'settings' | 'online_orders';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -105,6 +106,8 @@ function App() {
         return <Dashboard onNavigate={setCurrentPage} />;
       case 'products':
         return <Products />;
+      case 'categories':
+        return <Categories />;
       case 'barcodes':
         return <BarcodeManager />;
       case 'billing':

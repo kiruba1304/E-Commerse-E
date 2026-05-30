@@ -16,6 +16,17 @@ export interface Product {
   images?: string[]; // URLs of product images from website
   createdAt: string;
   updatedAt: string;
+  categoryName?: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  customizationEnabled?: boolean;
+  returnWindowDays?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Customer {

@@ -9,10 +9,11 @@ import {
   Settings,
   Barcode,
   Layout,
-  Building2
+  Building2,
+  FolderOpen
 } from 'lucide-react';
 
-type Page = 'dashboard' | 'products' | 'barcodes' | 'billing' | 'customers' | 'inventory' | 'parties' | 'reports' | 'templates' | 'settings' | 'online_orders';
+type Page = 'dashboard' | 'products' | 'categories' | 'barcodes' | 'billing' | 'customers' | 'inventory' | 'parties' | 'reports' | 'templates' | 'settings' | 'online_orders';
 
 interface SidebarProps {
   currentPage: string;
@@ -23,6 +24,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: Home },
   { id: 'billing', label: 'New Bill', icon: Receipt },
   { id: 'products', label: 'Products', icon: Package },
+  { id: 'categories', label: 'Categories', icon: FolderOpen },
   { id: 'barcodes', label: 'Barcodes', icon: Barcode },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'inventory', label: 'Inventory', icon: Warehouse },

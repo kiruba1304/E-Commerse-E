@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Product, Customer, Bill, InventoryTransaction, Party, PartyStockMovement, PartyMovementType, PartyPayment } from '../types';
+import { Product, Category, Customer, Bill, InventoryTransaction, Party, PartyStockMovement, PartyMovementType, PartyPayment } from '../types';
 
 // Check if we're in Electron environment (for future use)
 // const isElectron = typeof window !== 'undefined' && (window as any).electronAPI;
@@ -105,7 +105,8 @@ class BrowserDatabase {
       const createdAt = String(p.createdAt ?? new Date().toISOString());
       const updatedAt = String(p.updatedAt ?? createdAt);
       const images = Array.isArray(p.images) ? p.images : [];
-      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt, skuCode, hsnCode, images };
+      const categoryName = p.categoryName ? String(p.categoryName) : '';
+      const prod: Product = { id, name, company, productCode, count, costPrice, sellingPrice, discount, gst, finalPrice, barcode, createdAt, updatedAt, skuCode, hsnCode, images, categoryName };
       return prod;
     });
   }
@@ -150,6 +151,69 @@ class BrowserDatabase {
     const initialLength = products.length;
     const filtered = products.filter(p => p.id !== id);
     localStorage.setItem(this.getStorageKey('products'), JSON.stringify(filtered));
+    this.saveToDisk();
+    return filtered.length < initialLength;
+  }
+
+  getCategories(): Category[] {
+    const data = localStorage.getItem(this.getStorageKey('categories'));
+    const raw: any[] = data ? JSON.parse(data) : [];
+    return raw.map((c, idx) => {
+      const id = Number(c.id ?? (idx + 1));
+      const name = String(c.name ?? '');
+      const description = String(c.description ?? '');
+      const customizationEnabled = Boolean(c.customizationEnabled ?? false);
+      const returnWindowDays = c.returnWindowDays !== undefined && c.returnWindowDays !== null ? Number(c.returnWindowDays) : undefined;
+      const createdAt = String(c.createdAt ?? new Date().toISOString());
+      const updatedAt = String(c.updatedAt ?? createdAt);
+      return { id, name, description, customizationEnabled, returnWindowDays, createdAt, updatedAt };
+    });
+  }
+
+  createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): number {
+    const categories = this.getCategories();
+    const existing = categories.find(c => c.name.toLowerCase() === categoryData.name.toLowerCase());
+    if (existing) {
+      return existing.id;
+    }
+    const id = this.getNextId('categories');
+    const now = new Date().toISOString();
+
+    const newCategory: Category = {
+      id,
+      ...categoryData,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    categories.push(newCategory);
+    localStorage.setItem(this.getStorageKey('categories'), JSON.stringify(categories));
+    this.saveToDisk();
+    return id;
+  }
+
+  updateCategory(id: number, categoryData: Partial<Omit<Category, 'id' | 'createdAt' | 'updatedAt'>>): boolean {
+    const categories = this.getCategories();
+    const index = categories.findIndex(c => c.id === id);
+
+    if (index !== -1) {
+      categories[index] = {
+        ...categories[index],
+        ...categoryData,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(this.getStorageKey('categories'), JSON.stringify(categories));
+      this.saveToDisk();
+      return true;
+    }
+    return false;
+  }
+
+  deleteCategory(id: number): boolean {
+    const categories = this.getCategories();
+    const initialLength = categories.length;
+    const filtered = categories.filter(c => c.id !== id);
+    localStorage.setItem(this.getStorageKey('categories'), JSON.stringify(filtered));
     this.saveToDisk();
     return filtered.length < initialLength;
   }
@@ -427,10 +491,19 @@ class BrowserDatabase {
 
     // Products
     sql += '-- Table: Products\n';
-    sql += 'CREATE TABLE IF NOT EXISTS Products (id INTEGER PRIMARY KEY, name TEXT, company TEXT, productCode TEXT, count INTEGER, costPrice REAL, sellingPrice REAL, discount REAL, gst REAL, finalPrice REAL, barcode TEXT, createdAt TEXT, updatedAt TEXT, hsnCode TEXT, skuCode TEXT);\n';
+    sql += 'CREATE TABLE IF NOT EXISTS Products (id INTEGER PRIMARY KEY, name TEXT, company TEXT, productCode TEXT, count INTEGER, costPrice REAL, sellingPrice REAL, discount REAL, gst REAL, finalPrice REAL, barcode TEXT, createdAt TEXT, updatedAt TEXT, hsnCode TEXT, skuCode TEXT, categoryName TEXT);\n';
     const products = this.getProducts();
     products.forEach(p => {
-      sql += `INSERT INTO Products VALUES (${p.id}, '${p.name.replace(/'/g, "''")}', '${p.company.replace(/'/g, "''")}', '${(p.productCode || '').replace(/'/g, "''")}', ${p.count}, ${p.costPrice}, ${p.sellingPrice}, ${p.discount}, ${p.gst}, ${p.finalPrice}, '${(p.barcode || '').replace(/'/g, "''")}', '${p.createdAt}', '${p.updatedAt}', '${(p.hsnCode || '').replace(/'/g, "''")}', '${(p.skuCode || '').replace(/'/g, "''")}');\n`;
+      sql += `INSERT INTO Products VALUES (${p.id}, '${p.name.replace(/'/g, "''")}', '${p.company.replace(/'/g, "''")}', '${(p.productCode || '').replace(/'/g, "''")}', ${p.count}, ${p.costPrice}, ${p.sellingPrice}, ${p.discount}, ${p.gst}, ${p.finalPrice}, '${(p.barcode || '').replace(/'/g, "''")}', '${p.createdAt}', '${p.updatedAt}', '${(p.hsnCode || '').replace(/'/g, "''")}', '${(p.skuCode || '').replace(/'/g, "''")}', '${(p.categoryName || '').replace(/'/g, "''")}');\n`;
+    });
+    sql += '\n';
+
+    // Categories
+    sql += '-- Table: Categories\n';
+    sql += 'CREATE TABLE IF NOT EXISTS Categories (id INTEGER PRIMARY KEY, name TEXT, description TEXT, customizationEnabled INTEGER, returnWindowDays INTEGER, createdAt TEXT, updatedAt TEXT);\n';
+    const categories = this.getCategories();
+    categories.forEach(c => {
+      sql += `INSERT INTO Categories VALUES (${c.id}, '${c.name.replace(/'/g, "''")}', '${(c.description || '').replace(/'/g, "''")}', ${c.customizationEnabled ? 1 : 0}, ${c.returnWindowDays !== undefined && c.returnWindowDays !== null ? c.returnWindowDays : 'NULL'}, '${c.createdAt}', '${c.updatedAt}');\n`;
     });
     sql += '\n';
 
@@ -506,6 +579,7 @@ class BrowserDatabase {
 
     // Parsed entities arrays
     const products: Product[] = [];
+    const categories: Category[] = [];
     const customers: Customer[] = [];
     const parties: Party[] = [];
     const movements: PartyStockMovement[] = [];
@@ -590,6 +664,19 @@ class BrowserDatabase {
             updatedAt: String(row[12] ?? new Date().toISOString()),
             hsnCode: row[13] ? String(row[13]) : '',
             skuCode: row[14] ? String(row[14]) : '',
+            categoryName: row[15] ? String(row[15]) : '',
+          });
+          break;
+
+        case 'categories':
+          categories.push({
+            id: Number(row[0]),
+            name: String(row[1]),
+            description: row[2] ? String(row[2]) : '',
+            customizationEnabled: Number(row[3]) === 1,
+            returnWindowDays: row[4] !== null ? Number(row[4]) : undefined,
+            createdAt: String(row[5] ?? new Date().toISOString()),
+            updatedAt: String(row[6] ?? new Date().toISOString()),
           });
           break;
 
@@ -706,6 +793,7 @@ class BrowserDatabase {
 
     // Write all data cleanly to localStorage, overwriting old keys
     localStorage.setItem(this.getStorageKey('products'), JSON.stringify(products));
+    localStorage.setItem(this.getStorageKey('categories'), JSON.stringify(categories));
     localStorage.setItem(this.getStorageKey('customers'), JSON.stringify(customers));
     localStorage.setItem(this.getStorageKey('parties'), JSON.stringify(parties));
     localStorage.setItem(this.getStorageKey('party_movements'), JSON.stringify(movements));
@@ -720,6 +808,7 @@ class BrowserDatabase {
     };
 
     setNextId('products', products);
+    setNextId('categories', categories);
     setNextId('customers', customers);
     setNextId('parties', parties);
     setNextId('party_movements', movements);
@@ -834,6 +923,85 @@ export const useProducts = () => {
     deleteProduct,
     getProductByBarcode,
     refreshProducts: loadProducts,
+  };
+};
+
+export const useCategories = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const db = useDatabase();
+
+  const loadCategories = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await db.waitForInit();
+      const list = db.getCategories();
+      setCategories(list);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const id = db.createCategory(categoryData);
+      await loadCategories();
+      return id;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add category');
+      throw err;
+    }
+  };
+
+  const updateCategory = async (id: number, categoryData: Partial<Omit<Category, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    try {
+      const success = db.updateCategory(id, categoryData);
+      if (success) {
+        await loadCategories();
+      }
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update category');
+      throw err;
+    }
+  };
+
+  const deleteCategory = async (id: number) => {
+    try {
+      const success = db.deleteCategory(id);
+      if (success) {
+        await loadCategories();
+      }
+      return success;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete category');
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+    const handleSync = () => {
+      loadCategories();
+    };
+    window.addEventListener('ecommerce-sync-completed', handleSync);
+    return () => {
+      window.removeEventListener('ecommerce-sync-completed', handleSync);
+    };
+  }, []);
+
+  return {
+    categories,
+    loading,
+    error,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    refreshCategories: loadCategories,
   };
 };
 
