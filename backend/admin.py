@@ -878,234 +878,721 @@ def book_shipping(order_id):
 
 @admin_bp.route('/orders/<int:order_id>/shipping-label', methods=['GET'])
 def get_shipping_label(order_id):
+    from datetime import datetime
     order = Order.query.get_or_404(order_id)
     shop = Shop.query.get(order.shop_id)
     
     awb_number = "D00000000"
     if order.tracking_info and "AWB:" in order.tracking_info:
         awb_number = order.tracking_info.split("AWB:")[-1].strip()
-        
-    payment_mode = "PREPAID" if order.payment_method == "UPI" else "COD"
     
-    html = f'''
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <title>DTDC Shipping Label - AWB {awb_number}</title>
-        <style>
-            body {{
-                font-family: 'Helvetica Neue', Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background-color: #f3f4f6;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-            }}
-            .label-card {{
-                width: 420px;
-                background: #ffffff;
-                border: 2px solid #111827;
-                border-radius: 8px;
-                box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-                overflow: hidden;
-                box-sizing: border-box;
-            }}
-            .header {{
-                background-color: #0c2340;
-                color: #ffffff;
-                padding: 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 2px solid #111827;
-            }}
-            .logo-text {{
-                font-size: 1.4rem;
-                font-weight: 900;
-                letter-spacing: 2px;
-                color: #ffc72c;
-            }}
-            .header-tag {{
-                font-size: 0.75rem;
-                font-weight: 700;
-                background: rgba(255, 255, 255, 0.2);
-                padding: 4px 8px;
-                border-radius: 4px;
-                letter-spacing: 1px;
-            }}
-            .barcode-section {{
-                padding: 20px;
-                text-align: center;
-                border-bottom: 2px dashed #d1d5db;
-                background: #fafafa;
-            }}
-            .simulated-barcode {{
-                height: 50px;
-                background: repeating-linear-gradient(
-                    90deg,
-                    #111,
-                    #111 2px,
-                    #fff 2px,
-                    #fff 8px,
-                    #111 8px,
-                    #111 12px,
-                    #fff 12px,
-                    #fff 16px
-                );
-                width: 80%;
-                margin: 0 auto 10px auto;
-            }}
-            .awb-text {{
-                font-size: 1.1rem;
-                font-weight: 800;
-                letter-spacing: 3px;
-                color: #111827;
-                margin: 0;
-            }}
-            .info-grid {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                border-bottom: 2px solid #111827;
-            }}
-            .info-box {{
-                padding: 12px;
-                box-sizing: border-box;
-            }}
-            .info-box:first-child {{
-                border-right: 2px solid #111827;
-            }}
-            .box-title {{
-                font-size: 0.7rem;
-                font-weight: 700;
-                color: #4b5563;
-                text-transform: uppercase;
-                margin-bottom: 4px;
-                letter-spacing: 0.5px;
-            }}
-            .box-content {{
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: #1f2937;
-                line-height: 1.3;
-                margin: 0;
-            }}
-            .address-section {{
-                padding: 14px;
-                border-bottom: 2px solid #111827;
-                min-height: 80px;
-            }}
-            .address-text {{
-                font-size: 0.9rem;
-                color: #111827;
-                line-height: 1.4;
-                margin: 4px 0 0 0;
-                font-weight: 600;
-            }}
-            .footer-row {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px 14px;
-                background-color: #f9fafb;
-            }}
-            .payment-badge {{
-                font-size: 1rem;
-                font-weight: 800;
-                color: #ffffff;
-                background-color: { '#10b981' if payment_mode == 'PREPAID' else '#f59e0b' };
-                padding: 6px 12px;
-                border-radius: 4px;
-                letter-spacing: 0.5px;
-                border: 1px solid #111827;
-            }}
-            .amount-text {{
-                font-size: 1.1rem;
-                font-weight: 800;
-                color: #111827;
-            }}
-            .print-btn {{
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background-color: #0c2340;
-                color: #ffffff;
-                border: none;
-                padding: 10px 20px;
-                font-size: 0.95rem;
-                font-weight: 700;
-                border-radius: 6px;
-                cursor: pointer;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                transition: transform 0.1s;
-            }}
-            .print-btn:active {{
-                transform: scale(0.95);
-            }}
-            @media print {{
-                body {{
-                    background-color: #ffffff;
-                    padding: 0;
-                }}
-                .print-btn {{
-                    display: none;
-                }}
-                .label-card {{
-                    box-shadow: none;
-                    border: 2px solid #000000;
-                }}
-            }}
-        </style>
-    </head>
-    <body>
-        <button class="print-btn" onclick="window.print()">Print Label</button>
+    barcode_value = awb_number if awb_number != "D00000000" else f"D{str(order.id).zfill(8)}"
+    payment_type = "COD" if (order.payment_method or "").upper() == "COD" else "Prepaid"
+    
+    if order.online_order_number:
+        order_display_id = f"#{str(order.online_order_number).zfill(6)}"
+    else:
+        order_display_id = f"#{order.id}"
         
-        <div class="label-card">
-            <div class="header">
-                <div class="logo-text">DTDC EXPRESS</div>
-                <div class="header-tag">DOMESTIC</div>
-            </div>
-            
-            <div class="barcode-section">
-                <div class="simulated-barcode"></div>
-                <div class="awb-text">AWB: {awb_number}</div>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-box">
-                    <div class="box-title">Shipper (From)</div>
-                    <p class="box-content" style="font-weight: 800;">{shop.name}</p>
-                    <p class="box-content" style="font-size: 0.75rem; margin-top: 2px;">{shop.contact_phone}</p>
+    customer_name = order.user.name if order.user else 'Walk-in Customer'
+    customer_phone = order.billing_phone or (order.user.contact_phone if order.user else '')
+    customer_address = order.shipping_address or ''
+    
+    html = '''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>DTDC Shipping Label - {{ barcode_value }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @page { size: 101.6mm 152.4mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Inter', Arial, sans-serif; 
+            background-color: #f3f4f6; 
+            color: #000;
+        }
+        body { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #0c2340;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+            z-index: 1000;
+        }
+        .print-btn:active {
+            transform: scale(0.95);
+        }
+        .label-card {
+            width: 420px;
+            height: 630px;
+            background: #ffffff;
+            border: 2px solid #111827;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .label-container { 
+            width: 100%; 
+            height: 100%; 
+            border: 3px solid #000; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            background: #fff; 
+        }
+        
+        /* Grid Rows */
+        .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+        .row:last-child { border-bottom: none; }
+        
+        /* Two Column Rows */
+        .col-50 { 
+            width: 50%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 2px; 
+            justify-content: flex-start; 
+        }
+        .col-50:last-child { border-right: none; }
+        
+        /* Header Row */
+        .row-header { align-items: stretch; }
+        .col-logo { 
+            width: 33.333%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            gap: 3px; 
+        }
+        .logo-icon { width: 35.2px; height: 35.2px; color: #000; }
+        .logo-text { font-size: 8.5px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+        .col-title { 
+            width: 66.666%; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 20px; 
+            font-weight: 900; 
+            letter-spacing: 0.05em; 
+            text-transform: uppercase; 
+            text-align: center; 
+        }
+        
+        /* Labels & Contents */
+        .lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+        .val-bold { font-size: 12px; font-weight: 800; text-transform: uppercase; line-height: 1.4; }
+        .val-text { font-size: 11.5px; font-weight: 500; line-height: 1.4; white-space: pre-line; }
+        
+        /* QR & Order Info Row */
+        .col-qr { 
+            width: 33.333%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .qr-code { width: 62.4px; height: 62.4px; display: block; max-width: 100%; height: auto; }
+        .col-order-info { 
+            width: 66.666%; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            gap: 6px; 
+        }
+        .order-info-item { display: flex; flex-direction: column; }
+        
+        /* Barcode Row */
+        .row-barcode { 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 10px; 
+            text-align: center; 
+            gap: 4px; 
+            border-bottom: 2px solid #000; 
+        }
+        .barcode-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+        .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+        .barcode-text { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+        
+        /* Payment & Amount Row */
+        .payment-big { font-size: 28.8px; font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+        
+        /* Footer Row */
+        .row-footer { 
+            padding: 4px; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            font-size: 8.5px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            background: #fafafb; 
+        }
+        
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .label-card {
+                box-shadow: none;
+                border: none;
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">Print Label</button>
+    
+    <div class="label-card">
+        <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+                <div class="col-logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 2L11 13"></path>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <div class="logo-text">DTDC Express</div>
                 </div>
-                <div class="info-box">
-                    <div class="box-title">Routing Details</div>
-                    <p class="box-content" style="font-weight: 800; font-size: 1.05rem;">MAA / Z-4</p>
-                    <p class="box-content" style="font-size: 0.75rem; color: #4b5563;">STANDARD COURIER</p>
+                <div class="col-title">Shipping Label</div>
+            </div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">From:</span>
+                    <span class="val-bold">{{ shop.name }}</span>
+                    <span class="val-text">{{ shop.address or '' }}</span>
+                    <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: {{ shop.contact_phone or '' }}</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">To:</span>
+                    <span class="val-bold">{{ customer_name }}</span>
+                    <span class="val-text">{{ customer_address }}</span>
+                    <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: {{ customer_phone }}</span>
                 </div>
             </div>
             
-            <div class="address-section">
-                <div class="box-title">Consignee (Deliver To)</div>
-                <p class="address-text" style="font-size: 0.95rem; font-weight: 800; margin-bottom: 4px;">{order.user.name if order.user else 'Walk-in Customer'}</p>
-                <p class="address-text" style="font-size: 0.8rem; margin-top: 0; color: #4b5563;">Phone: {order.billing_phone or (order.user.contact_phone if order.user else '')}</p>
-                <p class="address-text">{order.shipping_address}</p>
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">Shipping Partner:</span>
+                    <span class="val-bold">DTDC Express</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">Shipping Date:</span>
+                    <span class="val-bold">{{ formatted_now }}</span>
+                </div>
             </div>
             
-            <div class="footer-row">
-                <div>
-                    <div class="box-title">Order Ref</div>
-                    <div class="box-content" style="font-weight: 700;">#{order.id}</div>
+            <!-- Row 4: QR & Order Details -->
+            <div class="row">
+                <div class="col-qr">
+                    <img class="qr-code" alt="QR" />
                 </div>
-                <div class="amount-text">₹{order.final_amount:.2f}</div>
-                <div class="payment-badge">{payment_mode}</div>
+                <div class="col-order-info">
+                    <div class="order-info-item">
+                        <span class="lbl">Order Date:</span>
+                        <span class="val-bold">{{ formatted_date }}</span>
+                    </div>
+                    <div class="order-info-item">
+                        <span class="lbl">Order ID:</span>
+                        <span class="val-bold">{{ order_display_id }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+                <span class="barcode-title">Shipping Tracking Number:</span>
+                <div class="barcode-svg-wrap"></div>
+                <div class="barcode-text"></div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">Payment Type:</span>
+                    <span class="payment-big">{{ payment_type }}</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">{% if payment_type == 'COD' %}COD Amount:{% else %}Prepaid Amount:{% endif %}</span>
+                    <span class="payment-big">₹{{ "%.2f"|format(order.final_amount) }}</span>
+                </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+                DTDC COURIER CARRIER / SERVICE: EXPRESS RESIDENTIAL
             </div>
         </div>
-    </body>
-    </html>
-    '''
-    return render_template_string(html)
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script>
+        function formatBarcodeText(val) {
+          const clean = val.replace(/\\s+/g, '');
+          if (/^\\d+$/.test(clean)) {
+            return clean.replace(/(.{4})/g, '$1 ').trim();
+          }
+          return val.split('').join(' ');
+        }
+
+        window.onload = function() {
+            try {
+                var barcodeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                JsBarcode(barcodeSvg, "{{ barcode_value }}", {
+                    format: 'CODE128',
+                    displayValue: false,
+                    margin: 0,
+                    width: 1.05,
+                    height: 40,
+                    background: 'transparent',
+                    lineColor: '#111'
+                });
+                barcodeSvg.setAttribute('width', '240');
+                barcodeSvg.setAttribute('height', '40');
+                barcodeSvg.setAttribute('viewBox', '0 0 240 40');
+                document.querySelector('.barcode-svg-wrap').appendChild(barcodeSvg);
+                
+                document.querySelector('.barcode-text').innerText = formatBarcodeText("{{ barcode_value }}");
+            } catch (e) {
+                console.error("Barcode generation failed", e);
+            }
+
+            try {
+                QRCode.toDataURL("{{ barcode_value }}", { margin: 1, width: 120 }, function (err, url) {
+                    if (!err) {
+                        document.querySelector('.qr-code').src = url;
+                    } else {
+                        console.error("QR generation failed", err);
+                    }
+                });
+            } catch (e) {
+                console.error("QR generation exception", e);
+            }
+        };
+    </script>
+</body>
+</html>'''
+    return render_template_string(html, 
+                                  order=order, 
+                                  shop=shop, 
+                                  barcode_value=barcode_value, 
+                                  payment_type=payment_type, 
+                                  order_display_id=order_display_id,
+                                  customer_name=customer_name, 
+                                  customer_phone=customer_phone, 
+                                  customer_address=customer_address, 
+                                  formatted_date=order.created_at.strftime('%d %b %Y') if order.created_at else '',
+                                  formatted_now=datetime.now().strftime('%d %b %Y'))
+
+
+@admin_bp.route('/customizations/<int:cust_id>/shipping-label', methods=['GET'])
+def get_customization_shipping_label(cust_id):
+    from datetime import datetime
+    from models import CustomizationOrder
+    cust = CustomizationOrder.query.get_or_404(cust_id)
+    shop = Shop.query.get(cust.shop_id)
+    
+    awb_number = "D00000000"
+    if cust.tracking_info and "AWB:" in cust.tracking_info:
+        awb_number = cust.tracking_info.split("AWB:")[-1].strip()
+        
+    barcode_value = awb_number if awb_number != "D00000000" else f"CUST-D{str(cust.id).zfill(6)}"
+    payment_type = "Prepaid"
+    
+    unit_price = cust.quoted_price if cust.quoted_price is not None else (cust.product.price if cust.product else 0.0)
+    final_amount = unit_price * cust.quantity
+    
+    customer_name = cust.user.name if (cust.user and cust.user.name) else (cust.user.username if cust.user else 'Customer')
+    customer_phone = cust.billing_phone or (cust.user.contact_phone if cust.user else '')
+    
+    consignee_address = cust.shipping_address or (cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A")
+    product_name = cust.product.name if cust.product else "Deleted Product"
+    
+    html = '''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>DTDC Custom Shipping Label - {{ barcode_value }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        @page { size: 101.6mm 152.4mm; margin: 0; }
+        * { box-sizing: border-box; }
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Inter', Arial, sans-serif; 
+            background-color: #f3f4f6; 
+            color: #000;
+        }
+        body { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #0c2340;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+            z-index: 1000;
+        }
+        .print-btn:active {
+            transform: scale(0.95);
+        }
+        .label-card {
+            width: 420px;
+            height: 630px;
+            background: #ffffff;
+            border: 2px solid #111827;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .label-container { 
+            width: 100%; 
+            height: 100%; 
+            border: 3px solid #000; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            background: #fff; 
+        }
+        
+        /* Grid Rows */
+        .row { display: flex; width: 100%; border-bottom: 2px solid #000; }
+        .row:last-child { border-bottom: none; }
+        
+        /* Two Column Rows */
+        .col-50 { 
+            width: 50%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 2px; 
+            justify-content: flex-start; 
+        }
+        .col-50:last-child { border-right: none; }
+        
+        /* Header Row */
+        .row-header { align-items: stretch; }
+        .col-logo { 
+            width: 33.333%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            gap: 3px; 
+        }
+        .logo-icon { width: 35.2px; height: 35.2px; color: #000; }
+        .logo-text { font-size: 8.5px; font-weight: 850; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; }
+        .col-title { 
+            width: 66.666%; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 20px; 
+            font-weight: 900; 
+            letter-spacing: 0.05em; 
+            text-transform: uppercase; 
+            text-align: center; 
+        }
+        
+        /* Labels & Contents */
+        .lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #000; letter-spacing: 0.03em; margin-bottom: 1px; }
+        .val-bold { font-size: 12px; font-weight: 800; text-transform: uppercase; line-height: 1.4; }
+        .val-text { font-size: 11.5px; font-weight: 500; line-height: 1.4; white-space: pre-line; }
+        
+        /* QR & Order Info Row */
+        .col-qr { 
+            width: 33.333%; 
+            border-right: 2px solid #000; 
+            padding: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .qr-code { width: 62.4px; height: 62.4px; display: block; max-width: 100%; height: auto; }
+        .col-order-info { 
+            width: 66.666%; 
+            padding: 10px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            gap: 6px; 
+        }
+        .order-info-item { display: flex; flex-direction: column; }
+        
+        /* Barcode Row */
+        .row-barcode { 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 10px; 
+            text-align: center; 
+            gap: 4px; 
+            border-bottom: 2px solid #000; 
+        }
+        .barcode-title { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .barcode-svg-wrap { width: 100%; display: flex; justify-content: center; padding: 2px 0; }
+        .barcode-svg-wrap svg { max-width: 95%; height: auto; display: block; }
+        .barcode-text { font-size: 13px; font-weight: 800; letter-spacing: 0.1em; margin-top: 1px; }
+        
+        /* Payment & Amount Row */
+        .payment-big { font-size: 28.8px; font-weight: 900; text-transform: uppercase; line-height: 1.1; margin-top: 2px; }
+        
+        /* Footer Row */
+        .row-footer { 
+            padding: 4px; 
+            justify-content: center; 
+            align-items: center; 
+            text-align: center; 
+            font-size: 8.5px; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            background: #fafafb; 
+        }
+        
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+            }
+            .print-btn {
+                display: none;
+            }
+            .label-card {
+                box-shadow: none;
+                border: none;
+                width: 100%;
+                height: 100%;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">Print Label</button>
+    
+    <div class="label-card">
+        <div class="label-container">
+            <!-- Row 1: Header -->
+            <div class="row row-header">
+                <div class="col-logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 2L11 13"></path>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                    <div class="logo-text">DTDC Custom</div>
+                </div>
+                <div class="col-title">Shipping Label</div>
+            </div>
+            
+            <!-- Row 2: Sender/Consignee Info -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">From:</span>
+                    <span class="val-bold">{{ shop.name }}</span>
+                    <span class="val-text">{{ shop.address or '' }}</span>
+                    <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: {{ shop.contact_phone or '' }}</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">To:</span>
+                    <span class="val-bold">{{ customer_name }}</span>
+                    <span class="val-text">{{ consignee_address }}</span>
+                    <span class="val-text" style="font-weight:700; margin-top:2px;">Phone: {{ customer_phone }}</span>
+                </div>
+            </div>
+            
+            <!-- Row 3: Carrier Details -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">Shipping Partner:</span>
+                    <span class="val-bold">DTDC Express</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">Shipping Date:</span>
+                    <span class="val-bold">{{ formatted_now }}</span>
+                </div>
+            </div>
+            
+            <!-- Row 4: QR & Custom Order Details -->
+            <div class="row">
+                <div class="col-qr">
+                    <img class="qr-code" alt="QR" />
+                </div>
+                <div class="col-order-info">
+                    <div class="order-info-item">
+                        <span class="lbl">Order Date:</span>
+                        <span class="val-bold">{{ formatted_date }}</span>
+                    </div>
+                    <div class="order-info-item">
+                        <span class="lbl">Order ID:</span>
+                        <span class="val-bold">#CUST-{{ "%06d"|format(cust.id) }}</span>
+                    </div>
+                    <div class="order-info-item" style="border-top: 1px dashed #ccc; padding-top: 4px; margin-top: 2px;">
+                        <span class="lbl">Specs:</span>
+                        <span class="val-text" style="font-size: 8px;"><strong>{{ product_name }}</strong> (Qty: {{ cust.quantity }})<br/>Color: {{ cust.selected_color_name }}<br/>Notes: {{ cust.customization_notes or 'None' }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Row 5: Barcode & Tracking -->
+            <div class="row-barcode">
+                <span class="barcode-title">Shipping Tracking Number:</span>
+                <div class="barcode-svg-wrap"></div>
+                <div class="barcode-text"></div>
+            </div>
+            
+            <!-- Row 6: Payment Info -->
+            <div class="row">
+                <div class="col-50">
+                    <span class="lbl">Payment Type:</span>
+                    <span class="payment-big">{{ payment_type }}</span>
+                </div>
+                <div class="col-50">
+                    <span class="lbl">Prepaid Amount:</span>
+                    <span class="payment-big">₹{{ "%.2f"|format(final_amount) }}</span>
+                </div>
+            </div>
+            
+            <!-- Row 7: Footer -->
+            <div class="row-footer">
+                DTDC CUSTOM COURIER / SERVICE: SPECIAL HANDCRAFTED
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script>
+        function formatBarcodeText(val) {
+          const clean = val.replace(/\\s+/g, '');
+          if (/^\\d+$/.test(clean)) {
+            return clean.replace(/(.{4})/g, '$1 ').trim();
+          }
+          return val.split('').join(' ');
+        }
+
+        window.onload = function() {
+            try {
+                var barcodeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                JsBarcode(barcodeSvg, "{{ barcode_value }}", {
+                    format: 'CODE128',
+                    displayValue: false,
+                    margin: 0,
+                    width: 1.05,
+                    height: 40,
+                    background: 'transparent',
+                    lineColor: '#111'
+                });
+                barcodeSvg.setAttribute('width', '240');
+                barcodeSvg.setAttribute('height', '40');
+                barcodeSvg.setAttribute('viewBox', '0 0 240 40');
+                document.querySelector('.barcode-svg-wrap').appendChild(barcodeSvg);
+                
+                document.querySelector('.barcode-text').innerText = formatBarcodeText("{{ barcode_value }}");
+            } catch (e) {
+                console.error("Barcode generation failed", e);
+            }
+
+            try {
+                QRCode.toDataURL("{{ barcode_value }}", { margin: 1, width: 120 }, function (err, url) {
+                    if (!err) {
+                        document.querySelector('.qr-code').src = url;
+                    } else {
+                        console.error("QR generation failed", err);
+                    }
+                });
+            } catch (e) {
+                console.error("QR generation exception", e);
+            }
+        };
+    </script>
+</body>
+</html>'''
+    return render_template_string(html, 
+                                  cust=cust, 
+                                  shop=shop, 
+                                  barcode_value=barcode_value, 
+                                  payment_type=payment_type, 
+                                  final_amount=final_amount,
+                                  customer_name=customer_name, 
+                                  customer_phone=customer_phone, 
+                                  consignee_address=consignee_address, 
+                                  product_name=product_name,
+                                  formatted_date=cust.created_at.strftime('%d %b %Y') if cust.created_at else '',
+                                  formatted_now=datetime.now().strftime('%d %b %Y'))
+
 
 # POPUP ADS PUSHING
 @admin_bp.route('/popup-ads', methods=['GET', 'POST'])

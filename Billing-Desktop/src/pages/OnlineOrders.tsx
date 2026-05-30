@@ -157,6 +157,8 @@ const OnlineOrders: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'month' | 'year' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState<'all' | 'cod' | 'upi'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'dispatched' | 'approved' | 'rejected'>('all');
 
   // Modal states for prompts
   const [modalOpen, setModalOpen] = useState(false);
@@ -630,6 +632,38 @@ const OnlineOrders: React.FC = () => {
       return true;
     });
 
+    // Apply Payment Method Filter
+    list = list.filter(order => {
+      if (paymentFilter === 'all') return true;
+      const method = String(order.payment_method || '').toLowerCase();
+      if (paymentFilter === 'cod') {
+        return method === 'cod';
+      }
+      if (paymentFilter === 'upi') {
+        return method === 'upi' || method === 'online';
+      }
+      return true;
+    });
+
+    // Apply Status Filter
+    list = list.filter(order => {
+      if (statusFilter === 'all') return true;
+      const status = String(order.status || '').trim().toLowerCase();
+      if (statusFilter === 'pending') {
+        return status === 'pending' || status === 'accepted';
+      }
+      if (statusFilter === 'dispatched') {
+        return status === 'dispatched';
+      }
+      if (statusFilter === 'approved') {
+        return status === 'customer received' || status === 'delivered';
+      }
+      if (statusFilter === 'rejected') {
+        return status === 'rejected';
+      }
+      return true;
+    });
+
     const getStatusPriority = (status: string) => {
       const s = String(status || '').trim();
       if (s === 'Pending') return 1;
@@ -656,7 +690,7 @@ const OnlineOrders: React.FC = () => {
       const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [isConfigured, error, webOrders, onlineOrders, customers, dateFilter, startDate, endDate]);
+  }, [isConfigured, error, webOrders, onlineOrders, customers, dateFilter, startDate, endDate, paymentFilter, statusFilter]);
 
   // Local printer label routine (reused)
   const handlePrintLocalLabel = async (order: any) => {
@@ -1250,6 +1284,38 @@ const OnlineOrders: React.FC = () => {
       return true;
     });
 
+    // Apply Payment Method Filter
+    list = list.filter(cust => {
+      if (paymentFilter === 'all') return true;
+      const method = String(cust.payment_method || '').toLowerCase();
+      if (paymentFilter === 'cod') {
+        return method === 'cod';
+      }
+      if (paymentFilter === 'upi') {
+        return method === 'upi' || method === 'online';
+      }
+      return true;
+    });
+
+    // Apply Status Filter
+    list = list.filter(cust => {
+      if (statusFilter === 'all') return true;
+      const status = String(cust.status || '').trim().toLowerCase();
+      if (statusFilter === 'pending') {
+        return status === 'pending' || status === 'in progress';
+      }
+      if (statusFilter === 'dispatched') {
+        return status === 'dispatched';
+      }
+      if (statusFilter === 'approved') {
+        return status === 'completed';
+      }
+      if (statusFilter === 'rejected') {
+        return status === 'rejected';
+      }
+      return true;
+    });
+
     return list.sort((a, b) => {
       const pA = getStatusPriority(a.status);
       const pB = getStatusPriority(b.status);
@@ -1265,11 +1331,111 @@ const OnlineOrders: React.FC = () => {
       const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
       return dateB - dateA;
     });
-  }, [webCustomizations, dateFilter, startDate, endDate]);
+  }, [webCustomizations, dateFilter, startDate, endDate, paymentFilter, statusFilter]);
 
   const displayedReturns = useMemo(() => {
-    return displayedOrders.filter(order => order.return_request_status === 'Pending');
-  }, [displayedOrders]);
+    let list = [];
+    if (isConfigured && !error) {
+      list = [...webOrders].filter(o => o.return_request_status && o.return_request_status !== 'None');
+    } else {
+      list = onlineOrders
+        .filter((b: any) => b.status === 'Returned' || b.return_request_status && b.return_request_status !== 'None')
+        .map((b: any) => {
+          const customer = b.customer || customers.find(c => c.id === b.customerId);
+          return {
+            id: b.id,
+            isLocalFallback: true,
+            created_at: b.createdAt,
+            billNumber: b.billNumber,
+            final_amount: b.finalAmount,
+            payment_method: (b.paymentMethod || 'ONLINE').toUpperCase(),
+            status: b.status === 'completed' ? 'Customer Received' : 'Pending',
+            return_request_status: b.return_request_status || 'Pending',
+            customer: {
+              name: customer?.name || 'Online Customer',
+              phone: customer?.phone || '',
+              email: customer?.email || '',
+              shipping_address: customer?.address || ''
+            },
+            items: b.items?.map((item: any) => ({
+              id: item.id,
+              product_name: item.product?.name || 'Product',
+              product_image: item.productImage || item.product?.images?.[0],
+              quantity: item.quantity,
+              price: item.unitPrice
+            })) || []
+          };
+        });
+    }
+
+    // Apply Date Filter
+    list = list.filter(order => {
+      const orderDate = new Date(order.created_at || order.createdAt);
+      if (isNaN(orderDate.getTime())) return true;
+      
+      const now = new Date();
+      if (dateFilter === 'today') {
+        return orderDate.toDateString() === now.toDateString();
+      }
+      if (dateFilter === 'month') {
+        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'year') {
+        return orderDate.getFullYear() === now.getFullYear();
+      }
+      if (dateFilter === 'custom') {
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        if (start) {
+          start.setHours(0, 0, 0, 0);
+          if (orderDate < start) return false;
+        }
+        if (end) {
+          end.setHours(23, 59, 59, 999);
+          if (orderDate > end) return false;
+        }
+      }
+      return true;
+    });
+
+    // Apply Payment Method Filter
+    list = list.filter(order => {
+      if (paymentFilter === 'all') return true;
+      const method = String(order.payment_method || '').toLowerCase();
+      if (paymentFilter === 'cod') {
+        return method === 'cod';
+      }
+      if (paymentFilter === 'upi') {
+        return method === 'upi' || method === 'online';
+      }
+      return true;
+    });
+
+    // Apply Status Filter (using return_request_status)
+    list = list.filter(order => {
+      if (statusFilter === 'all') return true;
+      const status = String(order.return_request_status || 'Pending').toLowerCase();
+      if (statusFilter === 'pending') {
+        return status === 'pending';
+      }
+      if (statusFilter === 'approved') {
+        return status === 'approved';
+      }
+      if (statusFilter === 'rejected') {
+        return status === 'rejected';
+      }
+      if (statusFilter === 'dispatched') {
+        return false;
+      }
+      return true;
+    });
+
+    return list.sort((a, b) => {
+      const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+      const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [isConfigured, error, webOrders, onlineOrders, customers, dateFilter, startDate, endDate, paymentFilter, statusFilter]);
 
   const handlePrintLocalCustomLabel = async (cust: any) => {
     const settingsRaw = localStorage.getItem('app_settings');
@@ -1599,6 +1765,53 @@ const OnlineOrders: React.FC = () => {
               />
             </div>
           )}
+        </div>
+
+        {/* Status and Payment Filter Toolbar */}
+        <div className="mb-6 p-4 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Filter By Payment:</span>
+            {[
+              { value: 'all', label: 'All Payments' },
+              { value: 'cod', label: 'COD' },
+              { value: 'upi', label: 'UPI / Online' }
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setPaymentFilter(opt.value as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  paymentFilter === opt.value
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-6">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Filter By Status:</span>
+            {[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'dispatched', label: 'Dispatched' },
+              { value: 'approved', label: 'Approved' },
+              { value: 'rejected', label: 'Rejected' }
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  statusFilter === opt.value
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {activeTab === 'customization' && (
@@ -2188,20 +2401,40 @@ const OnlineOrders: React.FC = () => {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex flex-col gap-1.5 min-w-[120px] align-right items-stretch">
-                            <button
-                              onClick={() => handleResolveReturn(order.id, 'Approved')}
-                              disabled={updatingId === order.id}
-                              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
-                            >
-                              <Check className="h-3.5 w-3.5" /> Approve
-                            </button>
-                            <button
-                              onClick={() => handleResolveReturn(order.id, 'Rejected')}
-                              disabled={updatingId === order.id}
-                              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
-                            >
-                              <X className="h-3.5 w-3.5" /> Reject
-                            </button>
+                            {order.return_request_status === 'Pending' ? (
+                              <>
+                                <button
+                                  onClick={() => handleResolveReturn(order.id, 'Approved')}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleResolveReturn(order.id, 'Rejected')}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 transition-colors shadow-sm"
+                                >
+                                  <X className="h-3.5 w-3.5" /> Reject
+                                </button>
+                              </>
+                            ) : (
+                              <span className={`inline-flex items-center justify-center px-2.5 py-1.5 rounded-full text-xs font-bold ${
+                                order.return_request_status === 'Approved'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {order.return_request_status}
+                              </span>
+                            )}
+                            {order.shipping_label_url && (
+                              <button
+                                onClick={() => handlePrintLocalDtdcLabel(order)}
+                                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors mt-1"
+                              >
+                                <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

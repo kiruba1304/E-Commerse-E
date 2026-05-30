@@ -10085,6 +10085,24 @@ export default function App() {
                               <td style={{ fontWeight: 'bold', color: '#10b981' }}>₹{o.final_amount}</td>
                               <td style={{ textAlign: 'right' }}>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                  {o.shipping_label_url && (
+                                    <button 
+                                      onClick={() => window.open(o.shipping_label_url, '_blank')}
+                                      className="btn-secondary" 
+                                      style={{ 
+                                        padding: '6px 12px', 
+                                        fontSize: '0.75rem', 
+                                        borderColor: '#7a4ea5', 
+                                        color: '#7a4ea5',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                      }}
+                                    >
+                                      <Printer size={12} /> Label
+                                    </button>
+                                  )}
                                   <button onClick={() => handleResolveReturn(o.id, 'Approved')} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'var(--accent-success)' }}>
                                     Approve & Refund
                                   </button>
