@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
-  Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
+  Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload
@@ -627,6 +627,8 @@ export default function App() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [loginRoleTab, setLoginRoleTab] = useState("user"); // user, admin, super_admin
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -2982,6 +2984,144 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* CONTACT MODAL */}
+      {showContactModal && (() => {
+        const activeShop = shops.find(s => s.id === activeShopId);
+        const contactEmail = activeShop ? activeShop.contact_email : "support@nobaraa.com";
+        const contactPhone = activeShop ? activeShop.contact_phone : "+91 94444 33333";
+        const shopAddress = activeShop ? activeShop.address : "Chennai, Tamil Nadu, India";
+        return (
+          <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowContactModal(false)}>
+            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+              background: '#ffffff', 
+              borderRadius: '24px', 
+              width: '720px', 
+              maxWidth: '90%',
+              maxHeight: '85vh',
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+              position: 'relative',
+              fontFamily: "'Jost', sans-serif",
+              overflow: 'hidden'
+            }}>
+              <button onClick={() => setShowContactModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                <X size={20} />
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+                <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                  <MessageSquare size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Contact Us</h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Get in Touch with our Boutique Experts</p>
+                </div>
+              </div>
+
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+                <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-muted)' }}>
+                  We are here to assist you with order tracking, custom sizing recommendations, or product questions. Please reach out to our team via the details below:
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginTop: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: '#fcfbfe', padding: '16px', borderRadius: '16px', border: '1px solid #f3ecf9' }}>
+                    <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={18} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 700, color: '#2b0b57' }}>Email Support</h4>
+                      <a href={`mailto:${contactEmail}`} style={{ color: '#7a4ea5', textDecoration: 'none', fontWeight: 600, fontSize: '0.95rem' }}>{contactEmail}</a>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>We respond within 24 hours</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: '#fcfbfe', padding: '16px', borderRadius: '16px', border: '1px solid #f3ecf9' }}>
+                    <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Phone size={18} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 700, color: '#2b0b57' }}>Phone & WhatsApp</h4>
+                      <a href={`tel:${contactPhone}`} style={{ color: '#7a4ea5', textDecoration: 'none', fontWeight: 600, fontSize: '0.95rem' }}>{contactPhone}</a>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mon - Sat: 9:00 AM - 7:00 PM</p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: '#fcfbfe', padding: '16px', borderRadius: '16px', border: '1px solid #f3ecf9' }}>
+                    <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Home size={18} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 700, color: '#2b0b57' }}>Boutique Address</h4>
+                      <p style={{ margin: 0, fontSize: '0.95rem', color: '#333', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+                        {shopAddress}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn-primary" onClick={() => setShowContactModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ABOUT NOBARAA MODAL */}
+      {showAboutModal && (() => {
+        const activeShop = shops.find(s => s.id === activeShopId);
+        const aboutContent = (activeShop && activeShop.privacy_policy) 
+          ? activeShop.privacy_policy 
+          : "Nobaraa is a premium designer boutique specializing in bespoke customization and handcrafted ethnic luxury sarees, designed with timeless precision and unmatched elegance.";
+        return (
+          <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowAboutModal(false)}>
+            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+              background: '#ffffff', 
+              borderRadius: '24px', 
+              width: '720px', 
+              maxWidth: '90%',
+              maxHeight: '85vh',
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+              position: 'relative',
+              fontFamily: "'Jost', sans-serif",
+              overflow: 'hidden'
+            }}>
+              <button onClick={() => setShowAboutModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                <X size={20} />
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+                <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                  <Award size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>About Nobaraa</h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Designer Boutique & Heritage Handloom</p>
+                </div>
+              </div>
+
+              <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+                <div>
+                  <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '1.05rem', color: '#333' }}>
+                    {aboutContent}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn-primary" onClick={() => setShowAboutModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* TERMS OF SERVICE MODAL */}
       {showTermsModal && (
@@ -6836,6 +6976,8 @@ export default function App() {
                         setShowShippingModal(true);
                       } else if (link === 'Terms of Service') {
                         setShowTermsModal(true);
+                      } else if (link === 'Contact') {
+                        setShowContactModal(true);
                       }
                     }}
                     style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
@@ -6856,7 +6998,12 @@ export default function App() {
                   <a 
                     key={link} 
                     href="#" 
-                    onClick={e => e.preventDefault()}
+                    onClick={e => {
+                      e.preventDefault();
+                      if (link === 'About Nobaraa') {
+                        setShowAboutModal(true);
+                      }
+                    }}
                     style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
                     onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
@@ -7135,30 +7282,140 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
                     
                     {/* Cart Items list */}
-                    <div className="glass-panel" style={{ padding: '24px' }}>
+                    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {cart.map(ci => (
-                        <div key={ci.id} className="cart-row">
-                          <img className="cart-img" src={ci.product.images[0] || null} alt="" />
-                          <div>
-                            <h4 style={{ fontWeight: 800, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>{ci.product.name}</h4>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Store ID: {ci.product.shop_id}</span>
+                        <div 
+                          key={ci.id} 
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            padding: '20px', 
+                            borderBottom: '1px solid #f0e6fc',
+                            gap: '20px',
+                            flexWrap: 'wrap',
+                            transition: 'all 0.2s',
+                            background: '#ffffff',
+                            borderRadius: '16px',
+                            boxShadow: '0 4px 12px rgba(122, 78, 165, 0.03)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '240px' }}>
+                            <div style={{ 
+                              width: '74px', 
+                              height: '74px', 
+                              borderRadius: '12px', 
+                              overflow: 'hidden', 
+                              background: '#fcfbfe', 
+                              border: '1px solid #f0e6fc',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              {ci.product.images && ci.product.images.length > 0 ? (
+                                <img src={ci.product.images[0]} alt={ci.product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                <ShoppingBag size={24} style={{ color: '#d0bdf4' }} />
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <h4 style={{ 
+                                fontWeight: 700, 
+                                color: '#2b0b57', 
+                                margin: 0,
+                                fontSize: '1.05rem',
+                                fontFamily: "'Jost', sans-serif"
+                              }}>{ci.product.name}</h4>
+                              <span style={{ 
+                                fontSize: '0.75rem', 
+                                color: '#7a4ea5',
+                                background: '#f5edff',
+                                padding: '3px 10px',
+                                borderRadius: '12px',
+                                width: 'fit-content',
+                                fontWeight: 600
+                              }}>Product ID: #{ci.product.id}</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="current-price" style={{ fontSize: '1rem' }}>₹{ci.product.price}</span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                            <div style={{ minWidth: '80px', textAlign: 'right' }}>
+                              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2b0b57' }}>₹{ci.product.price}</span>
+                            </div>
+
+                            {/* MODERN QTY SELECTOR PILL */}
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '12px', 
+                              background: '#f5edff', 
+                              borderRadius: '24px', 
+                              padding: '6px 14px', 
+                              border: '1px solid #e9dbf7'
+                            }}>
+                              <button 
+                                disabled={ci.quantity <= 1}
+                                onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1))}
+                                style={{ 
+                                  border: 'none', 
+                                  background: 'none', 
+                                  color: ci.quantity <= 1 ? '#cdafe9' : '#7a4ea5', 
+                                  cursor: ci.quantity <= 1 ? 'not-allowed' : 'pointer', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  padding: '4px',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <Minus size={14} strokeWidth={3} />
+                              </button>
+                              <span style={{ 
+                                fontWeight: 700, 
+                                minWidth: '24px', 
+                                textAlign: 'center', 
+                                fontSize: '0.95rem', 
+                                color: '#2b0b57' 
+                              }}>{ci.quantity}</span>
+                              <button 
+                                disabled={ci.quantity >= ci.product.stock}
+                                onClick={() => handleAddToCart(ci.product_id, Math.min(ci.product.stock, ci.quantity + 1))}
+                                style={{ 
+                                  border: 'none', 
+                                  background: 'none', 
+                                  color: ci.quantity >= ci.product.stock ? '#cdafe9' : '#7a4ea5', 
+                                  cursor: ci.quantity >= ci.product.stock ? 'not-allowed' : 'pointer', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center', 
+                                  padding: '4px',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <Plus size={14} strokeWidth={3} />
+                              </button>
+                            </div>
+
+                            <button 
+                              onClick={() => handleRemoveFromCart(ci.id)} 
+                              style={{ 
+                                background: '#ffeef2', 
+                                border: 'none', 
+                                color: '#e84e7e', 
+                                cursor: 'pointer',
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
-                          <div>
-                            <input 
-                              type="number" 
-                              className="cart-qty-input" 
-                              min="1" 
-                              max={ci.product.stock}
-                              value={ci.quantity} 
-                              onChange={e => handleAddToCart(ci.product_id, parseInt(e.target.value))}
-                            />
-                          </div>
-                          <button onClick={() => handleRemoveFromCart(ci.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-danger)', cursor: 'pointer' }}>
-                            <Trash2 size={18} />
-                          </button>
                         </div>
                       ))}
                     </div>
