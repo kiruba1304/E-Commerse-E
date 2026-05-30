@@ -519,6 +519,12 @@ def ensure_dtdc_columns():
         if 'razorpay_payment_id' not in cust_columns:
             connection.execute(text("ALTER TABLE customization_orders ADD COLUMN razorpay_payment_id VARCHAR(100)"))
 
+        # Reviews table migration
+        review_result = connection.execute(text("PRAGMA table_info(reviews)"))
+        review_columns = [row[1] for row in review_result.fetchall()]
+        if 'image_url' not in review_columns:
+            connection.execute(text("ALTER TABLE reviews ADD COLUMN image_url VARCHAR(255)"))
+
 
 
 def ensure_online_order_sequence_columns():

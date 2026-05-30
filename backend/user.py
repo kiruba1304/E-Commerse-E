@@ -971,18 +971,22 @@ def submit_review():
     if not purchased:
          return jsonify({"error": "You can only review products that you have successfully purchased and received"}), 403
 
+    image_url = data.get('image_url')
+
     # Check if review already exists
     existing = Review.query.filter_by(user_id=user_id, product_id=product_id).first()
     if existing:
         existing.rating = int(rating)
         existing.comment = comment
+        existing.image_url = image_url
         review = existing
     else:
         review = Review(
             user_id=user_id,
             product_id=product_id,
             rating=int(rating),
-            comment=comment
+            comment=comment,
+            image_url=image_url
         )
         db.session.add(review)
 

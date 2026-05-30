@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock,
-  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload
 } from 'lucide-react';
 
 const API_BASE = "/api";
@@ -577,7 +577,7 @@ export default function App() {
   
   // Navigation states
   const [currentView, setCurrentView] = useState("opac"); // opac, user_dashboard, admin_dashboard, super_admin_dashboard
-  const [activePanel, setActivePanel] = useState(""); // active sub-panel in dashboards
+  const [activePanel, setActivePanel] = useState(window.innerWidth <= 768 ? "menu" : "orders"); // active sub-panel in dashboards
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "", addresses: [] });
@@ -602,8 +602,31 @@ export default function App() {
   const [activeDetailImageIndex, setActiveDetailImageIndex] = useState(0);
   const [activeProduct, setActiveProduct] = useState(null);
   const [activeProductImageIndex, setActiveProductImageIndex] = useState(0);
+  const [recentlyViewed, setRecentlyViewed] = useState(() => {
+    try {
+      const saved = localStorage.getItem("recentlyViewedProducts");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (activeProduct) {
+      setRecentlyViewed(prev => {
+        const filtered = prev.filter(p => p.id !== activeProduct.id);
+        const updated = [activeProduct, ...filtered].slice(0, 10);
+        localStorage.setItem("recentlyViewedProducts", JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [activeProduct]);
   const [popupAd, setPopupAd] = useState(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [loginRoleTab, setLoginRoleTab] = useState("user"); // user, admin, super_admin
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -705,7 +728,8 @@ export default function App() {
   const [userNotifications, setUserNotifications] = useState([]);
   const [checkoutData, setCheckoutData] = useState({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
   const [activeCustomizationCheckout, setActiveCustomizationCheckout] = useState(null);
-  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "", image_url: "" });
+  const [isUploadingReviewImage, setIsUploadingReviewImage] = useState(false);
   const [newTicket, setNewTicket] = useState({ shop_id: "", subject: "", message: "" });
 
   // Admin Workspace states
@@ -826,6 +850,7 @@ export default function App() {
   const [adminCustomizations, setAdminCustomizations] = useState([]);
   const [quoteInputs, setQuoteInputs] = useState({});
   const [sharingProduct, setSharingProduct] = useState(null);
+  const [activeReviewImagePreview, setActiveReviewImagePreview] = useState(null);
 
 
   // Super Admin Workspace states
@@ -1017,7 +1042,7 @@ export default function App() {
       // Auto Route depending on role
       if (cachedRole === 'user') {
         setCurrentView("opac");
-        setActivePanel("dashboard");
+        setActivePanel("orders");
       } else if (cachedRole === 'admin') {
         setCurrentView("admin_dashboard");
         setActivePanel("shop_config");
@@ -1206,7 +1231,7 @@ export default function App() {
         // Navigation redirect
         if (data.user.role === 'user') {
           setCurrentView("opac");
-          setActivePanel("dashboard");
+          setActivePanel("orders");
         } else if (data.user.role === 'admin') {
           setCurrentView("admin_dashboard");
           setActivePanel("shop_config");
@@ -1245,7 +1270,7 @@ export default function App() {
         addToast("Registration Success", "Account created successfully! Enjoy your 50 free SuperCoins.", "success");
         
         setCurrentView("opac");
-        setActivePanel("dashboard");
+        setActivePanel("orders");
       } else {
         addToast("Registration Failed", data.error || "Validation failed.", "danger");
       }
@@ -1304,7 +1329,7 @@ export default function App() {
           addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
 
           setCurrentView("opac");
-          setActivePanel("dashboard");
+          setActivePanel("orders");
         } catch (err) {
           addToast("Server Error", "Could not complete Google sign-in.", "danger");
         }
@@ -1356,6 +1381,7 @@ export default function App() {
     setUser(null);
     setRole("guest");
     setCurrentView("opac");
+    setActivePanel(window.innerWidth <= 768 ? "menu" : "orders");
 
     // Restore guest cart and wishlist
     try {
@@ -1375,7 +1401,7 @@ export default function App() {
   useEffect(() => {
     if (role === 'user') {
       if (currentView === 'user_dashboard') {
-        if (activePanel === 'dashboard') loadUserDashboard();
+        loadUserDashboard();
         if (activePanel === 'cart') loadUserCart();
         if (activePanel === 'wishlist') loadUserWishlist();
         if (activePanel === 'orders') loadUserOrders();
@@ -1711,22 +1737,59 @@ export default function App() {
       const res = await fetch(`${API_BASE}/user/reviews`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ product_id: productId, rating: newReview.rating, comment: newReview.comment })
+        body: JSON.stringify({ 
+          product_id: productId, 
+          rating: newReview.rating, 
+          comment: newReview.comment,
+          image_url: newReview.image_url || null
+        })
       });
       const data = await res.json();
       if (res.ok) {
         addToast("Review Posted", "Thank you! Your verified customer review is active.", "success");
-        setNewReview({ rating: 5, comment: "" });
+        setNewReview({ rating: 5, comment: "", image_url: "" });
         // Reload detail product to see the review immediately!
         if (detailProduct && detailProduct.id === productId) {
           const detailRes = await fetch(`${API_BASE}/opac/products/${productId}`);
           const detailData = await detailRes.json();
           if (detailRes.ok) setDetailProduct(detailData);
         }
+        // Reload activeProduct if currently showing it in the main product details view
+        if (activeProduct && activeProduct.id === productId) {
+          const detailRes = await fetch(`${API_BASE}/opac/products/${productId}`);
+          const detailData = await detailRes.json();
+          if (detailRes.ok) setActiveProduct(detailData);
+        }
       } else {
         addToast("Cannot Review", data.error || "Reviews allowed only for verified buyers.", "danger");
       }
     } catch (e) {}
+  };
+
+  // Upload review image
+  const handleUploadReviewImage = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setIsUploadingReviewImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`${API_BASE}/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNewReview(prev => ({ ...prev, image_url: data.url }));
+        addToast("Image Uploaded", "Your photo was successfully attached.", "success");
+      } else {
+        addToast("Upload Failed", data.error || "Could not upload image.", "danger");
+      }
+    } catch (err) {
+      addToast("Upload Error", "An error occurred during file upload.", "danger");
+    } finally {
+      setIsUploadingReviewImage(false);
+    }
   };
 
   // File Return Request
@@ -2920,6 +2983,320 @@ export default function App() {
         </div>
       )}
 
+      {/* TERMS OF SERVICE MODAL */}
+      {showTermsModal && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowTermsModal(false)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+            background: '#ffffff', 
+            borderRadius: '24px', 
+            width: '720px', 
+            maxWidth: '90%',
+            maxHeight: '85vh',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif",
+            overflow: 'hidden'
+          }}>
+            <button onClick={() => setShowTermsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <FileText size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Terms of Service</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last updated: May 30, 2026</p>
+              </div>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Agreement to Terms</h4>
+                <p style={{ margin: 0 }}>
+                  By accessing and purchasing from Nobaraa Boutique, you unconditionally agree to follow and be bound by these Terms of Service, all applicable laws, and regulations.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Accounts and Security</h4>
+                <p style={{ margin: 0 }}>
+                  When you register a customer profile on our system, you are responsible for maintaining the privacy of your credentials. You agree to assume full accountability for all actions associated with your profile credentials.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Bespoke Orders and Tailoring</h4>
+                <p style={{ margin: 0 }}>
+                  For customization orders:
+                </p>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
+                  <li>Customers must ensure accurate measurements are provided in the sizing fields.</li>
+                  <li>We are not responsible for fitting issues resulting from incorrect measurement inputs.</li>
+                  <li>As customized designs are custom tailored, they are strictly non-cancelable after 2 hours of payment confirmation.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Billing, Pricing & GST</h4>
+                <p style={{ margin: 0 }}>
+                  All prices listed are inclusive of tax where noted. Standard GST and local delivery tariffs are computed automatically during cart checkout. We reserve the right to alter pricing and bulk order minimums without prior notification.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Limitation of Liability</h4>
+                <p style={{ margin: 0 }}>
+                  Nobaraa Boutique, its shops, and administrators shall not be liable for any indirect, incidental, or punitive damages arising from product misuse, delivery delays due to national emergencies, or database connection interruptions.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setShowTermsModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHIPPING POLICY MODAL */}
+      {showShippingModal && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowShippingModal(false)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+            background: '#ffffff', 
+            borderRadius: '24px', 
+            width: '720px', 
+            maxWidth: '90%',
+            maxHeight: '85vh',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif",
+            overflow: 'hidden'
+          }}>
+            <button onClick={() => setShowShippingModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <Truck size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Shipping Policy</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last updated: May 30, 2026</p>
+              </div>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Delivery Timelines</h4>
+                <p style={{ margin: 0 }}>
+                  We strive to process and dispatch all orders promptly:
+                </p>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
+                  <li><strong>Standard Orders</strong>: Dispatched within 24-48 hours. Delivery takes 3-5 business days depending on location.</li>
+                  <li><strong>Bespoke Customized Orders</strong>: Require an additional 5-7 business days for custom design, tailoring, and quality finishing before dispatch.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Shipping Charges</h4>
+                <p style={{ margin: 0 }}>
+                  Shipping fees are calculated dynamically based on total package weight, destination distance, and shipping speed (Standard vs Express). Any shipping promotions or free shipping thresholds will be automatically applied at checkout.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Courier Partners & Tracking</h4>
+                <p style={{ margin: 0 }}>
+                  We deliver via trusted national shipping carriers (e.g. DTDC, Blue Dart, Delhivery). Once your order is dispatched, a tracking reference ID and link will be shared via email and updated in your order history dashboard.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Delivery Address Adjustments</h4>
+                <p style={{ margin: 0 }}>
+                  Address modifications can only be requested prior to dispatch. Once the parcel leaves our dispatch hub, address routing updates cannot be guaranteed.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Damaged Shipments</h4>
+                <p style={{ margin: 0 }}>
+                  If you receive a package that shows visible tampering or physical damage, please refuse the delivery and immediately report the incident to our support team with photographic proof.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setShowShippingModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRIVACY POLICY MODAL */}
+      {showPrivacyModal && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowPrivacyModal(false)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+            background: '#ffffff', 
+            borderRadius: '24px', 
+            width: '720px', 
+            maxWidth: '90%',
+            maxHeight: '85vh',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif",
+            overflow: 'hidden'
+          }}>
+            <button onClick={() => setShowPrivacyModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <ShieldCheck size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Privacy Policy</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last updated: May 30, 2026</p>
+              </div>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Information We Collect</h4>
+                <p style={{ margin: 0 }}>
+                  We collect personal details to facilitate your boutique experience, including your name, email address, phone number, shipping address, and customization choices (colors, sizing, notes).
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. How We Use Your Data</h4>
+                <p style={{ margin: 0 }}>
+                  Your details are utilized to process and ship your orders, track boutique loyalty points (SuperCoins), personalize home screens, communicate delivery updates, and tailor custom garments.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Secure Payments</h4>
+                <p style={{ margin: 0 }}>
+                  All payment transactions are handled through secure gateways. We do not store credit card credentials, bank account passwords, or delicate financial details directly on our servers.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Data Protection</h4>
+                <p style={{ margin: 0 }}>
+                  We implement commercial-grade encryption and access controls to secure customer databases and order tables against unauthorized leakages, edits, or theft.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Cookies and Analytics</h4>
+                <p style={{ margin: 0 }}>
+                  Our site uses standard tracking tokens to preserve login sessions, remember recently viewed products, and store customization carts in local database states.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setShowPrivacyModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RETURN & REFUND POLICY MODAL */}
+      {showPolicyModal && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowPolicyModal(false)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
+            background: '#ffffff', 
+            borderRadius: '24px', 
+            width: '720px', 
+            maxWidth: '90%',
+            maxHeight: '85vh',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif",
+            overflow: 'hidden'
+          }}>
+            <button onClick={() => setShowPolicyModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <RotateCcw size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Return & Refund Policy</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Last updated: May 30, 2026</p>
+              </div>
+            </div>
+
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Return Eligibility</h4>
+                <p style={{ margin: 0 }}>
+                  We accept return requests on eligible products and categories within their designated return window duration. The return window is counted from the date and time of order delivery (marked as "Customer Received" status).
+                </p>
+                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
+                  <li><strong>Shop-level Default</strong>: Items default to a 7-day return window unless specified otherwise by the shop settings.</li>
+                  <li><strong>Category-level Override</strong>: Overrides shop defaults according to specialized category rules.</li>
+                  <li><strong>Product-specific Setting</strong>: Product-level return window settings take the highest precedence.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Non-Returnable & Customized Orders</h4>
+                <p style={{ margin: 0 }}>
+                  Any orders placed via the <strong>Bespoke Customization</strong> suite (personalized size specifications, specific custom color palettes, or customized tailormade styles) are strictly <strong>non-returnable and non-refundable</strong> as they are uniquely produced to your personal requirements.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Condition of Returned Items</h4>
+                <p style={{ margin: 0 }}>
+                  To be eligible for a return, your items must be unused, unwashed, in the original brand packaging with all product labels, authentication tags, and invoices intact. Items returned with signs of damage or wear will not be accepted.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Refund Process</h4>
+                <p style={{ margin: 0 }}>
+                  Once the return shipment is received and inspected by our warehouse quality assurance team, your refund will be processed. Approved refunds are returned to your original payment method (Credit/Debit Card, UPI, Net Banking) within <strong>5-7 business days</strong>. For Cash on Delivery (COD) orders, a store credit or direct bank transfer will be issued.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Late or Expired Returns</h4>
+                <p style={{ margin: 0 }}>
+                  Return buttons are dynamically disabled once the computed return window expires. No manual exceptions can be made on orders where the return period has elapsed.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setShowPolicyModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AUTHENTICATION POPUP MODAL (LOGIN & REGISTRATION) */}
       {showLoginModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 11000, backgroundColor: 'rgba(122, 78, 165, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setShowLoginModal(false)}>
@@ -3974,6 +4351,16 @@ export default function App() {
                           <span style={{ color: 'var(--coin-gold)' }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
                         </div>
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.comment}</p>
+                        {r.image_url && (
+                          <div style={{ marginTop: '6px' }}>
+                            <img 
+                              src={r.image_url} 
+                              alt="Review attachment" 
+                              onClick={() => setActiveReviewImagePreview(r.image_url)}
+                              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'zoom-in' }} 
+                            />
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -4126,17 +4513,6 @@ export default function App() {
 
                 {/* Menu Options */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                  <div 
-                    className="dropdown-item" 
-                    onClick={() => {
-                      setCurrentView("user_dashboard");
-                      setActivePanel("dashboard");
-                      setShowProfileDropdown(false);
-                    }}
-                  >
-                    <LayoutDashboard size={14} />
-                    <span>Personalized Home</span>
-                  </div>
 
                   <div 
                     className="dropdown-item" 
@@ -4396,7 +4772,7 @@ export default function App() {
             {/* Bottom Icons Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', paddingBottom: '20px' }}>
               <Search size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' }); }} />
-              <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if(role==='guest'){setLoginRoleTab("user");setShowLoginModal(true);}else{setCurrentView("user_dashboard");} }} />
+              <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if(role==='guest'){setLoginRoleTab("user");setShowLoginModal(true);}else{setCurrentView("user_dashboard"); setActivePanel("menu");} }} />
               
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowWishlistDrawer(true); }}>
                 <Heart size={26} color="#222222" />
@@ -4849,20 +5225,33 @@ export default function App() {
               )}
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
                 <button 
-                  className="btn-secondary" 
                   onClick={() => {
                     const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
                     handleAddToCart(activeProduct.id, qty);
                   }}
                   disabled={activeProduct.stock <= 0}
-                  style={{ flex: 1, padding: '16px', fontSize: '1.1rem', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '8px' }}
+                  style={{ 
+                    flex: 1, 
+                    padding: isMobile ? '10px 12px' : '16px', 
+                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
+                    fontWeight: 700, 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#ffffff',
+                    border: '2px solid #7a4ea5',
+                    color: '#7a4ea5',
+                    borderRadius: '12px',
+                    cursor: activeProduct.stock <= 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}
                 >
-                  <ShoppingCart size={20} /> {purchaseMode === 'bulk' ? `ADD ${activeProduct.min_quantity || 1} TO CART` : 'ADD TO CART'}
+                  <ShoppingCart size={isMobile ? 16 : 20} /> {purchaseMode === 'bulk' ? `ADD ${activeProduct.min_quantity || 1} TO CART` : 'ADD TO CART'}
                 </button>
                 <button 
-                  className="btn-primary" 
                   onClick={() => {
                     const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
                     handleAddToCart(activeProduct.id, qty);
@@ -4870,9 +5259,25 @@ export default function App() {
                     setActivePanel('cart');
                   }}
                   disabled={activeProduct.stock <= 0}
-                  style={{ flex: 1, padding: '16px', fontSize: '1.1rem', fontWeight: 600, display: 'flex', justifyContent: 'center', gap: '8px' }}
+                  style={{ 
+                    flex: 1, 
+                    padding: isMobile ? '10px 12px' : '16px', 
+                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
+                    fontWeight: 700, 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 15px rgba(122, 78, 165, 0.2)',
+                    cursor: activeProduct.stock <= 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}
                 >
-                  <ShoppingBag size={20} /> BUY NOW
+                  <ShoppingBag size={isMobile ? 16 : 20} /> BUY NOW
                 </button>
               </div>
 
@@ -4895,8 +5300,8 @@ export default function App() {
                     className="btn-primary"
                     style={{
                       width: '100%',
-                      padding: '16px',
-                      fontSize: '1.1rem',
+                      padding: isMobile ? '10px 12px' : '16px',
+                      fontSize: isMobile ? '0.85rem' : '1.1rem',
                       fontWeight: 700,
                       background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
                       border: 'none',
@@ -4911,7 +5316,7 @@ export default function App() {
                       transition: 'all 0.3s ease'
                     }}
                   >
-                    <Sparkles size={20} /> BESPOKE CUSTOMIZATION
+                    <Sparkles size={isMobile ? 16 : 20} /> BESPOKE CUSTOMIZATION
                   </button>
                 </div>
               )}
@@ -4923,9 +5328,17 @@ export default function App() {
                 <div>
                   <h1 style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      4.5 <Star size={14} fill="white" />
-                    </span>
+                    {(() => {
+                      const reviews = activeProduct.reviews || [];
+                      const avgRating = reviews.length > 0 
+                        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
+                        : "0.0";
+                      return (
+                        <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {avgRating} <Star size={14} fill="white" />
+                        </span>
+                      );
+                    })()}
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>{(activeProduct.reviews || []).length} Ratings & Reviews</span>
                     <span className="badge badge-info">{activeProduct.category_name}</span>
                   </div>
@@ -4977,23 +5390,30 @@ export default function App() {
               </div>
 
               {/* Offers */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#222222', margin: '0 0 4px 0' }}>Available offers</h3>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
-                  <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <span><b>Bank Offer</b> 5% Unlimited Cashback on Kiruba Bank Axis Credit Card</span>
+              {(activeProduct.bulk_sale_price || activeProduct.customization_enabled || activeProduct.promo_code) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #f0e6fc', padding: '16px', borderRadius: '12px', background: '#fdfcff' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#2b0b57', margin: '0 0 4px 0', fontFamily: 'var(--font-serif)' }}>Available Offers</h3>
+                  
+                  {activeProduct.promo_code && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.9rem', color: '#444' }}>
+                      <Tag size={16} color="var(--accent-primary)" style={{ marginTop: '3px', flexShrink: 0 }} />
+                      <span><b>Special Coupon</b> Use code <span style={{ fontWeight: 700, color: 'var(--coin-gold)' }}>{activeProduct.promo_code}</span> for extra discount at checkout</span>
+                    </div>
+                  )}
+                  {activeProduct.bulk_sale_price && activeProduct.min_quantity && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.9rem', color: '#444' }}>
+                      <Tag size={16} color="var(--accent-primary)" style={{ marginTop: '3px', flexShrink: 0 }} />
+                      <span><b>Bulk Order Savings</b> Get wholesale pricing! Buy <b>{activeProduct.min_quantity}</b> or more items for only <span style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>₹{activeProduct.bulk_sale_price.toFixed(2)}</span> each.</span>
+                    </div>
+                  )}
+                  {activeProduct.customization_enabled && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.9rem', color: '#444' }}>
+                      <Tag size={16} color="var(--accent-primary)" style={{ marginTop: '3px', flexShrink: 0 }} />
+                      <span><b>Custom Tailoring</b> Custom colors, dimensions, and design options available on request. Tap Bespoke Customization below.</span>
+                    </div>
+                  )}
                 </div>
-                {activeProduct.promo_code && (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
-                    <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                    <span><b>Special Coupon</b> Use code <span style={{ fontWeight: 700, color: 'var(--coin-gold)' }}>{activeProduct.promo_code}</span> for extra discount at checkout</span>
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.95rem', color: '#444' }}>
-                  <Tag size={18} color="var(--accent-primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <span><b>Partner Offer</b> Sign up for Kiruba Pay Later and get free gift card worth ₹500*</span>
-                </div>
-              </div>
+              )}
 
               {/* Specs & Description */}
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', fontSize: '0.95rem', color: '#444', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
@@ -5007,8 +5427,7 @@ export default function App() {
                 
                 <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Seller</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#2b0b57', fontWeight: 700 }}>Kirubanithi Enterprises</span>
-                  <span style={{ background: 'linear-gradient(135deg, #7a4ea5, #2b0b57)', color: '#fff', fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 'bold' }}>Kiruba Assured</span>
+                  <span style={{ color: '#2b0b57', fontWeight: 700 }}>{activeProduct.shop_name || "Kirubanithi Enterprises"}</span>
                 </div>
               </div>
 
@@ -5016,54 +5435,215 @@ export default function App() {
               <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '24px', marginTop: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Ratings & Reviews</h2>
-                  <button className="btn-secondary" style={{ padding: '8px 16px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({behavior: "smooth"})}>Rate Product</button>
-                </div>
-                
-                <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} style={{ border: '1px solid #f0f0f0', borderRadius: '8px', padding: '24px', marginBottom: '32px', background: '#fafafa' }}>
-                  <h4 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', color: '#2b0b57', fontWeight: 600 }}>Write a Review</h4>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 500 }}>Your Rating:</span>
-                    <select 
-                      value={newReview.rating} 
-                      onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
-                      style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #e0e0e0', outline: 'none' }}
-                    >
-                      {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
-                    </select>
-                  </div>
-                  <textarea 
-                    placeholder="Tell us what you think about this product..." 
-                    rows={4} 
-                    value={newReview.comment}
-                    onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
-                    style={{ width: '100%', padding: '16px', border: '1px solid #e0e0e0', borderRadius: '4px', outline: 'none', resize: 'vertical', marginBottom: '16px', fontSize: '0.95rem', fontFamily: 'inherit' }}
-                    required
-                  />
-                  <button type="submit" className="btn-primary" style={{ padding: '10px 28px', fontWeight: 600 }}>Submit Review</button>
-                </form>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {activeProduct.reviews && activeProduct.reviews.length > 0 ? (
-                    activeProduct.reviews.map(r => (
-                      <div key={r.id} style={{ borderBottom: '1px solid #f0f0f0', paddingBottom: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
-                          <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {r.rating} <Star size={12} fill="white" />
-                          </span>
-                          <span style={{ fontWeight: 600, fontSize: '1rem', color: '#2b0b57' }}>Awesome Product!</span>
-                        </div>
-                        <p style={{ fontSize: '0.95rem', color: '#444', margin: '0 0 12px 0', lineHeight: 1.6 }}>{r.comment}</p>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 600 }}>{r.user_name}</span>
-                          <span>|</span>
-                          <span>Certified Buyer</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p style={{ fontSize: '0.9rem', color: '#878787', textAlign: 'center', padding: '20px' }}>No reviews yet. Be the first to leave one!</p>
+                  {role === 'user' && (
+                    <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({behavior: "smooth"})}>Rate Product</button>
                   )}
                 </div>
+                
+                {(() => {
+                  const reviews = activeProduct.reviews || [];
+                  const totalReviews = reviews.length;
+                  const avgRating = totalReviews > 0 
+                    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1) 
+                    : "0.0";
+                  const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+                  reviews.forEach(r => { if (counts[r.rating] !== undefined) counts[r.rating]++; });
+                  
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {/* Summary Stats Grid */}
+                      <div className="glass-panel" style={{ padding: '24px', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '32px', alignItems: 'center', background: 'rgba(122, 78, 165, 0.02)', borderColor: 'rgba(122, 78, 165, 0.1)', borderRadius: '16px' }}>
+                        {/* Left Stats card */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRight: '1px solid rgba(122, 78, 165, 0.15)', paddingRight: '20px' }}>
+                          <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>{avgRating}</h1>
+                          <div style={{ display: 'flex', gap: '4px', margin: '8px 0', color: '#ffc107' }}>
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <Star 
+                                key={star} 
+                                size={16} 
+                                fill={star <= Math.round(Number(avgRating)) ? "#ffc107" : "none"} 
+                                color={star <= Math.round(Number(avgRating)) ? "#ffc107" : "#e0e0e0"} 
+                              />
+                            ))}
+                          </div>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{totalReviews} Ratings & Reviews</span>
+                        </div>
+
+                        {/* Right Progress bars */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {[5, 4, 3, 2, 1].map(starsCount => {
+                            const count = counts[starsCount];
+                            const percentage = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
+                            return (
+                              <div key={starsCount} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem' }}>
+                                <span style={{ width: '50px', fontWeight: 700, color: '#2b0b57', textAlign: 'right' }}>{starsCount} Stars</span>
+                                <div style={{ flex: 1, height: '8px', background: '#f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
+                                  <div style={{ width: `${percentage}%`, height: '100%', background: 'linear-gradient(90deg, #7a4ea5, #2b0b57)', borderRadius: '4px' }} />
+                                </div>
+                                <span style={{ width: '35px', color: 'var(--text-muted)', fontWeight: 500 }}>{count}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      {/* Review submit form */}
+                      {role === 'user' && (
+                        <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
+                          <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
+                          
+                          {/* Interactive star selector */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                            <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 600 }}>Your Rating:</span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {[1, 2, 3, 4, 5].map(starIndex => (
+                                <Star 
+                                  key={starIndex}
+                                  size={28}
+                                  style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                                  fill={newReview.rating >= starIndex ? "#ffc107" : "none"}
+                                  color={newReview.rating >= starIndex ? "#ffc107" : "#d0d0d0"}
+                                  onClick={() => setNewReview(prev => ({ ...prev, rating: starIndex }))}
+                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                                />
+                              ))}
+                            </div>
+                            <span style={{ fontSize: '0.9rem', color: '#7a4ea5', fontWeight: 700 }}>
+                              {newReview.rating} Stars ({
+                                newReview.rating === 5 ? 'Excellent' :
+                                newReview.rating === 4 ? 'Very Good' :
+                                newReview.rating === 3 ? 'Good' :
+                                newReview.rating === 2 ? 'Fair' : 'Poor'
+                              })
+                            </span>
+                          </div>
+
+                          <textarea 
+                            placeholder="Tell us what you think about this product..." 
+                            rows={4} 
+                            value={newReview.comment}
+                            onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                            style={{ width: '100%', padding: '16px', border: '1px solid #e2d9f0', borderRadius: '12px', outline: 'none', resize: 'vertical', marginBottom: '20px', fontSize: '0.95rem', fontFamily: 'inherit', transition: 'all 0.3s' }}
+                            onFocus={e => {e.target.style.borderColor = '#7a4ea5'; e.target.style.boxShadow = '0 0 0 3px rgba(122,78,165,0.1)'}}
+                            onBlur={e => {e.target.style.borderColor = '#e2d9f0'; e.target.style.boxShadow = 'none'}}
+                            required
+                          />
+
+                          {/* File upload section */}
+                          <div style={{ marginBottom: '24px' }}>
+                            <span style={{ display: 'block', fontSize: '0.95rem', color: '#444', fontWeight: 600, marginBottom: '10px' }}>Add Photo to your Review:</span>
+                            
+                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <label 
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '8px', 
+                                  padding: '10px 20px', 
+                                  background: '#f8f5fc', 
+                                  color: '#7a4ea5', 
+                                  border: '1px dashed #7a4ea5', 
+                                  borderRadius: '12px', 
+                                  fontSize: '0.9rem', 
+                                  fontWeight: 700, 
+                                  cursor: isUploadingReviewImage ? 'not-allowed' : 'pointer',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <Camera size={18} />
+                                {isUploadingReviewImage ? 'Uploading...' : 'Attach Image'}
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  onChange={handleUploadReviewImage} 
+                                  disabled={isUploadingReviewImage} 
+                                  style={{ display: 'none' }} 
+                                />
+                              </label>
+                              
+                              {newReview.image_url && (
+                                <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', border: '1px solid #e0d0f5', overflow: 'hidden' }}>
+                                  <img src={newReview.image_url} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  <button 
+                                    type="button"
+                                    onClick={() => setNewReview(prev => ({ ...prev, image_url: "" }))} 
+                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <button type="submit" className="btn-primary" style={{ padding: '12px 32px', fontWeight: 700, borderRadius: '12px', letterSpacing: '0.5px' }}>Submit Review</button>
+                        </form>
+                      )}
+
+                      {/* Review Listings */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '10px' }}>
+                        {reviews.length > 0 ? (
+                          reviews.map(r => (
+                            <div key={r.id} className="glass-panel animate-fade-in" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#ffffff', borderColor: '#f0eaf8', borderRadius: '16px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  {/* User initial avatar */}
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 4px 8px rgba(122,78,165,0.15)' }}>
+                                    {r.user_name ? r.user_name.charAt(0).toUpperCase() : 'A'}
+                                  </div>
+                                  <div>
+                                    <h5 style={{ fontWeight: 700, color: '#2b0b57', fontSize: '0.95rem', margin: 0 }}>{r.user_name}</h5>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#52c41a', marginTop: '2px', fontWeight: 600 }}>
+                                      <ShieldCheck size={14} />
+                                      <span>Verified Purchaser</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                  {r.created_at ? new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently'}
+                                </span>
+                              </div>
+                              
+                              {/* Rating Star Bar */}
+                              <div style={{ display: 'flex', gap: '4px', color: '#ffc107' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <Star 
+                                    key={star} 
+                                    size={14} 
+                                    fill={star <= r.rating ? "#ffc107" : "none"} 
+                                    color={star <= r.rating ? "#ffc107" : "#e0e0e0"} 
+                                  />
+                                ))}
+                              </div>
+                              
+                              {/* Review comment */}
+                              <p style={{ fontSize: '0.95rem', color: '#444', margin: 0, lineHeight: 1.6 }}>{r.comment}</p>
+                              
+                              {/* Review Attachment Image */}
+                              {r.image_url && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <img 
+                                    src={r.image_url} 
+                                    alt="Review attachment" 
+                                    onClick={() => setActiveReviewImagePreview(r.image_url)}
+                                    style={{ width: '90px', height: '90px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #f0e6fc', cursor: 'zoom-in', transition: 'all 0.2s' }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '40px 20px', background: '#faf8fe', borderRadius: '16px', border: '1px dashed #e2d9f0' }}>
+                            <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>No reviews yet. Be the first to leave one!</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -5090,6 +5670,26 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* Recently Viewed Products */}
+          {recentlyViewed.filter(p => p.id !== activeProduct.id).length > 0 && (
+            <div style={{ marginTop: '40px', borderTop: '1px solid #f0f0f0', paddingTop: '32px' }}>
+              <h2 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 24px 0', color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Recently Viewed Products</h2>
+              <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px', paddingRight: '20px' }}>
+                {recentlyViewed
+                  .filter(p => p.id !== activeProduct.id)
+                  .map(p => (
+                    <div key={p.id} onClick={() => {handleProductSelection(p.id); window.scrollTo(0,0);}} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)'}} onMouseLeave={e => {e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'}}>
+                      <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}>
+                        <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ fontSize: '1rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px', fontWeight: 600, fontFamily: 'var(--font-serif)' }} title={p.name}>{p.name}</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</div>
+                    </div>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
       )}
 
@@ -6226,7 +6826,18 @@ export default function App() {
                   <a 
                     key={link} 
                     href="#" 
-                    onClick={e => e.preventDefault()}
+                    onClick={e => {
+                      e.preventDefault();
+                      if (link === 'Return and Refund Policy') {
+                        setShowPolicyModal(true);
+                      } else if (link === 'Privacy Policy') {
+                        setShowPrivacyModal(true);
+                      } else if (link === 'Shipping Policy') {
+                        setShowShippingModal(true);
+                      } else if (link === 'Terms of Service') {
+                        setShowTermsModal(true);
+                      }
+                    }}
                     style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
                     onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
@@ -6423,113 +7034,97 @@ export default function App() {
 
       {/* RENDER VIEW 2: CUSTOMER / USER VIEW */}
       {currentView === 'user_dashboard' && role === 'user' && (
-        <div className="dashboard-grid">
-          <aside className="sidebar">
-            <div className="sidebar-header" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '24px', padding: '0 8px' }}>
-              <User style={{ color: 'var(--accent-primary)' }} />
-              <div>
-                <h5 style={{ fontWeight: 800 }}>{user.name}</h5>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Customer Wallet</span>
-              </div>
-            </div>
-            
-            <span className={`sidebar-link ${activePanel === 'dashboard' ? 'active' : ''}`} onClick={() => setActivePanel("dashboard")}>
-              <LayoutDashboard size={18} /> Personalized Home
-            </span>
-            <span className={`sidebar-link ${activePanel === 'cart' ? 'active' : ''}`} onClick={() => setActivePanel("cart")}>
-              <ShoppingCart size={18} /> My Active Cart ({cart.length})
-            </span>
-            <span className={`sidebar-link ${activePanel === 'wishlist' ? 'active' : ''}`} onClick={() => setActivePanel("wishlist")}>
-              <Heart size={18} /> Wishlist ({wishlist.length})
-            </span>
-            <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
-              <ShoppingBag size={18} /> Order History
-            </span>
-            <span className={`sidebar-link ${activePanel === 'notifications' ? 'active' : ''}`} onClick={() => setActivePanel("notifications")}>
-              <Bell size={18} /> Notifications
-            </span>
-            <span className={`sidebar-link ${activePanel === 'help_center' ? 'active' : ''}`} onClick={() => setActivePanel("help_center")}>
-              <HelpCircle size={18} /> Support Ticket Center
-            </span>
-            <span className={`sidebar-link ${activePanel === 'settings' ? 'active' : ''}`} onClick={() => setActivePanel("settings")}>
-              <Settings size={18} /> Account Settings
-            </span>
-            <span className={`sidebar-link ${activePanel === 'customizations' ? 'active' : ''}`} onClick={() => setActivePanel("customizations")}>
-              <Sparkles size={18} /> Customization Requests
-            </span>
-            <span className="sidebar-link" onClick={() => setCurrentView("opac")} style={{ borderTop: '1px solid #eeeeee', marginTop: '16px', paddingTop: '16px' }}>
-              ← Return to Storefront
-            </span>
-          </aside>
-          
-          <main className="main-content">
-            
-            {/* Dashboard Home panel */}
-            {activePanel === 'dashboard' && userDashboardData && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div className="dashboard-grid user-dashboard-grid">
+          {(!isMobile || activePanel === 'menu' || !activePanel) && (
+            <aside className="sidebar user-sidebar">
+              <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px', padding: '0 8px', borderBottom: '1px solid #eeeeee', paddingBottom: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(154, 132, 200, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-primary)' }}>
+                    <User size={20} />
+                  </div>
                   <div>
-                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Welcome Back, {user.name}!</h2>
-                    <p style={{ color: 'var(--text-muted)' }}>Explore today's recommendations and apply your saved coupons.</p>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', gap: '12px', alignItems: 'center', borderColor: 'var(--coin-gold)' }}>
-                    <Award size={36} style={{ color: 'var(--coin-gold)' }} />
-                    <div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SuperCoin Balance</span>
-                      <h3 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--coin-gold)' }}>{userDashboardData.super_coins} Coins</h3>
-                    </div>
+                    <h5 style={{ fontWeight: 800, margin: 0, fontSize: '1rem', color: '#222222', fontFamily: "'Playfair Display', serif" }}>{user?.name || 'Customer'}</h5>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Customer Wallet</span>
                   </div>
                 </div>
-
-                {/* Banner alert of unread notifications */}
-                {userDashboardData.unread_notifications_count > 0 && (
-                  <div className="glass-panel" style={{ padding: '16px', background: 'rgba(99, 102, 241, 0.08)', borderColor: 'var(--accent-primary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <Bell style={{ color: 'var(--accent-primary)' }} />
-                      <span>You have {userDashboardData.unread_notifications_count} unread notifications about arrivals and discount campaign promotions!</span>
-                    </div>
-                    <button onClick={() => setActivePanel("notifications")} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>View Feed</button>
-                  </div>
-                )}
-
-                {/* Quick actions catalog selection */}
-                <div className="glass-panel" style={{ padding: '24px', background: 'radial-gradient(circle at right, rgba(6, 182, 212, 0.1), transparent)' }}>
-                  <h4 style={{ fontWeight: 800, marginBottom: '8px' }}>Store Catalogue Hub</h4>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>Browse products across active shops and checkout instantly.</p>
-                  <button onClick={() => setCurrentView("opac")} className="btn-primary">
-                    Shop Now <ChevronRight size={18} />
-                  </button>
-                </div>
-
-                {/* Recommendations */}
-                <div>
-                  <h4 style={{ fontWeight: 800, marginBottom: '16px' }}>Top Recommended For You</h4>
-                  <div className="product-grid">
-                    {userDashboardData.recommendations && userDashboardData.recommendations.map(p => (
-                      <div key={p.id} className="glass-panel product-card" onClick={() => handleProductSelection(p.id)}>
-                        <div className="product-image-container">
-                          <img className="product-img" src={p.images[0] || null} alt="" />
-                        </div>
-                        <div className="product-info">
-                          <h5 className="product-name">{p.name}</h5>
-                          <span className="current-price">₹{p.price.toFixed(2)}</span>
-                          <button 
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleAddToCart(p.id);
-                            }} 
-                            className="btn-primary" 
-                            style={{ marginTop: '12px', justifyContent: 'center' }}
-                          >
-                            Buy Product
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
                   </div>
                 </div>
               </div>
-            )}
+              
+              <span className={`sidebar-link ${activePanel === 'cart' ? 'active' : ''}`} onClick={() => setActivePanel("cart")}>
+                <ShoppingCart size={18} /> My Active Cart ({cart.length})
+              </span>
+              <span className={`sidebar-link ${activePanel === 'wishlist' ? 'active' : ''}`} onClick={() => setActivePanel("wishlist")}>
+                <Heart size={18} /> Wishlist ({wishlist.length})
+              </span>
+              <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
+                <ShoppingBag size={18} /> Order History
+              </span>
+              <span className={`sidebar-link ${activePanel === 'notifications' ? 'active' : ''}`} onClick={() => setActivePanel("notifications")}>
+                <Bell size={18} /> Notifications
+              </span>
+              <span className={`sidebar-link ${activePanel === 'help_center' ? 'active' : ''}`} onClick={() => setActivePanel("help_center")}>
+                <HelpCircle size={18} /> Support Ticket Center
+              </span>
+              <span className={`sidebar-link ${activePanel === 'settings' ? 'active' : ''}`} onClick={() => setActivePanel("settings")}>
+                <Settings size={18} /> Account Settings
+              </span>
+              <span className={`sidebar-link ${activePanel === 'customizations' ? 'active' : ''}`} onClick={() => setActivePanel("customizations")}>
+                <Sparkles size={18} /> Customization Requests
+              </span>
+              
+              <div style={{ borderTop: '1px solid #eeeeee', marginTop: '16px', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <span className="sidebar-link" onClick={() => setCurrentView("opac")} style={{ padding: '10px 16px' }}>
+                  ← Return to Storefront
+                </span>
+                <button 
+                  onClick={handleLogout}
+                  className="btn-secondary" 
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px 16px', 
+                    fontSize: '0.85rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '8px',
+                    borderColor: '#ff4d4f',
+                    color: '#ff4d4f',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}
+                >
+                  <LogOut size={14} /> Sign Out
+                </button>
+              </div>
+            </aside>
+          )}
+          
+          {(!isMobile || (activePanel && activePanel !== 'menu')) && (
+            <main className="main-content">
+              {isMobile && activePanel && activePanel !== 'menu' && (
+                <button 
+                  onClick={() => setActivePanel("menu")} 
+                  className="btn-secondary" 
+                  style={{ 
+                    marginBottom: '20px', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    padding: '8px 16px',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    borderRadius: '8px'
+                  }}
+                >
+                  ← Back to Account Menu
+                </button>
+              )}
 
             {/* Shopping Cart panel */}
             {activePanel === 'cart' && (
@@ -7342,6 +7937,7 @@ export default function App() {
             )}
 
           </main>
+          )}
         </div>
       )}
 
@@ -12347,6 +12943,18 @@ export default function App() {
           <span style={{ fontSize: '0.65rem', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}>Account</span>
         </button>
       </div>
+
+      {/* Review Image Lightbox Modal */}
+      {activeReviewImagePreview && (
+        <div className="ad-modal-backdrop" onClick={() => setActiveReviewImagePreview(null)} style={{ zIndex: 12000, backgroundColor: 'rgba(12, 5, 20, 0.85)', backdropFilter: 'blur(12px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="lightbox-container" onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '85vw', maxHeight: '85vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <button onClick={() => setActiveReviewImagePreview(null)} style={{ position: 'absolute', top: '-48px', right: '0', background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', color: '#ffffff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={24} />
+            </button>
+            <img src={activeReviewImagePreview} alt="Review attachment" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
+          </div>
+        </div>
+      )}
 
       {/* Share Product Modal */}
       {sharingProduct && (

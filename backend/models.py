@@ -419,6 +419,7 @@ class Product(db.Model):
             "category_id": self.category_id,
             "category_name": self.category.name if self.category else "Uncategorized",
             "shop_id": self.shop_id,
+            "shop_name": self.shop.name if self.shop else "Kirubanithi Enterprises",
             "customization_enabled": self.customization_enabled or False,
             "barcode": self.barcode or "",
             "sku_code": self.sku_code or "",
@@ -622,6 +623,7 @@ class Review(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text, nullable=True)
+    image_url = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     def serialize(self):
@@ -632,6 +634,7 @@ class Review(db.Model):
             "product_id": self.product_id,
             "rating": self.rating,
             "comment": self.comment,
+            "image_url": self.image_url,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
