@@ -137,7 +137,7 @@ def sync_products():
         return jsonify({"error": f"Failed to merge products: {str(e)}"}), 500
         
     # Return all products currently stored on website
-    web_products = Product.query.filter_by(shop_id=shop.id).all()
+    web_products = Product.query.filter_by(shop_id=shop.id, is_deleted=False).all()
     return jsonify({
         "products": [p.serialize() for p in web_products]
     }), 200

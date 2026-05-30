@@ -383,6 +383,7 @@ class Product(db.Model):
     sku_code = db.Column(db.String(100), nullable=True)
     hsc_code = db.Column(db.String(100), nullable=True)
     return_window_days = db.Column(db.Integer, nullable=True)
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")

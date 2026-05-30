@@ -649,7 +649,7 @@ export default function App() {
   const currentShop = shops.find(s => Number(s.id) === Number(activeShopId));
   const currentSareeModels = currentShop?.saree_models || [];
 
-  const opacBanners = currentShop?.banners || [
+  const opacBanners = (currentShop?.banners || [
     {
       id: 1,
       image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80",
@@ -671,7 +671,7 @@ export default function App() {
       subtitle: "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
       actionText: "View Wallet"
     }
-  ];
+  ]).filter(b => b.id !== 3 || currentShop?.super_coin_enabled !== false);
 
   useEffect(() => {
     if (opacBanners.length === 0) return;
@@ -1578,7 +1578,7 @@ export default function App() {
     } catch (e) {}
   };
 
-  const handleAddToCart = async (productId, qty = 1) => {
+  const handleAddToCart = async (productId, qty = 1, showToast = true) => {
     if (role !== 'user') {
       const prod = products.find(p => p.id === productId);
       if (!prod) return;
@@ -1612,7 +1612,9 @@ export default function App() {
         localStorage.setItem("guestCart", JSON.stringify(newCart));
         return newCart;
       });
-      addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+      if (showToast) {
+        addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+      }
       return;
     }
 
@@ -1624,7 +1626,9 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+        if (showToast) {
+          addToast("Added to Cart", "Product added successfully to your shopping cart.", "success");
+        }
         loadUserCart();
       } else {
         addToast("Cart Error", data.error || "Out of stock.", "danger");
@@ -2313,8 +2317,13 @@ export default function App() {
       if (res.ok) {
         addToast("Deleted", "Product removed.", "info");
         loadAdminProducts();
+      } else {
+        const err = await res.json();
+        addToast("Error", err.error || "Failed to delete product.", "danger");
       }
-    } catch (e) {}
+    } catch (e) {
+      addToast("Error", "Network connection issue.", "danger");
+    }
   };
 
   const handleDownloadProductsReport = () => {
@@ -2940,18 +2949,62 @@ export default function App() {
   return (
     <div className="app-container">
       {/* Dynamic Toast Alerts Container */}
-      <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 10000, display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '380px', width: '90%' }}>
+      <div style={{ 
+        position: 'fixed', 
+        top: isMobile ? '12px' : 'auto', 
+        bottom: isMobile ? 'auto' : '24px', 
+        left: isMobile ? '12px' : 'auto',
+        right: isMobile ? '12px' : '24px', 
+        zIndex: 10500, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '12px', 
+        maxWidth: isMobile ? 'none' : '380px', 
+        width: isMobile ? 'calc(100% - 24px)' : '90%',
+        pointerEvents: 'none'
+      }}>
         {toasts.map(t => (
-          <div key={t.id} className="glass-panel animate-fade-in" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'center', background: t.type === 'danger' ? 'rgba(239, 68, 68, 0.15)' : t.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(30, 41, 73, 0.95)', borderColor: t.type === 'danger' ? '#ef4444' : t.type === 'success' ? '#10b981' : '#6366f1' }}>
-            {t.type === 'danger' && <ShieldAlert style={{ color: '#ef4444', flexShrink: 0 }} />}
-            {t.type === 'success' && <Check style={{ color: '#10b981', flexShrink: 0 }} />}
-            {t.type === 'info' && <Bell style={{ color: '#6366f1', flexShrink: 0 }} />}
-            <div>
-              <h5 style={{ fontWeight: 800, fontSize: '0.9rem' }}>{t.title}</h5>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.message}</p>
+          <div 
+            key={t.id} 
+            className="glass-panel animate-fade-in" 
+            style={{ 
+              pointerEvents: 'auto', 
+              padding: '14px 18px', 
+              display: 'flex', 
+              gap: '12px', 
+              alignItems: 'center', 
+              background: t.type === 'danger' 
+                ? 'rgba(255, 239, 241, 0.98)' 
+                : t.type === 'success' 
+                  ? 'rgba(240, 253, 244, 0.98)' 
+                  : t.type === 'warning'
+                    ? 'rgba(255, 251, 235, 0.98)'
+                    : 'rgba(245, 243, 255, 0.98)', 
+              borderColor: t.type === 'danger' 
+                ? '#fca5a5' 
+                : t.type === 'success' 
+                  ? '#86efac' 
+                  : t.type === 'warning'
+                    ? '#fde047'
+                    : '#d8b4fe',
+              borderRadius: '16px',
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              boxShadow: '0 10px 30px rgba(122, 78, 165, 0.12)',
+              backdropFilter: 'blur(10px)',
+              width: '100%'
+            }}
+          >
+            {t.type === 'danger' && <ShieldAlert style={{ color: '#ef4444', flexShrink: 0 }} size={20} />}
+            {t.type === 'success' && <Check style={{ color: '#10b981', flexShrink: 0 }} size={20} />}
+            {t.type === 'warning' && <AlertCircle style={{ color: '#f59e0b', flexShrink: 0 }} size={20} />}
+            {(t.type === 'info' || !t.type) && <Bell style={{ color: '#7a4ea5', flexShrink: 0 }} size={20} />}
+            <div style={{ flex: 1 }}>
+              <h5 style={{ fontWeight: 800, fontSize: '0.9rem', color: '#2b0b57', margin: '0 0 2px 0' }}>{t.title}</h5>
+              <p style={{ fontSize: '0.78rem', color: '#555555', margin: 0, lineHeight: 1.3 }}>{t.message}</p>
             </div>
-            <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} style={{ background: 'none', border: 'none', color: 'white', marginLeft: 'auto', cursor: 'pointer' }}>
-              <X size={16} />
+            <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', cursor: 'pointer', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
+              <X size={14} />
             </button>
           </div>
         ))}
@@ -4174,7 +4227,7 @@ export default function App() {
                 </div>
                 {invoiceOrder.discount_amount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
-                    <span>Promo Coupon / Coins Discount:</span>
+                    <span>Promo Coupon{currentShop?.super_coin_enabled !== false ? " / Coins" : ""} Discount:</span>
                     <span>-₹{invoiceOrder.discount_amount.toFixed(2)}</span>
                   </div>
                 )}
@@ -4644,11 +4697,13 @@ export default function App() {
                 <div style={{ borderBottom: '1px solid #eeeeee', paddingBottom: '10px' }}>
                   <h5 style={{ fontWeight: 800, margin: 0, fontSize: '0.95rem', color: '#222222', fontFamily: "'Playfair Display', serif" }}>{user?.name || 'Kirubanithi Customer'}</h5>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#666666', fontWeight: 500 }}>Customer Wallet</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                    <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)' }}>
-                      ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                  {currentShop?.super_coin_enabled !== false && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                      <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)' }}>
+                        ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Menu Options */}
@@ -5133,21 +5188,23 @@ export default function App() {
                     </div>
                   )}
 
-                  <div style={{ padding: '16px', border: '1px dashed var(--coin-gold)', background: '#fffdf5', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                      <Award style={{ color: 'var(--coin-gold)' }} size={24} />
-                      <div>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, color: '#222', display: 'block' }}>Redeem SuperCoins</span>
-                        <span style={{ fontSize: '0.85rem', color: '#666' }}>Deduct up to 30% of your cart value immediately.</span>
+                  {currentShop?.super_coin_enabled !== false && (
+                    <div style={{ padding: '16px', border: '1px dashed var(--coin-gold)', background: '#fffdf5', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <Award style={{ color: 'var(--coin-gold)' }} size={24} />
+                        <div>
+                          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#222', display: 'block' }}>Redeem SuperCoins</span>
+                          <span style={{ fontSize: '0.85rem', color: '#666' }}>Deduct up to 30% of your cart value immediately.</span>
+                        </div>
                       </div>
+                      <input 
+                        type="checkbox" 
+                        style={{ width: '22px', height: '22px', accentColor: 'var(--coin-gold)' }}
+                        checked={checkoutData.use_super_coins}
+                        onChange={e => setCheckoutData(prev => ({ ...prev, use_super_coins: e.target.checked }))}
+                      />
                     </div>
-                    <input 
-                      type="checkbox" 
-                      style={{ width: '22px', height: '22px', accentColor: 'var(--coin-gold)' }}
-                      checked={checkoutData.use_super_coins}
-                      onChange={e => setCheckoutData(prev => ({ ...prev, use_super_coins: e.target.checked }))}
-                    />
-                  </div>
+                  )}
 
                   <div>
                     <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Promo Coupon Code (Optional)</label>
@@ -5297,7 +5354,7 @@ export default function App() {
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(400px, 450px) 1fr', gap: isMobile ? '24px' : '40px', alignItems: 'start' }}>
             {/* Left Column: Images & Actions */}
-            <div style={{ position: isMobile ? 'static' : 'sticky', top: '100px' }}>
+            <div style={{ position: isMobile ? 'static' : 'sticky', top: '100px', minWidth: 0 }}>
               <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: isMobile ? '300px' : '450px', overflow: 'hidden' }}>
                 <img 
                   src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
@@ -5309,17 +5366,36 @@ export default function App() {
               </div>
 
               {activeProduct.images.length > 1 && (
-                <div style={{ display: 'flex', gap: '10px', marginTop: '16px', overflowX: 'auto', paddingBottom: '4px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '10px', 
+                  marginTop: '16px', 
+                  overflowX: 'auto', 
+                  paddingBottom: '8px',
+                  width: '100%',
+                  maxWidth: '100%',
+                  WebkitOverflowScrolling: 'touch'
+                }}>
                   {activeProduct.images.map((img, i) => (
                     <div 
                       key={i}
                       onClick={() => setActiveProductImageIndex(i)}
                       style={{ 
-                        width: '64px', height: '64px', border: activeProductImageIndex === i ? '2px solid #7a4ea5' : '1px solid #e0e0e0',
-                        padding: '4px', cursor: 'pointer', borderRadius: '4px'
+                        width: '64px', 
+                        height: '64px', 
+                        flexShrink: 0,
+                        border: activeProductImageIndex === i ? '2px solid #7a4ea5' : '1px solid #e0e0e0',
+                        padding: '4px', 
+                        cursor: 'pointer', 
+                        borderRadius: '8px',
+                        background: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxSizing: 'border-box'
                       }}
                     >
-                      <img src={img || null} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      <img src={img || null} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '4px' }} />
                     </div>
                   ))}
                 </div>
@@ -7194,11 +7270,13 @@ export default function App() {
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Customer Wallet</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                {currentShop?.super_coin_enabled !== false && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
               
               <span className={`sidebar-link ${activePanel === 'cart' ? 'active' : ''}`} onClick={() => setActivePanel("cart")}>
@@ -7356,7 +7434,7 @@ export default function App() {
                             }}>
                               <button 
                                 disabled={ci.quantity <= 1}
-                                onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1))}
+                                onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}
                                 style={{ 
                                   border: 'none', 
                                   background: 'none', 
@@ -7380,7 +7458,7 @@ export default function App() {
                               }}>{ci.quantity}</span>
                               <button 
                                 disabled={ci.quantity >= ci.product.stock}
-                                onClick={() => handleAddToCart(ci.product_id, Math.min(ci.product.stock, ci.quantity + 1))}
+                                onClick={() => handleAddToCart(ci.product_id, Math.min(ci.product.stock, ci.quantity + 1), false)}
                                 style={{ 
                                   border: 'none', 
                                   background: 'none', 
@@ -12909,9 +12987,9 @@ export default function App() {
                       <span style={{ fontSize: '0.75rem', color: '#888888', display: 'block', marginBottom: '8px' }}>Store: {ci.product.shop_id}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dddddd', borderRadius: '4px' }}>
-                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1))}>-</button>
+                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}>-</button>
                           <span style={{ padding: '0 8px', fontSize: '0.85rem', fontWeight: 600 }}>{ci.quantity}</span>
-                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, ci.quantity + 1)}>+</button>
+                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, ci.quantity + 1, false)}>+</button>
                         </div>
                         <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111' }}>₹{ci.product.price * ci.quantity}</span>
                       </div>

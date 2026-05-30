@@ -475,7 +475,7 @@ def get_dashboard():
         return jsonify({"error": "User not found"}), 404
 
     # Personalized Recommendations: pull 4 products
-    recommendations = Product.query.limit(4).all()
+    recommendations = Product.query.filter_by(is_deleted=False).limit(4).all()
     
     # Recent orders
     recent_orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).limit(3).all()
@@ -511,7 +511,7 @@ def manage_cart():
     if not product_id:
         return jsonify({"error": "Product ID is required"}), 400
 
-    prod = Product.query.get(product_id)
+    prod = Product.query.filter_by(id=product_id, is_deleted=False).first()
     if not prod:
         return jsonify({"error": "Product not found"}), 404
 
@@ -1072,7 +1072,7 @@ def create_customization():
     if not all([shop_id, product_id]):
         return jsonify({"error": "shop_id and product_id are required"}), 400
         
-    prod = Product.query.filter_by(id=product_id, shop_id=shop_id).first()
+    prod = Product.query.filter_by(id=product_id, shop_id=shop_id, is_deleted=False).first()
     if not prod:
         return jsonify({"error": "Product not found in this shop"}), 404
         

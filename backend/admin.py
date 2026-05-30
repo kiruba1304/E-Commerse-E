@@ -425,7 +425,7 @@ def manage_products():
     shop_id = request.user['shop_id']
 
     if request.method == 'GET':
-        products = Product.query.filter_by(shop_id=shop_id).all()
+        products = Product.query.filter_by(shop_id=shop_id, is_deleted=False).all()
         return jsonify([p.serialize() for p in products]), 200
 
     data = request.get_json() or {}
@@ -487,10 +487,22 @@ def modify_product(prod_id):
 
     if request.method == 'DELETE':
         name = p.name
-        db.session.delete(p)
-        db.session.commit()
-        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Deleted product '{name}'")
-        return jsonify({"message": "Product deleted successfully"}), 200
+        has_order_refs = OrderItem.query.filter_by(product_id=prod_id).first() is not None or \
+                         CustomizationOrder.query.filter_by(product_id=prod_id).first() is not None
+        try:
+            if has_order_refs:
+                p.is_deleted = True
+                p.category_id = None
+                db.session.commit()
+                log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Soft-deleted product '{name}' (retained for order history)")
+            else:
+                db.session.delete(p)
+                db.session.commit()
+                log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Hard-deleted product '{name}'")
+            return jsonify({"message": "Product deleted successfully"}), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": f"Failed to delete product: {str(e)}"}), 500
 
     data = request.get_json() or {}
     if 'name' in data:
@@ -547,7 +559,7 @@ def modify_product(prod_id):
 @role_required(['admin'])
 def inventory_evaluation():
     shop_id = request.user['shop_id']
-    products = Product.query.filter_by(shop_id=shop_id).all()
+    products = Product.query.filter_by(shop_id=shop_id, is_deleted=False).all()
     
     total_items = 0
     total_value = 0.0

@@ -156,7 +156,7 @@ def opac_list_products():
     min_price = request.args.get('min_price')
     max_price = request.args.get('max_price')
 
-    query = Product.query
+    query = Product.query.filter_by(is_deleted=False)
 
     if shop_id:
         query = query.filter_by(shop_id=int(shop_id))
@@ -175,7 +175,7 @@ def opac_list_products():
 @app.route('/api/opac/products/<int:prod_id>', methods=['GET'])
 def opac_product_detail(prod_id):
     """Retrieve complete details for a single product plus reviews"""
-    prod = Product.query.get(prod_id)
+    prod = Product.query.filter_by(id=prod_id, is_deleted=False).first()
     if not prod:
         return jsonify({"error": "Product not found"}), 404
 
@@ -490,6 +490,8 @@ def ensure_dtdc_columns():
         prod_columns = [row[1] for row in prod_result.fetchall()]
         if 'return_window_days' not in prod_columns:
             connection.execute(text("ALTER TABLE products ADD COLUMN return_window_days INTEGER"))
+        if 'is_deleted' not in prod_columns:
+            connection.execute(text("ALTER TABLE products ADD COLUMN is_deleted BOOLEAN DEFAULT 0 NOT NULL"))
 
         order_result = connection.execute(text("PRAGMA table_info(orders)"))
         order_columns = [row[1] for row in order_result.fetchall()]
