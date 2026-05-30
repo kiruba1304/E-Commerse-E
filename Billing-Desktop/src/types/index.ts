@@ -125,6 +125,8 @@ export interface Bill {
   updatedAt: string;
   customer?: Customer;
   items?: BillItem[];
+  shippingCharge?: number;
+  shippingGst?: number;
   previousBalance?: number;
   currentlyPaid?: number;
   totalOutstanding?: number;

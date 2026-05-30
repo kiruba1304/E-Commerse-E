@@ -4453,6 +4453,7 @@ export default function App() {
                       style={{ 
                         width: '60px', 
                         height: '60px', 
+                        flexShrink: 0,
                         objectFit: 'cover', 
                         borderRadius: '4px', 
                         cursor: 'pointer', 

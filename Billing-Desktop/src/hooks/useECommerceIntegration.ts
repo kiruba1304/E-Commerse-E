@@ -304,7 +304,9 @@ export const useECommerceIntegration = () => {
               invoiceType: 'customer_bill',
               items: billItems,
               createdAt: order.created_at || new Date().toISOString(),
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
+              shippingCharge: (order as any).shipping_charge || 0,
+              shippingGst: (order as any).shipping_gst || 0
             });
 
             processedOrderIds.push(order.id);

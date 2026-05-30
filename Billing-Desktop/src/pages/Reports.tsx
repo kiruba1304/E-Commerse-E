@@ -455,6 +455,29 @@ const Reports: React.FC = () => {
           grossValue,
         });
       });
+
+      const shippingCharge = b.shippingCharge || 0;
+      const shippingGst = b.shippingGst || 0;
+      if (shippingCharge > 0) {
+        const taxableValue = shippingCharge - shippingGst;
+        const cgst = shippingGst / 2;
+        const sgst = shippingGst / 2;
+        const shippingGstRate = taxableValue > 0 ? Math.round((shippingGst / taxableValue) * 100) : 18;
+        list.push({
+          id: `${b.billNumber}-shipping`,
+          billNumber: b.billNumber,
+          createdAt: b.createdAt,
+          customerName: b.customer?.name || 'Walk-in Customer',
+          productName: 'Delivery / Shipping Charge',
+          productCode: 'N/A',
+          gstRate: shippingGstRate,
+          taxableValue,
+          cgst,
+          sgst,
+          totalGst: shippingGst,
+          grossValue: shippingCharge,
+        });
+      }
     });
 
     return list;
