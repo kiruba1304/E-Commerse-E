@@ -666,18 +666,27 @@ const Reports: React.FC = () => {
 
   const exportCsv = () => {
     const rows = [
-      ['Bill Number','Date','Customer','Total','Discount','GST','Final','Payment','Items'],
-      ...periodBills.map(b => [
-        b.billNumber,
-        new Date(b.createdAt).toLocaleString(),
-        b.customer?.name || '',
-        b.totalAmount.toFixed(2),
-        b.totalDiscount.toFixed(2),
-        b.totalGst.toFixed(2),
-        b.finalAmount.toFixed(2),
-        b.paymentMethod,
-        String(b.items?.length || 0),
-      ])
+      ['Bill Number', 'Date', 'Customer', 'Items Subtotal (₹)', 'Discount (₹)', 'Goods GST (₹)', 'Delivery Charge (₹)', 'Delivery GST (₹)', 'Total GST (₹)', 'Final Amount (₹)', 'Payment Method', 'Items Count'],
+      ...periodBills.map(b => {
+        const totalGst = b.totalGst || 0;
+        const deliveryGst = b.shippingGst || 0;
+        const goodsGst = totalGst - deliveryGst;
+        const deliveryCharge = b.shippingCharge || 0;
+        return [
+          b.billNumber,
+          new Date(b.createdAt).toLocaleString(),
+          b.customer?.name || '',
+          b.totalAmount.toFixed(2),
+          b.totalDiscount.toFixed(2),
+          goodsGst.toFixed(2),
+          deliveryCharge.toFixed(2),
+          deliveryGst.toFixed(2),
+          totalGst.toFixed(2),
+          b.finalAmount.toFixed(2),
+          b.paymentMethod,
+          String(b.items?.length || 0),
+        ];
+      })
     ];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
