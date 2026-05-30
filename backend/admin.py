@@ -154,6 +154,16 @@ def manage_shop():
         except ValueError:
             return jsonify({"error": "Invalid return window days value"}), 400
 
+    if 'shipping_enabled' in data:
+        shop.shipping_enabled = bool(data['shipping_enabled'])
+    if 'shipping_charges_type' in data:
+        shop.shipping_charges_type = str(data['shipping_charges_type'])
+    if 'shipping_charges_flat' in data:
+        try:
+            shop.shipping_charges_flat = float(data['shipping_charges_flat'])
+        except ValueError:
+            return jsonify({"error": "Invalid flat shipping charge value"}), 400
+
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
     return jsonify({"message": "Shop settings updated successfully", "shop": shop.serialize()}), 200
@@ -303,13 +313,23 @@ def manage_categories():
     else:
         return_window_days = None
 
+    shipping_charge = data.get('shipping_charge')
+    if shipping_charge is not None and shipping_charge != "":
+        try:
+            shipping_charge = float(shipping_charge)
+        except ValueError:
+            return jsonify({"error": "Invalid shipping charge value"}), 400
+    else:
+        shipping_charge = 0.0
+
     cat = Category(
         name=name,
         description=data.get('description', ''),
         image_url=data.get('image_url', ''),
         shop_id=shop_id,
         customization_enabled=bool(data.get('customization_enabled', False)),
-        return_window_days=return_window_days
+        return_window_days=return_window_days,
+        shipping_charge=shipping_charge
     )
     db.session.add(cat)
     db.session.commit()
@@ -355,6 +375,16 @@ def modify_category(cat_id):
                 return jsonify({"error": "Invalid return window days value"}), 400
         else:
             cat.return_window_days = None
+
+    if 'shipping_charge' in data:
+        val = data['shipping_charge']
+        if val is not None and val != "":
+            try:
+                cat.shipping_charge = float(val)
+            except ValueError:
+                return jsonify({"error": "Invalid shipping charge value"}), 400
+        else:
+            cat.shipping_charge = 0.0
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated product category '{cat.name}'")
@@ -1240,8 +1270,12 @@ def gst_report():
         
     total_sales_value = sum([o.final_amount for o in filtered_orders])
     total_gst_amount = sum([o.gst_amount for o in filtered_orders])
+    total_shipping = sum([o.shipping_charge or 0.0 for o in filtered_orders])
+    total_shipping_gst = sum([o.shipping_gst or 0.0 for o in filtered_orders])
     
     net_sales = total_sales_value - total_gst_amount
+    net_goods_sales = net_sales - (total_shipping - total_shipping_gst)
+    goods_gst = total_gst_amount - total_shipping_gst
     gst_rate = getattr(shop, 'gst_percentage', 18.0)
     
     reporting_period = "All Time"
@@ -1267,6 +1301,10 @@ def gst_report():
         "gst_rate_applied": f"{gst_rate}% Configured GST",
         "total_gst_collected": round(total_gst_amount, 2),
         "gross_revenue": round(total_sales_value, 2),
+        "total_shipping_collected": round(total_shipping, 2),
+        "total_shipping_gst": round(total_shipping_gst, 2),
+        "net_goods_sales": round(net_goods_sales, 2),
+        "goods_gst_collected": round(goods_gst, 2),
         "total_orders_count": len(filtered_orders),
         "orders": [o.serialize() for o in filtered_orders]
     }), 200
@@ -1380,8 +1418,11 @@ def export_gst_report():
         "Customer",
         "Tax Type",
         "Gross Amount (INR)",
-        "Net Sales (INR)",
-        "GST Collected (INR)",
+        "Delivery Charge (INR)",
+        "Delivery GST (INR)",
+        "Net Goods Sales (INR)",
+        "Goods GST (INR)",
+        "Total GST Collected (INR)",
         "Status"
     ]
 
@@ -1390,7 +1431,7 @@ def export_gst_report():
         cell = ws.cell(row=header_row, column=col_idx, value=text)
         cell.font = font_header
         cell.fill = fill_header
-        cell.alignment = align_center if col_idx not in [3, 5, 6, 7] else (align_left if col_idx == 3 else align_right)
+        cell.alignment = align_center if col_idx in [1, 4, 11] else (align_left if col_idx in [2, 3] else align_right)
         cell.border = border_thin
 
     ws.row_dimensions[header_row].height = 28
@@ -1398,17 +1439,26 @@ def export_gst_report():
     # Populate Data
     current_row = 5
     total_gross = 0.0
-    total_net = 0.0
+    total_delivery = 0.0
+    total_delivery_gst = 0.0
+    total_net_goods = 0.0
+    total_goods_gst = 0.0
     total_gst = 0.0
 
     for o in filtered_orders:
         order_gross = o.final_amount
-        order_gst = o.gst_amount
-        order_net = order_gross - order_gst
+        order_delivery = o.shipping_charge or 0.0
+        order_delivery_gst = o.shipping_gst or 0.0
+        order_total_gst = o.gst_amount or 0.0
+        order_goods_gst = order_total_gst - order_delivery_gst
+        order_net_goods = order_gross - order_delivery - order_goods_gst
 
         total_gross += order_gross
-        total_net += order_net
-        total_gst += order_gst
+        total_delivery += order_delivery
+        total_delivery_gst += order_delivery_gst
+        total_net_goods += order_net_goods
+        total_goods_gst += order_goods_gst
+        total_gst += order_total_gst
 
         created_time = o.created_at.strftime('%Y-%m-%d %I:%M:%S %p') if o.created_at else 'N/A'
 
@@ -1418,8 +1468,11 @@ def export_gst_report():
             o.user.name if o.user else 'Unknown User',
             "Inclusive" if o.gst_inclusive else "Exclusive",
             order_gross,
-            order_net,
-            order_gst,
+            order_delivery,
+            order_delivery_gst,
+            order_net_goods,
+            order_goods_gst,
+            order_total_gst,
             o.status
         ]
 
@@ -1432,14 +1485,14 @@ def export_gst_report():
                 cell.fill = row_fill
             cell.border = border_thin
 
-            if col_idx in [1, 4, 8]:
+            if col_idx in [1, 4, 11]:
                 cell.alignment = align_center
             elif col_idx in [2, 3]:
                 cell.alignment = align_left
             else:
                 cell.alignment = align_right
 
-            if col_idx in [5, 6, 7]:
+            if col_idx in [5, 6, 7, 8, 9, 10]:
                 cell.number_format = '₹#,##0.00'
 
         ws.row_dimensions[current_row].height = 22
@@ -1450,23 +1503,21 @@ def export_gst_report():
     ws.cell(row=current_row, column=1).alignment = align_left
     ws.cell(row=current_row, column=1).border = border_total
 
-    for col_idx in range(2, 9):
+    for col_idx in range(2, 12):
         ws.cell(row=current_row, column=col_idx).border = border_total
 
-    cell_tot_gross = ws.cell(row=current_row, column=5, value=total_gross)
-    cell_tot_gross.font = font_bold
-    cell_tot_gross.alignment = align_right
-    cell_tot_gross.number_format = '₹#,##0.00'
-
-    cell_tot_net = ws.cell(row=current_row, column=6, value=total_net)
-    cell_tot_net.font = font_bold
-    cell_tot_net.alignment = align_right
-    cell_tot_net.number_format = '₹#,##0.00'
-
-    cell_tot_gst = ws.cell(row=current_row, column=7, value=total_gst)
-    cell_tot_gst.font = font_bold
-    cell_tot_gst.alignment = align_right
-    cell_tot_gst.number_format = '₹#,##0.00'
+    for col_idx, tot_val in [
+        (5, total_gross),
+        (6, total_delivery),
+        (7, total_delivery_gst),
+        (8, total_net_goods),
+        (9, total_goods_gst),
+        (10, total_gst)
+    ]:
+        cell_tot = ws.cell(row=current_row, column=col_idx, value=tot_val)
+        cell_tot.font = font_bold
+        cell_tot.alignment = align_right
+        cell_tot.number_format = '₹#,##0.00'
 
     ws.row_dimensions[current_row].height = 26
 

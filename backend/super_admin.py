@@ -80,7 +80,10 @@ def create_shop():
         super_coin_enabled=data.get('super_coin_enabled', True),
         super_coin_ratio=data.get('super_coin_ratio', 10),
         gst_percentage=float(data.get('gst_percentage', 18.0)),
-        gst_inclusive=bool(data.get('gst_inclusive', False))
+        gst_inclusive=bool(data.get('gst_inclusive', False)),
+        shipping_enabled=bool(data.get('shipping_enabled', False)),
+        shipping_charges_type=str(data.get('shipping_charges_type', 'flat')),
+        shipping_charges_flat=float(data.get('shipping_charges_flat', 0.0))
     )
 
     db.session.add(shop)
@@ -145,6 +148,12 @@ def update_shop(shop_id):
         shop.gst_percentage = float(data['gst_percentage'])
     if 'gst_inclusive' in data:
         shop.gst_inclusive = bool(data['gst_inclusive'])
+    if 'shipping_enabled' in data:
+        shop.shipping_enabled = bool(data['shipping_enabled'])
+    if 'shipping_charges_type' in data:
+        shop.shipping_charges_type = str(data['shipping_charges_type'])
+    if 'shipping_charges_flat' in data:
+        shop.shipping_charges_flat = float(data['shipping_charges_flat'])
 
     db.session.commit()
 

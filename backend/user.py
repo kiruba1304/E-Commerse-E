@@ -670,6 +670,25 @@ def create_order():
         gst_amount = discounted_amount * gst_rate
         final_amount = discounted_amount + gst_amount
 
+    # Calculate shipping charges
+    shipping_charge = 0.0
+    if getattr(shop, 'shipping_enabled', False):
+        if getattr(shop, 'shipping_charges_type', 'flat') == 'flat':
+            shipping_charge = getattr(shop, 'shipping_charges_flat', 0.0) or 0.0
+        elif getattr(shop, 'shipping_charges_type', 'flat') == 'section':
+            unique_category_ids = set(p.category_id for ci, p, final_item_price in items_to_buy if p.category_id is not None)
+            for cat_id in unique_category_ids:
+                cat = Category.query.get(cat_id)
+                if cat and cat.shipping_charge:
+                    shipping_charge += cat.shipping_charge
+
+    shipping_gst = 0.0
+    if shipping_charge > 0:
+        shipping_gst = shipping_charge * gst_rate / (1 + gst_rate)
+
+    gst_amount += shipping_gst
+    final_amount += shipping_charge
+
     # Deduct stock and clear cart items
     order_items = []
     for ci, p, final_item_price in items_to_buy:
@@ -718,7 +737,9 @@ def create_order():
         gst_amount=round(gst_amount, 2),
         gst_inclusive=gst_inclusive,
         discount_amount=round(discount_amount + super_coins_used, 2),
-        tracking_info=razorpay_order_id
+        tracking_info=razorpay_order_id,
+        shipping_charge=round(shipping_charge, 2),
+        shipping_gst=round(shipping_gst, 2)
     )
 
     shop.last_online_order_number = (shop.last_online_order_number or 0) + 1

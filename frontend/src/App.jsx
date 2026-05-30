@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
   Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
@@ -834,7 +834,7 @@ export default function App() {
   // Admin edits/creations
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
-  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "" });
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "" });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
   const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
@@ -2188,7 +2188,8 @@ export default function App() {
 
       const payload = {
         ...categoryForm,
-        return_window_days: categoryForm.return_window_days !== "" ? parseInt(categoryForm.return_window_days) : null
+        return_window_days: categoryForm.return_window_days !== "" ? parseInt(categoryForm.return_window_days) : null,
+        shipping_charge: categoryForm.shipping_charge !== "" ? parseFloat(categoryForm.shipping_charge) : 0.0
       };
 
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -2198,7 +2199,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Category Saved", `Category '${categoryForm.name}' updated.`, "success");
-        setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "" });
+        setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "" });
         loadAdminCategories();
       }
     } catch (e) {}
@@ -2453,6 +2454,11 @@ export default function App() {
       "Shipping Address", 
       "Billing Phone",
       "Gross Total (INR)", 
+      "Delivery Charge (INR)",
+      "Delivery GST (INR)",
+      "Net Goods (INR)",
+      "Goods GST (INR)",
+      "Total GST Collected (INR)",
       "Payment Method", 
       "Ship Status", 
       "Items Ordered"
@@ -2463,6 +2469,12 @@ export default function App() {
         `${item.product_name} (ID: ${item.product_id}, Qty: ${item.quantity}, Cat: ${item.category_name || 'Uncategorized'}, Price: INR ${item.price})`
       ).join(" | ") : "";
       
+      const orderDelivery = o.shipping_charge || 0;
+      const orderDeliveryGst = o.shipping_gst || 0;
+      const orderTotalGst = o.gst_amount || 0;
+      const orderGoodsGst = orderTotalGst - orderDeliveryGst;
+      const orderNetGoods = o.final_amount - orderDelivery - orderGoodsGst;
+
       return [
         `#${o.id}`,
         `"${(o.user_name || '').replace(/"/g, '""')}"`,
@@ -2470,6 +2482,11 @@ export default function App() {
         `"${(o.shipping_address || '').replace(/"/g, '""')}"`,
         `"${(o.billing_phone || '').replace(/"/g, '""')}"`,
         o.final_amount,
+        orderDelivery,
+        orderDeliveryGst,
+        orderNetGoods.toFixed(2),
+        orderGoodsGst.toFixed(2),
+        orderTotalGst,
         `"${(o.payment_method || '').replace(/"/g, '""')}"`,
         `"${(o.status || '').replace(/"/g, '""')}"`,
         `"${itemsStr.replace(/"/g, '""')}"`
@@ -2942,9 +2959,37 @@ export default function App() {
   const checkoutGstAmount = checkoutGstInclusive 
     ? (checkoutDiscountedAmount * (checkoutGstRate / 100.0)) / (1 + (checkoutGstRate / 100.0)) 
     : checkoutDiscountedAmount * (checkoutGstRate / 100.0);
-  const checkoutFinalAmount = checkoutGstInclusive 
+
+  const checkoutShippingCharge = useMemo(() => {
+    if (!currentShop?.shipping_enabled) return 0;
+    if (currentShop.shipping_charges_type === 'flat') {
+      return currentShop.shipping_charges_flat ?? 0;
+    }
+    if (currentShop.shipping_charges_type === 'section') {
+      if (activeCustomizationCheckout) {
+        const categoryId = activeCustomizationCheckout.product?.category_id;
+        if (categoryId) {
+          const cat = categories.find(c => c.id === categoryId);
+          return cat?.shipping_charge ?? 0;
+        }
+        return 0;
+      }
+      const uniqueCategoryIds = Array.from(new Set(cart.map(item => item.product.category_id).filter(id => id !== null && id !== undefined)));
+      let sumCharges = 0;
+      uniqueCategoryIds.forEach(catId => {
+        const cat = categories.find(c => c.id === catId);
+        if (cat && cat.shipping_charge) {
+          sumCharges += cat.shipping_charge;
+        }
+      });
+      return sumCharges;
+    }
+    return 0;
+  }, [currentShop, activeCustomizationCheckout, cart, categories]);
+
+  const checkoutFinalAmount = (checkoutGstInclusive 
     ? checkoutDiscountedAmount 
-    : checkoutDiscountedAmount + checkoutGstAmount;
+    : checkoutDiscountedAmount + checkoutGstAmount) + checkoutShippingCharge;
 
   return (
     <div className="app-container">
@@ -4247,6 +4292,12 @@ export default function App() {
                   </span>
                   <span>₹{invoiceOrder.gst_amount.toFixed(2)}</span>
                 </div>
+                {invoiceOrder.shipping_charge > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Shipping & Handling:</span>
+                    <span>₹{invoiceOrder.shipping_charge.toFixed(2)}</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '1.05rem', color: '#0f172a', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
                   <span>NET AMOUNT DUE:</span>
                   <span>₹{invoiceOrder.final_amount.toFixed(2)}</span>
@@ -5305,7 +5356,9 @@ export default function App() {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Delivery:</span>
-                    <span>₹0.00</span>
+                    <span style={{ fontWeight: checkoutShippingCharge > 0 ? 600 : 'normal' }}>
+                      {checkoutShippingCharge > 0 ? `₹${checkoutShippingCharge.toFixed(2)}` : 'FREE'}
+                    </span>
                   </div>
                   {!activeCustomizationCheckout && checkoutData.use_super_coins && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
@@ -8463,6 +8516,72 @@ export default function App() {
                   </div>
                 </div>
 
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '16px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Shipping Charges Configuration</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input 
+                        type="checkbox" 
+                        id="shipping_enabled"
+                        checked={!!adminShop.shipping_enabled}
+                        onChange={e => setAdminShop(prev => ({ ...prev, shipping_enabled: e.target.checked }))}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <label htmlFor="shipping_enabled" style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                        Enable Shipping Charges
+                      </label>
+                    </div>
+
+                    {adminShop.shipping_enabled && (
+                      <div className="animate-fade-in admin-grid-2col" style={{ background: 'rgba(122, 78, 165, 0.03)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(122, 78, 165, 0.1)', gap: '16px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shipping Charges Type</label>
+                          <select 
+                            value={adminShop.shipping_charges_type || 'flat'}
+                            onChange={e => setAdminShop(prev => ({ ...prev, shipping_charges_type: e.target.value }))}
+                          >
+                            <option value="flat">Flat Rate (Applied to full order)</option>
+                            <option value="section">Section-Based (Per Category)</option>
+                          </select>
+                        </div>
+                        <div>
+                          {adminShop.shipping_charges_type === 'flat' ? (
+                            <>
+                              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Flat Rate Amount (₹)</label>
+                              <input 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={adminShop.shipping_charges_flat !== undefined && adminShop.shipping_charges_flat !== null ? adminShop.shipping_charges_flat : ''}
+                                onChange={e => {
+                                  const val = e.target.value === '' ? 0.0 : parseFloat(e.target.value);
+                                  setAdminShop(prev => ({ ...prev, shipping_charges_flat: val }));
+                                }}
+                                required={adminShop.shipping_charges_type === 'flat'}
+                              />
+                              {adminShop.shipping_charges_flat > 0 && (() => {
+                                const rate = adminShop.gst_percentage || 18.0;
+                                const gstAmt = (adminShop.shipping_charges_flat * (rate / 100)) / (1 + (rate / 100));
+                                const taxable = adminShop.shipping_charges_flat - gstAmt;
+                                return (
+                                  <span style={{ fontSize: '0.75rem', color: '#7a4ea5', marginTop: '6px', display: 'block', fontWeight: 600 }}>
+                                    Inclusive GST: ₹{gstAmt.toFixed(2)} (Taxable: ₹{taxable.toFixed(2)}, GST ({rate}%): ₹{gstAmt.toFixed(2)})
+                                  </span>
+                                );
+                              })()}
+                            </>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <span>Configure rates in the <strong>Categories Manager</strong> page. Each section/category will have its own individual shipping fee.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>API Gateway Credentials</h4>
                   <div className="admin-grid-2col">
@@ -9261,6 +9380,22 @@ export default function App() {
                       onChange={e => setCategoryForm(prev => ({ ...prev, return_window_days: e.target.value }))}
                     />
                   </div>
+                  {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shipping Charge (₹)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        min="0"
+                        placeholder="e.g., 50.00"
+                        value={categoryForm.shipping_charge !== null && categoryForm.shipping_charge !== undefined ? categoryForm.shipping_charge : ""}
+                        onChange={e => setCategoryForm(prev => ({ ...prev, shipping_charge: e.target.value }))}
+                      />
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                        This shipping fee is applied if section-based shipping is active.
+                      </span>
+                    </div>
+                  )}
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                     Save Category <Check size={16} />
                   </button>
@@ -9275,6 +9410,7 @@ export default function App() {
                         <tr>
                           <th>Name</th>
                           <th>Description</th>
+                          {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && <th>Shipping Charge</th>}
                           <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                       </thead>
@@ -9283,9 +9419,12 @@ export default function App() {
                           <tr key={c.id}>
                             <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{c.name}</td>
                             <td>{c.description}</td>
+                            {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
+                              <td style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{(c.shipping_charge ?? 0).toFixed(2)}</td>
+                            )}
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setCategoryForm({ ...c, return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "" })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setCategoryForm({ ...c, return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "", shipping_charge: c.shipping_charge !== null && c.shipping_charge !== undefined ? c.shipping_charge : "" })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteCategory(c.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -11606,14 +11745,23 @@ export default function App() {
                   <div className="glass-panel" style={{ padding: '20px' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Gross Store Volume</span>
                     <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-main)', marginTop: '4px' }}>₹{gstReport.gross_revenue.toFixed(2)}</h3>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Goods: ₹{(gstReport.gross_revenue - (gstReport.total_shipping_collected || 0)).toFixed(2)} | Shipping: ₹{(gstReport.total_shipping_collected || 0).toFixed(2)}
+                    </div>
                   </div>
                   <div className="glass-panel" style={{ padding: '20px' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Net Taxable Sales</span>
                     <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--text-main)', marginTop: '4px' }}>₹{gstReport.net_sales.toFixed(2)}</h3>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Goods Net: ₹{(gstReport.net_goods_sales || 0).toFixed(2)} | Shipping Net: ₹{((gstReport.total_shipping_collected || 0) - (gstReport.total_shipping_gst || 0)).toFixed(2)}
+                    </div>
                   </div>
                   <div className="glass-panel" style={{ padding: '20px', borderColor: 'var(--accent-secondary)' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Total GST Tax collected</span>
                     <h3 style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-secondary)', marginTop: '4px' }}>₹{gstReport.total_gst_collected.toFixed(2)}</h3>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Goods GST: ₹{(gstReport.goods_gst_collected || 0).toFixed(2)} | Shipping GST: ₹{(gstReport.total_shipping_gst || 0).toFixed(2)}
+                    </div>
                   </div>
                 </div>
 
@@ -11629,14 +11777,21 @@ export default function App() {
                           <th>Customer</th>
                           <th>Tax Type</th>
                           <th style={{ textAlign: 'right' }}>Gross Amount</th>
-                          <th style={{ textAlign: 'right' }}>Net Sales</th>
-                          <th style={{ textAlign: 'right' }}>GST Collected</th>
+                          <th style={{ textAlign: 'right' }}>Delivery Charge</th>
+                          <th style={{ textAlign: 'right' }}>Delivery GST</th>
+                          <th style={{ textAlign: 'right' }}>Net Goods</th>
+                          <th style={{ textAlign: 'right' }}>Goods GST</th>
+                          <th style={{ textAlign: 'right' }}>Total GST</th>
                           <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {gstReport.orders && gstReport.orders.map(o => {
-                          const orderNetSales = o.final_amount - o.gst_amount;
+                          const orderDelivery = o.shipping_charge || 0;
+                          const orderDeliveryGst = o.shipping_gst || 0;
+                          const orderTotalGst = o.gst_amount || 0;
+                          const orderGoodsGst = orderTotalGst - orderDeliveryGst;
+                          const orderNetGoods = o.final_amount - orderDelivery - orderGoodsGst;
                           return (
                             <tr key={o.id}>
                               <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{getDisplayOrderNumber(o)}</td>
@@ -11648,8 +11803,11 @@ export default function App() {
                                 </span>
                               </td>
                               <td style={{ fontWeight: 'bold', textAlign: 'right' }}>₹{o.final_amount.toFixed(2)}</td>
-                              <td style={{ textAlign: 'right' }}>₹{orderNetSales.toFixed(2)}</td>
-                              <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)', textAlign: 'right' }}>₹{o.gst_amount.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right' }}>₹{orderDelivery.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{orderDeliveryGst.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right' }}>₹{orderNetGoods.toFixed(2)}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{orderGoodsGst.toFixed(2)}</td>
+                              <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)', textAlign: 'right' }}>₹{orderTotalGst.toFixed(2)}</td>
                               <td>
                                 <span className={`badge ${
                                   o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
@@ -11662,7 +11820,7 @@ export default function App() {
                         })}
                         {(!gstReport.orders || gstReport.orders.length === 0) && (
                           <tr>
-                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                            <td colSpan="11" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                               No GST transactions found for the selected reporting period.
                             </td>
                           </tr>

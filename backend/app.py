@@ -230,6 +230,7 @@ def seed_database():
         ensure_shop_billing_heartbeat_column()
         ensure_online_order_sequence_columns()
         ensure_dtdc_columns()
+        ensure_shipping_columns()
         backfill_online_order_numbers()
 
         # Check if already seeded
@@ -563,6 +564,30 @@ def backfill_online_order_numbers():
     except Exception as e:
         db.session.rollback()
         print(f"Online order sequence backfill skipped: {e}")
+
+
+def ensure_shipping_columns():
+    with db.engine.begin() as connection:
+        shop_result = connection.execute(text("PRAGMA table_info(shops)"))
+        shop_columns = [row[1] for row in shop_result.fetchall()]
+        if 'shipping_enabled' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN shipping_enabled BOOLEAN DEFAULT 0"))
+        if 'shipping_charges_type' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN shipping_charges_type VARCHAR(50) DEFAULT 'flat'"))
+        if 'shipping_charges_flat' not in shop_columns:
+            connection.execute(text("ALTER TABLE shops ADD COLUMN shipping_charges_flat FLOAT DEFAULT 0.0"))
+
+        cat_result = connection.execute(text("PRAGMA table_info(categories)"))
+        cat_columns = [row[1] for row in cat_result.fetchall()]
+        if 'shipping_charge' not in cat_columns:
+            connection.execute(text("ALTER TABLE categories ADD COLUMN shipping_charge FLOAT DEFAULT 0.0"))
+
+        order_result = connection.execute(text("PRAGMA table_info(orders)"))
+        order_columns = [row[1] for row in order_result.fetchall()]
+        if 'shipping_charge' not in order_columns:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_charge FLOAT DEFAULT 0.0"))
+        if 'shipping_gst' not in order_columns:
+            connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_gst FLOAT DEFAULT 0.0"))
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():

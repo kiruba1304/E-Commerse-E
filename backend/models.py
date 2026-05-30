@@ -77,6 +77,11 @@ class Shop(db.Model):
     customization_min_quantity = db.Column(db.Integer, default=1, nullable=False)
     return_window_days = db.Column(db.Integer, default=7, nullable=False)
     
+    # Shipping configuration
+    shipping_enabled = db.Column(db.Boolean, default=False)
+    shipping_charges_type = db.Column(db.String(50), default='flat')
+    shipping_charges_flat = db.Column(db.Float, default=0.0)
+    
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     # Relationships
@@ -235,6 +240,9 @@ class Shop(db.Model):
             "color_palette": self.color_palette,
             "customization_min_quantity": self.customization_min_quantity if self.customization_min_quantity is not None else 1,
             "return_window_days": self.return_window_days,
+            "shipping_enabled": self.shipping_enabled if self.shipping_enabled is not None else False,
+            "shipping_charges_type": self.shipping_charges_type or 'flat',
+            "shipping_charges_flat": self.shipping_charges_flat if self.shipping_charges_flat is not None else 0.0,
             "smtp_host": self.smtp_host,
             "smtp_port": self.smtp_port,
             "smtp_user": self.smtp_user,
@@ -345,6 +353,7 @@ class Category(db.Model):
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     customization_enabled = db.Column(db.Boolean, default=False)
     return_window_days = db.Column(db.Integer, nullable=True)
+    shipping_charge = db.Column(db.Float, default=0.0)
 
     products = db.relationship('Product', backref='category', lazy=True)
 
@@ -356,7 +365,8 @@ class Category(db.Model):
             "image_url": self.image_url,
             "shop_id": self.shop_id,
             "customization_enabled": self.customization_enabled or False,
-            "return_window_days": self.return_window_days
+            "return_window_days": self.return_window_days,
+            "shipping_charge": self.shipping_charge if self.shipping_charge is not None else 0.0
         }
 
 class Product(db.Model):
@@ -487,6 +497,8 @@ class Order(db.Model):
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
     shipping_label_url = db.Column(db.String(255), nullable=True)
     delivered_at = db.Column(db.DateTime, nullable=True)
+    shipping_charge = db.Column(db.Float, default=0.0)
+    shipping_gst = db.Column(db.Float, default=0.0)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -514,6 +526,8 @@ class Order(db.Model):
             "gst_amount": self.gst_amount,
             "gst_inclusive": self.gst_inclusive,
             "discount_amount": self.discount_amount,
+            "shipping_charge": self.shipping_charge if self.shipping_charge is not None else 0.0,
+            "shipping_gst": self.shipping_gst if self.shipping_gst is not None else 0.0,
             "return_request_status": self.return_request_status,
             "return_reason": self.return_reason,
             "return_image_url": self.return_image_url,
