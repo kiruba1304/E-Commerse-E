@@ -891,6 +891,8 @@ def get_shipping_label(order_id):
     
     if order.online_order_number:
         order_display_id = f"#{str(order.online_order_number).zfill(6)}"
+    elif order.tracking_info and not order.tracking_info.startswith('DTDC') and 'AWB' not in order.tracking_info:
+        order_display_id = order.tracking_info
     else:
         order_display_id = f"#{order.id}"
         
@@ -1949,8 +1951,9 @@ def export_gst_report():
 
         created_time = o.created_at.strftime('%Y-%m-%d %I:%M:%S %p') if o.created_at else 'N/A'
 
+        order_display_id = f"#{str(o.online_order_number).zfill(6)}" if o.online_order_number else (o.tracking_info if (o.tracking_info and not o.tracking_info.startswith('DTDC') and 'AWB' not in o.tracking_info) else f"#{o.id}")
         row_data = [
-            f"#{o.id}",
+            order_display_id,
             created_time,
             o.user.name if o.user else 'Unknown User',
             "Inclusive" if o.gst_inclusive else "Exclusive",
