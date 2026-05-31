@@ -741,6 +741,8 @@ def update_order_status(order_id):
                     db.session.add(notif)
         
         order.status = status
+        if status == 'Rejected':
+            order.is_synced = True
         
     if tracking_info is not None:
         order.tracking_info = tracking_info
@@ -1746,6 +1748,9 @@ def gst_report():
     for o in orders:
         if not o.created_at:
             continue
+        # Skip COD orders that are still Pending or Rejected
+        if o.payment_method == 'COD' and o.status in ['Pending', 'Rejected']:
+            continue
         # Apply date filter (YYYY-MM-DD)
         if date_val and o.created_at.strftime('%Y-%m-%d') != date_val:
             continue
@@ -1819,6 +1824,9 @@ def export_gst_report():
     filtered_orders = []
     for o in orders:
         if not o.created_at:
+            continue
+        # Skip COD orders that are still Pending or Rejected
+        if o.payment_method == 'COD' and o.status in ['Pending', 'Rejected']:
             continue
         # Apply date filter (YYYY-MM-DD)
         if date_val and o.created_at.strftime('%Y-%m-%d') != date_val:

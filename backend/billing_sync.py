@@ -168,11 +168,15 @@ def pull_orders():
     # Build complete customer object mapping alongside order fields
     order_list = []
     for order in orders:
+        # For COD orders, only pull once accepted (i.e. not Pending and not Rejected)
+        if order.payment_method == 'COD' and order.status in ['Pending', 'Rejected']:
+            continue
+            
         user = order.user
         serialized = order.serialize()
         serialized['customer'] = {
             "name": user.name if user else "Online Customer",
-            "phone": order.billing_phone or (user.contact_phone if user else ""),
+            "phone": order.billing_phone or (user.contact_phone if order.user else ""),
             "email": user.email if user else "",
             "shipping_address": order.shipping_address
         }
@@ -376,6 +380,8 @@ def update_order_status(order_id):
         order.delivered_at = datetime.now()
         
     order.status = new_status
+    if new_status == 'Rejected':
+        order.is_synced = True
     if new_status == 'Dispatched':
         order.tracking_info = data.get('tracking_info', order.tracking_info)
         order.shipping_label_url = data.get('shipping_label_url', order.shipping_label_url)
