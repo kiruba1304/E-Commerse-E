@@ -2152,6 +2152,11 @@ const OnlineOrders: React.FC = () => {
                             }`}>
                               {order.payment_method || 'ONLINE'}
                             </span>
+                            {order.payment_method?.toLowerCase() !== 'cod' && order.razorpay_payment_id && (
+                              <div className="text-[10px] text-slate-500 font-mono mt-1 select-all" title="Razorpay Payment ID">
+                                {order.razorpay_payment_id}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-4">
