@@ -49,10 +49,7 @@ def upload_file():
         unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
-        host = request.host_url
-        if not host.endswith('/'):
-            host += '/'
-        url = f"{host}api/uploads/{unique_filename}"
+        url = f"/api/uploads/{unique_filename}"
         return jsonify({"url": url}), 200
 
 @app.route('/api/uploads/<path:filename>', methods=['GET'])

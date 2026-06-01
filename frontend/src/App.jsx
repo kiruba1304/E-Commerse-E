@@ -5576,7 +5576,7 @@ export default function App() {
                         </label>
                         <textarea 
                           rows={3} 
-                          value={checkoutData.shipping_address}
+                          value={checkoutData.shipping_address || ""}
                           readOnly={true}
                           style={{ 
                             width: '100%', 
@@ -5597,7 +5597,7 @@ export default function App() {
                         </label>
                         <input 
                           type="text" 
-                          value={checkoutData.billing_phone}
+                          value={checkoutData.billing_phone || ""}
                           readOnly={true}
                           style={{ 
                             width: '100%', 
@@ -5621,7 +5621,7 @@ export default function App() {
                           <input 
                             type="text" 
                             placeholder="+91..."
-                            value={checkoutData.billing_phone}
+                            value={checkoutData.billing_phone || ""}
                             onChange={e => setCheckoutData(prev => ({ ...prev, billing_phone: e.target.value }))}
                             style={{ 
                               width: '100%', 
@@ -5905,7 +5905,7 @@ export default function App() {
                     <input 
                       type="text" 
                       placeholder="Enter code..."
-                      value={checkoutData.coupon_code}
+                      value={checkoutData.coupon_code || ""}
                       onChange={e => setCheckoutData(prev => ({ ...prev, coupon_code: e.target.value.toUpperCase() }))}
                       style={{ width: '50%', minWidth: '200px', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', fontSize: '0.95rem' }}
                     />
@@ -9236,7 +9236,7 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shop Name Title</label>
                     <input 
                       type="text" 
-                      value={adminShop.name}
+                      value={adminShop.name || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, name: e.target.value }))}
                       required 
                     />
@@ -9263,7 +9263,7 @@ export default function App() {
                       <input 
                         type="text" 
                         placeholder="Image path URL (automatically filled after upload)"
-                        value={adminShop.logo_url}
+                        value={adminShop.logo_url || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, logo_url: e.target.value }))}
                       />
                     </div>
@@ -9275,7 +9275,7 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email</label>
                     <input 
                       type="email" 
-                      value={adminShop.contact_email}
+                      value={adminShop.contact_email || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_email: e.target.value }))}
                     />
                   </div>
@@ -9283,7 +9283,7 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
                     <input 
                       type="text" 
-                      value={adminShop.contact_phone}
+                      value={adminShop.contact_phone || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_phone: e.target.value }))}
                     />
                   </div>
@@ -9292,7 +9292,7 @@ export default function App() {
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Privacy Policy content</label>
                   <textarea 
-                    value={adminShop.privacy_policy}
+                    value={adminShop.privacy_policy || ""}
                     onChange={e => setAdminShop(prev => ({ ...prev, privacy_policy: e.target.value }))}
                     rows={4} 
                   />
@@ -9420,7 +9420,7 @@ export default function App() {
                       <input 
                         type="text" 
                         placeholder="rzp_test..."
-                        value={adminShop.razorpay_key_id}
+                        value={adminShop.razorpay_key_id || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_id: e.target.value }))}
                       />
                     </div>
@@ -9429,7 +9429,7 @@ export default function App() {
                       <input 
                         type="password" 
                         placeholder="Razorpay password secret..."
-                        value={adminShop.razorpay_key_secret}
+                        value={adminShop.razorpay_key_secret || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_secret: e.target.value }))}
                       />
                     </div>
@@ -9441,7 +9441,7 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fast2SMS platform API Key</label>
                     <input 
                       type="text" 
-                      value={adminShop.sms_api_key}
+                      value={adminShop.sms_api_key || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, sms_api_key: e.target.value }))}
                     />
                   </div>
@@ -9449,7 +9449,7 @@ export default function App() {
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>WhatsApp Campaign API Secret</label>
                     <input 
                       type="password" 
-                      value={adminShop.whatsapp_api_key}
+                      value={adminShop.whatsapp_api_key || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, whatsapp_api_key: e.target.value }))}
                     />
                   </div>
@@ -10565,7 +10565,7 @@ export default function App() {
                         <input 
                           type="number" 
                           placeholder="e.g., 9500"
-                          value={productForm.bulk_sale_price}
+                          value={productForm.bulk_sale_price || ""}
                           onChange={e => setProductForm(prev => ({ ...prev, bulk_sale_price: e.target.value }))}
                           style={{ borderColor: productForm.bulk_sale_price ? 'rgba(122,78,165,0.5)' : undefined }}
                         />
@@ -10576,7 +10576,7 @@ export default function App() {
                         <input 
                           type="number" 
                           placeholder="e.g., 10"
-                          value={productForm.min_quantity}
+                          value={productForm.min_quantity || ""}
                           onChange={e => setProductForm(prev => ({ ...prev, min_quantity: e.target.value }))}
                           style={{ borderColor: productForm.min_quantity ? 'rgba(122,78,165,0.5)' : undefined }}
                         />
