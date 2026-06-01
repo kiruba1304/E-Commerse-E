@@ -5,5 +5,12 @@
   "server": {
     "url": "https://vishnex.com",
     "cleartext": true
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "clientId": "565050862630-8o8lrl2j6mv7rqqjmq5jhf448es33p6k.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
   }
 }
