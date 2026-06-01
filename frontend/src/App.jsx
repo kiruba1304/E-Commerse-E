@@ -6715,7 +6715,7 @@ export default function App() {
                       e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
                     }}
                     >
-                      <div className="product-image-container" style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                      <div className="product-image-container" style={{ position: 'relative', height: '440px', overflow: 'hidden' }}>
                         <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
                         {p.images[1] && (
                           <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
@@ -6990,7 +6990,7 @@ export default function App() {
                                             height: '100%'
                                           }}
                                           >
-                                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '200px', overflow: 'hidden' }}>
+                                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '380px', overflow: 'hidden' }}>
                                               <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
                                               {p.images[1] && (
                                                 <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
@@ -7074,7 +7074,7 @@ export default function App() {
                           {col.show_category_banner !== false && col.show_category_banner !== 0 && !(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
                             <div className="nobaraa-category-grid" style={{ 
                               display: 'grid', 
-                              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', 
                               justifyContent: 'center',
                               gap: '24px',
                               width: '100%',
@@ -7099,7 +7099,7 @@ export default function App() {
                                       border: '1px solid rgba(122, 78, 165, 0.05)',
                                       display: 'flex',
                                       flexDirection: 'column',
-                                      maxWidth: '290px',
+                                      maxWidth: '400px',
                                       width: '100%',
                                       margin: '0 auto'
                                     }}
@@ -7115,7 +7115,7 @@ export default function App() {
                                     {/* Inner image container */}
                                     <div className="nobaraa-category-image-container" style={{
                                       width: '100%',
-                                      height: '350px',
+                                      height: '480px',
                                       borderRadius: '16px',
                                       overflow: 'hidden',
                                       position: 'relative'
@@ -7217,7 +7217,7 @@ export default function App() {
                                     e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
                                   }}
                                   >
-                                    <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                                    <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
                                       <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
                                       {p.images[1] && (
                                         <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
@@ -7387,7 +7387,7 @@ export default function App() {
                       {/* Category Grid Section styled like mockup card list */}
                       <div className="nobaraa-category-grid" style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', 
                         justifyContent: 'center',
                         gap: '24px',
                         width: '100%',
@@ -7412,7 +7412,7 @@ export default function App() {
                                 border: '1px solid rgba(122, 78, 165, 0.05)',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                maxWidth: '290px',
+                                maxWidth: '400px',
                                 width: '100%',
                                 margin: '0 auto'
                               }}
@@ -7428,7 +7428,7 @@ export default function App() {
                               {/* Inner image container */}
                               <div className="nobaraa-category-image-container" style={{
                                 width: '100%',
-                                height: '350px',
+                                height: '480px',
                                 borderRadius: '16px',
                                 overflow: 'hidden',
                                 position: 'relative'
@@ -7517,11 +7517,11 @@ export default function App() {
                           border: '1px solid #f0e6fc',
                           display: 'flex',
                           flexDirection: 'column',
-                          height: '520px',
+                          height: '620px',
                           position: 'relative'
                         }}>
                           {/* Image Placeholder */}
-                          <div className="shim-bar" style={{ height: '300px', background: '#f6efff', position: 'relative' }}></div>
+                          <div className="shim-bar" style={{ height: '400px', background: '#f6efff', position: 'relative' }}></div>
                           {/* Details Placeholder */}
                           <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             {/* Category tag */}
@@ -7568,7 +7568,7 @@ export default function App() {
                             e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
                           }}
                           >
-                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '320px', overflow: 'hidden' }}>
+                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
                               <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
                               {p.images[1] && (
                                 <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />

@@ -394,7 +394,7 @@ textarea:focus {
 /* Product Catalogue Grids - Minimalist Boutique styling */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 28px;
 }
 
@@ -419,7 +419,7 @@ textarea:focus {
 
 .product-image-container {
   position: relative;
-  height: 280px;
+  height: 380px;
   background: #fdfdfd;
   overflow: hidden;
   padding: 0;
@@ -1702,7 +1702,7 @@ tr:hover td {
   }
 
   .product-image-container {
-    height: 200px !important;
+    height: 340px !important;
   }
 
   .product-info {
@@ -1734,7 +1734,7 @@ tr:hover td {
   }
 
   .nobaraa-category-image-container {
-    height: 160px !important;
+    height: 300px !important;
   }
 
   .nobaraa-category-image-container > div {
@@ -1807,11 +1807,11 @@ tr:hover td {
   }
 
   .product-image-container {
-    height: 140px !important;
+    height: 280px !important;
   }
 
   .nobaraa-category-image-container {
-    height: 130px !important;
+    height: 230px !important;
   }
 
   h2,
@@ -1942,7 +1942,7 @@ tr:hover td {
 /* Category Page Specific Product Grid (2 columns wrapping vertically on mobile) */
 .category-product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 28px;
 }
 
