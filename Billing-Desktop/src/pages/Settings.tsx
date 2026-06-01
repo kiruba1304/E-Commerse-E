@@ -47,7 +47,7 @@ const Settings: React.FC = () => {
       setShowGst(settings.showGst !== undefined ? settings.showGst : true);
       setGstInclusive(settings.gstInclusive || false);
       setGstPercentage(settings.gstPercentage !== undefined ? parseFloat(settings.gstPercentage) : 18);
-      setEcommerceApiUrl(settings.ecommerceApiUrl || 'http://localhost:5000/api');
+      setEcommerceApiUrl(settings.ecommerceApiUrl || 'http://localhost:5500/api');
       setEcommerceApiKey(settings.ecommerceApiKey || '');
       setEcommerceSyncInterval(settings.ecommerceSyncInterval !== undefined ? parseInt(settings.ecommerceSyncInterval) : 10);
       setFooterMessage(settings.footerMessage || 'Thank you for your business!');

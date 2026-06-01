@@ -23,7 +23,7 @@ const PaymentComponent = () => {
         }
 
         // 2. Ask Backend to Create an Order
-        const orderResponse = await fetch('http://localhost:5000/api/create-order', {
+        const orderResponse = await fetch('http://localhost:5500/api/create-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount: amount }) // Sending amount in INR
