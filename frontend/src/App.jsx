@@ -1341,6 +1341,9 @@ export default function App() {
     }
 
     if (Capacitor.isNativePlatform()) {
+      // Initialize native Google Sign-in on mount
+      GoogleAuth.initialize().catch(err => console.error("GoogleAuth init error:", err));
+
       if (googleButtonRef.current) {
         googleButtonRef.current.innerHTML = '';
         const btn = document.createElement('button');
@@ -1350,6 +1353,7 @@ export default function App() {
         
         btn.addEventListener('click', async () => {
           try {
+            await GoogleAuth.initialize();
             const user = await GoogleAuth.signIn();
             const idToken = user.authentication.idToken;
             const res = await fetch(`${API_BASE}/user/google-login`, {
