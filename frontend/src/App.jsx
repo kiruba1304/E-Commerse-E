@@ -6038,9 +6038,9 @@ export default function App() {
 
       {/* RENDER VIEW: PRODUCT DETAIL (FLIPKART STYLE) */}
       {currentView === 'product_detail' && activeProduct && (
-        <main className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '20px 40px', background: '#ffffff' }}>
+        <main className="main-content product-detail-page" style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px 100px' : '20px 40px', background: '#ffffff' }}>
           {/* Breadcrumb */}
-          <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '24px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="product-detail-breadcrumb" style={{ fontSize: '0.85rem', color: '#666', marginBottom: '24px', display: 'flex', gap: '8px', alignItems: 'center' }}>
             <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
             <span>/</span>
             <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>{activeProduct.category_name}</span>
@@ -6048,10 +6048,10 @@ export default function App() {
             <span style={{ color: '#222' }}>{activeProduct.name}</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(400px, 450px) 1fr', gap: isMobile ? '24px' : '40px', alignItems: 'start' }}>
+          <div className="product-detail-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(400px, 450px) 1fr', gap: isMobile ? '24px' : '40px', alignItems: 'start' }}>
             {/* Left Column: Images & Actions */}
-            <div style={{ position: isMobile ? 'static' : 'sticky', top: '100px', minWidth: 0 }}>
-              <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: isMobile ? '300px' : '450px', overflow: 'hidden' }}>
+            <div className="product-detail-left-col" style={{ position: isMobile ? 'static' : 'sticky', top: '100px', minWidth: 0 }}>
+              <div className="product-detail-img-wrapper" style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: isMobile ? '300px' : '450px', overflow: 'hidden' }}>
                 <img 
                   src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
                   alt={activeProduct.name}
@@ -6062,7 +6062,7 @@ export default function App() {
               </div>
 
               {activeProduct.images.length > 1 && (
-                <div style={{ 
+                <div className="product-detail-thumbs" style={{ 
                   display: 'flex', 
                   gap: '10px', 
                   marginTop: '16px', 
@@ -6099,7 +6099,7 @@ export default function App() {
 
               {/* Single / Bulk Purchase Mode Toggle */}
               {activeProduct.bulk_sale_price && activeProduct.min_quantity && (
-                <div style={{ marginTop: '20px', display: 'flex', gap: '0', border: '2px solid rgba(122,78,165,0.25)', borderRadius: '12px', overflow: 'hidden', background: '#f9f5ff' }}>
+                <div className="product-detail-purchase-toggle" style={{ marginTop: '20px', display: 'flex', gap: '0', border: '2px solid rgba(122,78,165,0.25)', borderRadius: '12px', overflow: 'hidden', background: '#f9f5ff' }}>
                   <button
                     onClick={() => setPurchaseMode('single')}
                     style={{
@@ -6137,7 +6137,7 @@ export default function App() {
               )}
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <div className="product-detail-actions" style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
                 <button 
                   onClick={() => {
                     const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
@@ -6194,7 +6194,7 @@ export default function App() {
               </div>
 
               {activeProduct.customization_enabled && (
-                <div style={{ marginTop: '16px' }}>
+                <div className="product-detail-custom-wrapper" style={{ marginTop: '16px' }}>
                   <button
                     onClick={() => {
                       if (role === 'guest') {
@@ -6238,7 +6238,7 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
                 <div>
-                  <h1 style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
+                  <h1 className="product-detail-title" style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {(() => {
                       const reviews = activeProduct.reviews || [];
@@ -6272,7 +6272,7 @@ export default function App() {
                   {purchaseMode === 'bulk' ? 'Bulk / Wholesale Price' : 'Special price'}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
-                  <span style={{ fontSize: '2.4rem', fontWeight: 700, color: '#222222', lineHeight: 1 }}>
+                  <span className="product-detail-price-text" style={{ fontSize: '2.4rem', fontWeight: 700, color: '#222222', lineHeight: 1 }}>
                     ₹{purchaseMode === 'bulk' && activeProduct.bulk_sale_price
                       ? activeProduct.bulk_sale_price.toFixed(2)
                       : activeProduct.price.toFixed(2)}
@@ -6364,9 +6364,9 @@ export default function App() {
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                       {/* Summary Stats Grid */}
-                      <div className="glass-panel" style={{ padding: '24px', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '32px', alignItems: 'center', background: 'rgba(122, 78, 165, 0.02)', borderColor: 'rgba(122, 78, 165, 0.1)', borderRadius: '16px' }}>
+                      <div className="glass-panel product-detail-reviews-summary" style={{ padding: '24px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: isMobile ? '16px' : '32px', alignItems: 'center', background: 'rgba(122, 78, 165, 0.02)', borderColor: 'rgba(122, 78, 165, 0.1)', borderRadius: '16px' }}>
                         {/* Left Stats card */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRight: '1px solid rgba(122, 78, 165, 0.15)', paddingRight: '20px' }}>
+                        <div className="product-detail-reviews-summary-left" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', borderRight: isMobile ? 'none' : '1px solid rgba(122, 78, 165, 0.15)', borderBottom: isMobile ? '1px solid rgba(122, 78, 165, 0.15)' : 'none', paddingRight: isMobile ? '0' : '20px', paddingBottom: isMobile ? '16px' : '0' }}>
                           <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>{avgRating}</h1>
                           <div style={{ display: 'flex', gap: '4px', margin: '8px 0', color: '#ffc107' }}>
                             {[1, 2, 3, 4, 5].map(star => (
@@ -6401,7 +6401,7 @@ export default function App() {
                       
                       {/* Review submit form */}
                       {role === 'user' && (
-                        <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
+                        <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel product-detail-review-form" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: isMobile ? '16px' : '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
                           <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
                           
                           {/* Interactive star selector */}

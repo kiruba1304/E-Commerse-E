@@ -2473,4 +2473,93 @@ input[type="checkbox"] {
   }
 }
 
+/* Product Detail Page Responsive Mobile Tweaks */
+@media (max-width: 768px) {
+  .product-detail-page {
+    padding-bottom: 100px !important; /* Spacing to clear the mobile bottom navigation bar */
+  }
+
+  .product-detail-reviews-summary {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    padding: 16px !important;
+  }
+
+  .product-detail-reviews-summary-left {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(122, 78, 165, 0.15) !important;
+    padding-right: 0 !important;
+    padding-bottom: 16px !important;
+  }
+  
+  .product-detail-review-form {
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 425px) {
+  .product-detail-page {
+    padding: 12px 10px 110px !important; /* Safe padding for extra-small screen bottom navigation */
+  }
+
+  .product-detail-img-wrapper {
+    height: 240px !important; /* Scale down the main image height slightly so it does not dominate/overflow small viewport heights */
+    padding: 8px !important;
+  }
+
+  .product-detail-thumbs {
+    margin-top: 10px !important;
+    gap: 8px !important;
+  }
+  
+  .product-detail-thumbs > div {
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 6px !important;
+  }
+
+  .product-detail-purchase-toggle {
+    margin-top: 12px !important;
+  }
+
+  .product-detail-actions {
+    margin-top: 16px !important;
+    gap: 8px !important;
+  }
+
+  .product-detail-actions button {
+    padding: 10px 8px !important;
+    font-size: 0.78rem !important;
+    border-radius: 8px !important;
+  }
+
+  .product-detail-custom-wrapper {
+    margin-top: 10px !important;
+  }
+
+  .product-detail-custom-wrapper button {
+    padding: 10px 8px !important;
+    font-size: 0.78rem !important;
+    border-radius: 8px !important;
+  }
+
+  .product-detail-breadcrumb {
+    margin-bottom: 12px !important;
+    font-size: 0.75rem !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .product-detail-title {
+    font-size: 1.45rem !important;
+    margin-bottom: 8px !important;
+    line-height: 1.25 !important;
+  }
+
+  .product-detail-price-text {
+    font-size: 1.9rem !important;
+  }
+}
+
+
 
