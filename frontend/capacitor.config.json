@@ -8,8 +8,13 @@
   },
   "plugins": {
     "GoogleAuth": {
-      "scopes": ["profile", "email"],
+      "scopes": [
+        "profile",
+        "email"
+      ],
       "clientId": "565050862630-8o8lrl2j6mv7rqqjmq5jhf448es33p6k.apps.googleusercontent.com",
+      "androidClientId": "565050862630-93cq6hng74q767qq1cl2dhb10i821umq.apps.googleusercontent.com",
+      "serverClientId": "565050862630-8o8lrl2j6mv7rqqjmq5jhf448es33p6k.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
     }
   }
