@@ -17,6 +17,7 @@ node_modules/
 # Frontend build output
 frontend/dist/
 frontend/.vite/
+frontend/android/
 
 # Python cache
 __pycache__/

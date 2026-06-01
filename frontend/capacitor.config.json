@@ -1,0 +1,9 @@
+{
+  "appId": "com.ecommersee.app",
+  "appName": "E-Commerse-E",
+  "webDir": "dist",
+  "server": {
+    "url": "https://vishnex.com",
+    "cleartext": true
+  }
+}
