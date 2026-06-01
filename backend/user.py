@@ -689,6 +689,50 @@ def create_order():
     gst_amount += shipping_gst
     final_amount += shipping_charge
 
+    # Calculate Totals & Initialize Razorpay for UPI without saving order or mutating stock/cart
+    if payment_method == 'UPI':
+        razorpay_order_id = None
+        razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+        razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+        
+        # Check if we should initialize Razorpay
+        if razorpay_key_id and razorpay_key_secret and razorpay_key_id != 'YOUR_RAZORPAY_KEY_ID':
+            try:
+                import razorpay
+                client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+                paise = int(round(final_amount * 100))
+                r_order = client.order.create({
+                    "amount": paise,
+                    "currency": "INR",
+                    "receipt": f"order_rcpt_{secrets.token_hex(4)}",
+                    "payment_capture": 1
+                })
+                razorpay_order_id = r_order['id']
+            except Exception as e:
+                print(f"Razorpay order creation failed: {e}")
+                
+        # If keys are default or failed, we generate a mock order ID
+        if not razorpay_order_id:
+            import uuid
+            razorpay_order_id = f"mock_order_{uuid.uuid4().hex[:12]}"
+            
+        # Revert any uncommitted session changes (like supercoin deduction calculations on the user object)
+        db.session.rollback()
+            
+        return jsonify({
+            "message": "Payment initiated",
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_key_id": razorpay_key_id,
+            "amount_paise": int(round(final_amount * 100)),
+            "user_name": user.name or user.username,
+            "user_email": user.email,
+            "user_phone": billing_phone or user.contact_phone or "",
+            "order": {
+                "id": "draft",
+                "payment_method": "UPI"
+            }
+        }), 200
+
     # Deduct stock and clear cart items
     order_items = []
     for ci, p, final_item_price in items_to_buy:
@@ -835,7 +879,212 @@ def verify_user_order_payment():
     razorpay_signature = data.get('razorpay_signature')
     order_id = data.get('order_id')
     
-    if not order_id or not razorpay_payment_id:
+    # If order_id is 'draft' or not provided, we create the order on successful verification
+    if not order_id or order_id == 'draft':
+        # New flow: create order after payment is completed
+        shop_id = data.get('shop_id')
+        shipping_address = data.get('shipping_address')
+        billing_phone = data.get('billing_phone')
+        coupon_code = data.get('coupon_code')
+        use_super_coins = bool(data.get('use_super_coins', False))
+        address_id = data.get('address_id')
+        
+        if not shop_id or not shipping_address:
+            return jsonify({"error": "Shop ID and shipping address are required"}), 400
+            
+        shop = Shop.query.get(shop_id)
+        if not shop:
+            return jsonify({"error": "Shop not found"}), 404
+            
+        razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+        razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+        
+        payment_verified = False
+        if (razorpay_key_id == 'YOUR_RAZORPAY_KEY_ID' or 
+            razorpay_key_id.startswith('rzp_test_') or 
+            (razorpay_order_id and razorpay_order_id.startswith('mock_order_'))):
+            # Test mode auto-approve
+            payment_verified = True
+        else:
+            try:
+                import razorpay
+                client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+                if razorpay_order_id and razorpay_signature:
+                    params_dict = {
+                        'razorpay_order_id': razorpay_order_id,
+                        'razorpay_payment_id': razorpay_payment_id,
+                        'razorpay_signature': razorpay_signature
+                    }
+                    client.utility.verify_payment_signature(params_dict)
+                    payment_verified = True
+                else:
+                    payment = client.payment.fetch(razorpay_payment_id)
+                    if payment.get('status') in ['captured', 'authorized']:
+                        payment_verified = True
+            except Exception as e:
+                return jsonify({"error": f"Payment verification failed: {str(e)}"}), 400
+                
+        if not payment_verified:
+            return jsonify({"error": "Payment verification failed"}), 400
+            
+        # Payment verified! Now create order in database!
+        user = User.query.get(user_id)
+        cart_items = CartItem.query.filter_by(user_id=user_id).all()
+        shop_items = [item for item in cart_items if item.product.shop_id == shop_id]
+        
+        if not shop_items:
+            return jsonify({"error": "Your cart is empty for this shop"}), 400
+            
+        # Verify stock and calculate raw totals
+        total_amount = 0.0
+        items_to_buy = []
+        for ci in shop_items:
+            p = ci.product
+            if p.stock < ci.quantity:
+                return jsonify({"error": f"Product '{p.name}' does not have enough stock. Remaining: {p.stock}"}), 400
+            item_price = p.price
+            if p.promo_code and p.promo_discount > 0:
+                item_price = max(0.0, p.price - p.promo_discount)
+            total_amount += (item_price * ci.quantity)
+            items_to_buy.append((ci, p, item_price))
+            
+        # Coupon
+        discount_amount = 0.0
+        if coupon_code:
+            coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id, is_active=True).first()
+            if coupon and total_amount >= coupon.min_purchase:
+                raw_discount = (coupon.discount_percentage / 100.0) * total_amount
+                discount_amount = min(raw_discount, coupon.max_discount)
+                
+        discounted_amount = total_amount - discount_amount
+        
+        # SuperCoins
+        super_coins_used = 0
+        if use_super_coins and shop.super_coin_enabled and user.super_coins > 0:
+            max_coin_discount = discounted_amount * 0.3
+            coins_to_use = min(user.super_coins, int(max_coin_discount))
+            if coins_to_use > 0:
+                super_coins_used = coins_to_use
+                discounted_amount -= coins_to_use
+                user.super_coins -= coins_to_use
+                
+        # GST
+        gst_rate = getattr(shop, 'gst_percentage', 18.0) / 100.0
+        gst_inclusive = getattr(shop, 'gst_inclusive', False)
+        if gst_inclusive:
+            final_amount = discounted_amount
+            gst_amount = final_amount * gst_rate / (1 + gst_rate)
+        else:
+            gst_amount = discounted_amount * gst_rate
+            final_amount = discounted_amount + gst_amount
+            
+        # Shipping
+        shipping_charge = 0.0
+        if getattr(shop, 'shipping_enabled', False):
+            if getattr(shop, 'shipping_charges_type', 'flat') == 'flat':
+                shipping_charge = getattr(shop, 'shipping_charges_flat', 0.0) or 0.0
+            elif getattr(shop, 'shipping_charges_type', 'flat') == 'section':
+                unique_category_ids = set(p.category_id for ci, p, final_item_price in items_to_buy if p.category_id is not None)
+                for cat_id in unique_category_ids:
+                    cat = Category.query.get(cat_id)
+                    if cat and cat.shipping_charge:
+                        shipping_charge += cat.shipping_charge
+                        
+        shipping_gst = 0.0
+        if shipping_charge > 0:
+            shipping_gst = shipping_charge * gst_rate / (1 + gst_rate)
+            
+        gst_amount += shipping_gst
+        final_amount += shipping_charge
+        
+        # Deduct stock and clear cart items
+        order_items = []
+        for ci, p, final_item_price in items_to_buy:
+            p.stock -= ci.quantity
+            order_item = OrderItem(
+                product_id=p.id,
+                product_name=p.name,
+                price=final_item_price,
+                quantity=ci.quantity
+            )
+            order_items.append(order_item)
+            db.session.delete(ci)
+            
+        # Create Order
+        order = Order(
+            user_id=user_id,
+            shop_id=shop_id,
+            total_amount=round(total_amount, 2),
+            final_amount=round(final_amount, 2),
+            status='Pending',
+            payment_method='UPI',
+            payment_status='Paid',
+            razorpay_payment_id=razorpay_payment_id,
+            shipping_address=shipping_address,
+            billing_phone=billing_phone or user.contact_phone,
+            super_coins_used=super_coins_used,
+            gst_amount=round(gst_amount, 2),
+            gst_inclusive=gst_inclusive,
+            discount_amount=round(discount_amount + super_coins_used, 2),
+            tracking_info=razorpay_order_id,
+            shipping_charge=round(shipping_charge, 2),
+            shipping_gst=round(shipping_gst, 2)
+        )
+        
+        shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
+        order.online_order_number = shop.last_online_order_number
+        
+        for item in order_items:
+            order.items.append(item)
+            
+        if address_id:
+            user.last_used_address_id = address_id
+            
+        db.session.add(order)
+        db.session.commit()
+        
+        # Log action
+        log_user_action(
+            user_id,
+            user.username,
+            f"Placed order #{order.online_order_number or order.id} (Amount: {order.final_amount}, Method: UPI)",
+            shop_id,
+        )
+        
+        # Notify shop admin of new order
+        notif = Notification(
+            recipient_type='admin',
+            recipient_id=None,
+            title="New Order Received",
+            message=f"Order #{order.online_order_number or order.id} was placed by {user.name or user.username} for a total of {order.final_amount}.",
+            shop_id=shop_id
+        )
+        db.session.add(notif)
+        db.session.commit()
+        
+        # Send purchase confirmation email
+        try:
+            items_summary = []
+            for item in order.items:
+                items_summary.append(f"{item.product_name} x {item.quantity} (${item.price})")
+            items_str = ", ".join(items_summary)
+            send_shop_email(shop, "purchase", user.email, {
+                "name": user.name or user.username,
+                "order_id": order.id,
+                "total_amount": order.final_amount,
+                "items": items_str
+            }, sender_info={
+                "actor_type": "user",
+                "actor_id": user.id,
+                "username": user.username
+            })
+        except Exception as e:
+            print(f"Error sending order confirmation email: {e}")
+            
+        return jsonify({"success": True, "message": "Payment verified and order created successfully", "order": order.serialize()}), 200
+
+    # Fallback to legacy flow where order was pre-created in database
+    if not razorpay_payment_id:
         return jsonify({"error": "Missing payment verification details"}), 400
         
     order = Order.query.get(order_id)
@@ -869,7 +1118,7 @@ def verify_user_order_payment():
             }
             client.utility.verify_payment_signature(params_dict)
         else:
-            # 2. Payment-only mode verification (fetch payment status directly from API)
+            # 2. Payment-only mode verification
             payment = client.payment.fetch(razorpay_payment_id)
             if payment.get('status') not in ['captured', 'authorized']:
                 return jsonify({"error": "Payment is not in captured or authorized status"}), 400
@@ -1202,6 +1451,48 @@ def customization_checkout(cust_id):
         gst_amount = subtotal * gst_rate
         final_amount = subtotal + gst_amount
 
+    # Calculate Totals & Initialize Razorpay for UPI without saving order or mutating database
+    if payment_method == 'UPI':
+        razorpay_order_id = None
+        razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
+        razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
+        
+        if razorpay_key_id and razorpay_key_secret and razorpay_key_id != 'YOUR_RAZORPAY_KEY_ID':
+            try:
+                import razorpay
+                client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+                paise = int(round(final_amount * 100))
+                r_order = client.order.create({
+                    "amount": paise,
+                    "currency": "INR",
+                    "receipt": f"cust_rcpt_{secrets.token_hex(4)}",
+                    "payment_capture": 1
+                })
+                razorpay_order_id = r_order['id']
+            except Exception as e:
+                print(f"Razorpay order creation failed for customization: {e}")
+
+        if not razorpay_order_id:
+            import uuid
+            razorpay_order_id = f"mock_order_{uuid.uuid4().hex[:12]}"
+            
+        # Revert any uncommitted session changes
+        db.session.rollback()
+            
+        return jsonify({
+            "message": "Payment initiated for customization",
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_key_id": razorpay_key_id,
+            "amount_paise": int(round(final_amount * 100)),
+            "user_name": user.name or user.username,
+            "user_email": user.email,
+            "user_phone": billing_phone or user.contact_phone or "",
+            "customization": {
+                "id": cust.id,
+                "payment_method": "UPI"
+            }
+        }), 200
+
     # Save details to customization order
     cust.shipping_address = shipping_address
     cust.billing_phone = billing_phone or user.contact_phone
@@ -1343,10 +1634,15 @@ def customization_checkout(cust_id):
 def verify_customization_payment(cust_id):
     user_id = request.user['user_id']
     username = request.user['username']
+    user = User.query.get(user_id)
     data = request.get_json() or {}
     razorpay_order_id = data.get('razorpay_order_id')
     razorpay_payment_id = data.get('razorpay_payment_id')
     razorpay_signature = data.get('razorpay_signature')
+    
+    shipping_address = data.get('shipping_address')
+    billing_phone = data.get('billing_phone')
+    address_id = data.get('address_id')
     
     if not razorpay_payment_id:
         return jsonify({"error": "Missing payment verification details"}), 400
@@ -1360,62 +1656,102 @@ def verify_customization_payment(cust_id):
     razorpay_key_id = shop.razorpay_key_id or os.getenv('RAZORPAY_KEY_ID', 'YOUR_RAZORPAY_KEY_ID')
     razorpay_key_secret = shop.razorpay_key_secret or os.getenv('RAZORPAY_KEY_SECRET', 'YOUR_RAZORPAY_KEY_SECRET')
     
+    payment_verified = False
     if (razorpay_key_id == 'YOUR_RAZORPAY_KEY_ID' or 
         razorpay_key_id.startswith('rzp_test_') or 
         (razorpay_order_id and razorpay_order_id.startswith('mock_order_')) or
         (cust.tracking_info and cust.tracking_info.startswith('mock_order_'))):
-        # Auto-approve checkout for default test credentials
-        cust.payment_status = 'Paid'
-        cust.razorpay_payment_id = razorpay_payment_id
-        cust.quote_status = 'Accepted'
-        cust.status = 'In Progress'
+        payment_verified = True
+    else:
+        try:
+            import razorpay
+            client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+            if razorpay_order_id and razorpay_signature:
+                params_dict = {
+                    'razorpay_order_id': razorpay_order_id,
+                    'razorpay_payment_id': razorpay_payment_id,
+                    'razorpay_signature': razorpay_signature
+                }
+                client.utility.verify_payment_signature(params_dict)
+                payment_verified = True
+            else:
+                payment = client.payment.fetch(razorpay_payment_id)
+                if payment.get('status') in ['captured', 'authorized']:
+                    payment_verified = True
+        except Exception as e:
+            return jsonify({"error": f"Payment signature verification failed: {str(e)}"}), 400
+
+    if not payment_verified:
+        return jsonify({"error": "Payment verification failed"}), 400
+
+    # Success!
+    cust.payment_status = 'Paid'
+    cust.razorpay_payment_id = razorpay_payment_id
+    cust.quote_status = 'Accepted'
+    cust.status = 'In Progress'
+    
+    # Save address to customization order if provided
+    if shipping_address:
+        cust.shipping_address = shipping_address
+    if billing_phone:
+        cust.billing_phone = billing_phone
         
-        # Update linked standard Order
-        order = Order.query.filter_by(shop_id=cust.shop_id, tracking_info=cust.tracking_info).first()
-        if order:
-            order.payment_status = 'Paid'
-            order.status = 'Accepted'
-            order.razorpay_payment_id = razorpay_payment_id
-            
-        db.session.commit()
-        
-        log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid/Test Mode)", shop_id=cust.shop_id)
-        return jsonify({"success": True, "message": "Payment verified successfully (Test Mode)", "customization": cust.serialize()}), 200
-        
-    try:
-        import razorpay
-        client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
-        
-        if razorpay_order_id and razorpay_signature:
-            params_dict = {
-                'razorpay_order_id': razorpay_order_id,
-                'razorpay_payment_id': razorpay_payment_id,
-                'razorpay_signature': razorpay_signature
-            }
-            client.utility.verify_payment_signature(params_dict)
+    if address_id:
+        user.last_used_address_id = address_id
+
+    # Check if linked standard Order exists
+    order = Order.query.filter_by(shop_id=cust.shop_id, tracking_info=cust.tracking_info).first()
+    if order:
+        # Backward compatibility: update existing order
+        order.payment_status = 'Paid'
+        order.status = 'Accepted'
+        order.razorpay_payment_id = razorpay_payment_id
+    else:
+        # Create standard Order record now!
+        subtotal = float(cust.quoted_price or 0.0) * int(cust.quantity or 1)
+        gst_rate = getattr(shop, 'gst_percentage', 18.0) / 100.0
+        gst_inclusive = getattr(shop, 'gst_inclusive', False)
+        if gst_inclusive:
+            final_amount = subtotal
+            gst_amount = final_amount * gst_rate / (1 + gst_rate)
         else:
-            payment = client.payment.fetch(razorpay_payment_id)
-            if payment.get('status') not in ['captured', 'authorized']:
-                return jsonify({"error": "Payment is not in captured or authorized status"}), 400
+            gst_amount = subtotal * gst_rate
+            final_amount = subtotal + gst_amount
+
+        cust.tracking_info = razorpay_payment_id
+
+        order = Order(
+            user_id=user_id,
+            shop_id=cust.shop_id,
+            total_amount=round(subtotal, 2),
+            final_amount=round(final_amount, 2),
+            status='Accepted',
+            payment_method='UPI',
+            payment_status='Paid',
+            shipping_address=cust.shipping_address or "N/A",
+            billing_phone=cust.billing_phone or user.contact_phone,
+            gst_amount=round(gst_amount, 2),
+            gst_inclusive=gst_inclusive,
+            discount_amount=0.0,
+            tracking_info=razorpay_payment_id,
+            razorpay_payment_id=razorpay_payment_id,
+            is_synced=False
+        )
         
-        # Success!
-        cust.payment_status = 'Paid'
-        cust.razorpay_payment_id = razorpay_payment_id
-        cust.quote_status = 'Accepted'
-        cust.status = 'In Progress'
+        shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
+        order.online_order_number = shop.last_online_order_number
+
+        order_item = OrderItem(
+            product_id=cust.product_id,
+            product_name=f"{cust.product.name if cust.product else 'Bespoke Item'} (Customized: {cust.selected_color_name or ''})",
+            price=cust.quoted_price,
+            quantity=cust.quantity
+        )
+        order.items.append(order_item)
+        db.session.add(order)
         
-        # Update linked standard Order
-        order = Order.query.filter_by(shop_id=cust.shop_id, tracking_info=cust.tracking_info).first()
-        if order:
-            order.payment_status = 'Paid'
-            order.status = 'Accepted'
-            order.razorpay_payment_id = razorpay_payment_id
-            
-        db.session.commit()
-        
-        log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid)", shop_id=cust.shop_id)
-        return jsonify({"success": True, "message": "Payment verified successfully", "customization": cust.serialize()}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": f"Payment signature verification failed: {str(e)}"}), 400
+    db.session.commit()
+    
+    log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid)", shop_id=cust.shop_id)
+    return jsonify({"success": True, "message": "Payment verified successfully", "customization": cust.serialize()}), 200
 

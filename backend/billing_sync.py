@@ -171,6 +171,10 @@ def pull_orders():
         # For COD orders, only pull once accepted (i.e. not Pending and not Rejected)
         if order.payment_method == 'COD' and order.status in ['Pending', 'Rejected']:
             continue
+
+        # For UPI orders, only pull once paid
+        if order.payment_method == 'UPI' and order.payment_status != 'Paid':
+            continue
             
         user = order.user
         serialized = order.serialize()

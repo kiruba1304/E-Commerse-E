@@ -2083,12 +2083,16 @@ export default function App() {
 
                 const verifyBody = activeCustomizationCheckout
                   ? {
+                      ...checkoutData,
+                      shop_id: activeShopId,
                       razorpay_order_id: paymentResponse.razorpay_order_id || null,
                       razorpay_payment_id: paymentResponse.razorpay_payment_id,
                       razorpay_signature: paymentResponse.razorpay_signature || null
                     }
                   : {
-                      order_id: data.order.id,
+                      ...checkoutData,
+                      shop_id: activeShopId,
+                      order_id: data.order?.id || null,
                       razorpay_order_id: paymentResponse.razorpay_order_id || null,
                       razorpay_payment_id: paymentResponse.razorpay_payment_id,
                       razorpay_signature: paymentResponse.razorpay_signature || null
@@ -2126,8 +2130,7 @@ export default function App() {
             },
             modal: {
               ondismiss: function () {
-                addToast("Payment Cancelled", "Payment window closed. You can complete the payment later.", "warning");
-                clearCheckoutFields();
+                addToast("Payment Cancelled", "Payment window closed. You can try checking out again.", "warning");
               }
             }
           };
@@ -5814,14 +5817,14 @@ export default function App() {
                         onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
                         style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
                       />
-                      <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>UPI / Netbanking (Mock Gateway)</span>
+                      <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>UPI / Netbanking</span>
                     </label>
                   </div>
 
                   {checkoutData.payment_method === 'UPI' && (
                     <div style={{ background: '#f0fbff', border: '1px solid #b3e5fc', padding: '12px', borderRadius: '4px', fontSize: '0.85rem', color: '#0277bd', display: 'flex', gap: '8px' }}>
                       <ShieldCheck size={18} style={{ flexShrink: 0 }} />
-                      Mock Razorpay UPI active. Credentials will be securely authorized by gateway settings.
+                      Razorpay Secure Payment active. Credentials will be securely processed by gateway settings.
                     </div>
                   )}
 
