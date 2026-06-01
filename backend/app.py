@@ -49,10 +49,7 @@ def upload_file():
         unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         file.save(filepath)
-        host = request.host_url
-        if not host.endswith('/'):
-            host += '/'
-        url = f"{host}api/uploads/{unique_filename}"
+        url = f"/api/uploads/{unique_filename}"
         return jsonify({"url": url}), 200
 
 @app.route('/api/uploads/<path:filename>', methods=['GET'])
@@ -223,6 +220,82 @@ def opac_list_collections():
     return jsonify([c.serialize() for c in collections]), 200
 
 
+def make_relative(val):
+    if not val:
+        return val
+    import re
+    if isinstance(val, str):
+        return re.sub(r'^http://(localhost|127\.0\.0\.1)(:\d+)?/', '/', val)
+    elif isinstance(val, list):
+        return [make_relative(item) for item in val]
+    elif isinstance(val, dict):
+        return {k: make_relative(v) for k, v in val.items()}
+    return val
+
+def sanitize_database_urls():
+    from models import Shop, Category, Product, Review, PopupAd, Order
+    import re
+    
+    def clean_url(url):
+        if not url:
+            return url
+        return re.sub(r'^http://(localhost|127\.0\.0\.1)(:\d+)?/', '/', url)
+        
+    try:
+        # 1. Shops
+        for shop in Shop.query.all():
+            if shop.logo_url and ('localhost' in shop.logo_url or '127.0.0.1' in shop.logo_url):
+                shop.logo_url = clean_url(shop.logo_url)
+            if shop.saree_models_json and ('localhost' in shop.saree_models_json or '127.0.0.1' in shop.saree_models_json):
+                try:
+                    data = json.loads(shop.saree_models_json)
+                    cleaned = make_relative(data)
+                    shop.saree_models_json = json.dumps(cleaned)
+                except Exception:
+                    pass
+            if shop.banners_json and ('localhost' in shop.banners_json or '127.0.0.1' in shop.banners_json):
+                try:
+                    data = json.loads(shop.banners_json)
+                    cleaned = make_relative(data)
+                    shop.banners_json = json.dumps(cleaned)
+                except Exception:
+                    pass
+
+        # 2. Categories
+        for cat in Category.query.all():
+            if cat.image_url and ('localhost' in cat.image_url or '127.0.0.1' in cat.image_url):
+                cat.image_url = clean_url(cat.image_url)
+        
+        # 3. Products
+        for prod in Product.query.all():
+            if prod.images_json and ('localhost' in prod.images_json or '127.0.0.1' in prod.images_json):
+                try:
+                    images = json.loads(prod.images_json)
+                    cleaned_images = [clean_url(img) for img in images]
+                    prod.images_json = json.dumps(cleaned_images)
+                except Exception:
+                    pass
+                    
+        # 4. Reviews
+        for rev in Review.query.all():
+            if rev.image_url and ('localhost' in rev.image_url or '127.0.0.1' in rev.image_url):
+                rev.image_url = clean_url(rev.image_url)
+                
+        # 5. Popup Ads
+        for ad in PopupAd.query.all():
+            if ad.image_url and ('localhost' in ad.image_url or '127.0.0.1' in ad.image_url):
+                ad.image_url = clean_url(ad.image_url)
+                
+        # 6. Orders
+        for order in Order.query.all():
+            if order.return_image_url and ('localhost' in order.return_image_url or '127.0.0.1' in order.return_image_url):
+                order.return_image_url = clean_url(order.return_image_url)
+                
+        db.session.commit()
+        print("Database localhost URLs sanitized successfully.")
+    except Exception as e:
+        print(f"Error sanitizing database URLs: {e}")
+
 # SEEDING DATABASE LOGIC
 def seed_database():
     with app.app_context():
@@ -232,6 +305,7 @@ def seed_database():
         ensure_dtdc_columns()
         ensure_shipping_columns()
         backfill_online_order_numbers()
+        sanitize_database_urls()
 
         # Check if already seeded
         if SuperAdmin.query.first() is not None:

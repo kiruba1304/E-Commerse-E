@@ -23,7 +23,7 @@ const PaymentComponent = () => {
         }
 
         // 2. Ask Backend to Create an Order
-        const orderResponse = await fetch('http://localhost:5500/api/create-order', {
+        const orderResponse = await fetch('/api/create-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount: amount }) // Sending amount in INR
@@ -46,7 +46,7 @@ const PaymentComponent = () => {
             order_id: orderData.order_id, // The order_id created in the backend
             handler: async function (response) {
                 // 4. Send Payment details to backend for Verification
-                const verifyResponse = await fetch('http://localhost:5000/api/verify-payment', {
+                const verifyResponse = await fetch('/api/verify-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
