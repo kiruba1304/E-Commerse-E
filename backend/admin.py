@@ -618,10 +618,51 @@ def inventory_evaluation():
 @role_required(['admin'])
 def revenue_report():
     shop_id = request.user['shop_id']
-    orders = Order.query.filter_by(shop_id=shop_id, status='Customer Received').all()
     
-    # We can also get all completed orders to see total revenue
-    all_completed = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned').all()
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    
+    start_date = None
+    end_date = None
+    if start_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        except ValueError:
+            pass
+    if end_date_str:
+        try:
+            end_date = datetime.strptime(end_date_str + ' 23:59:59', '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            pass
+
+    # Base query for completed orders (excluding returned)
+    orders_query = Order.query.filter_by(shop_id=shop_id).filter(Order.status != 'Returned')
+    
+    # Base query for all orders (for payments, returns, promos, etc.)
+    all_orders_query = Order.query.filter_by(shop_id=shop_id)
+    
+    # Base query for customization orders
+    custom_orders_query = CustomizationOrder.query.filter_by(shop_id=shop_id)
+    
+    # Base query for users
+    users_query = User.query
+    
+    if start_date:
+        orders_query = orders_query.filter(Order.created_at >= start_date)
+        all_orders_query = all_orders_query.filter(Order.created_at >= start_date)
+        custom_orders_query = custom_orders_query.filter(CustomizationOrder.created_at >= start_date)
+        users_query = users_query.filter(User.created_at >= start_date)
+        
+    if end_date:
+        orders_query = orders_query.filter(Order.created_at <= end_date)
+        all_orders_query = all_orders_query.filter(Order.created_at <= end_date)
+        custom_orders_query = custom_orders_query.filter(CustomizationOrder.created_at <= end_date)
+        users_query = users_query.filter(User.created_at <= end_date)
+
+    all_completed = orders_query.all()
+    all_orders = all_orders_query.all()
+    custom_orders = custom_orders_query.all()
+    users_list = users_query.all()
     
     total_sales = sum([o.final_amount for o in all_completed])
     gst_collected = sum([o.gst_amount for o in all_completed])
@@ -631,7 +672,7 @@ def revenue_report():
     category_sales = {}
     # Group by payment method
     payment_sales = {"COD": 0, "UPI": 0}
-    # Sales by day (past 7 days simple grouping)
+    # Sales by day grouping
     sales_by_day = {}
     
     for o in all_completed:
@@ -653,6 +694,15 @@ def revenue_report():
     day_data = [{"date": k, "revenue": round(v, 2)} for k, v in sorted(sales_by_day.items())]
     pay_data = [{"method": k, "count": v} for k, v in payment_sales.items()]
     
+    # Detailed reports requested
+    report_new_users = [u.serialize() for u in users_list]
+    report_sales = [o.serialize() for o in all_completed]
+    report_online = [o.serialize() for o in all_orders if o.payment_method != 'COD' and o.status != 'Returned']
+    report_cod = [o.serialize() for o in all_orders if o.payment_method == 'COD' and o.status != 'Returned']
+    report_returns = [o.serialize() for o in all_orders if o.status == 'Returned' or o.return_request_status == 'Approved']
+    report_custom = [co.serialize() for co in custom_orders]
+    report_promo = [o.serialize() for o in all_orders if o.discount_amount > 0]
+    
     return jsonify({
         "summary": {
             "total_revenue": round(total_sales, 2),
@@ -664,6 +714,15 @@ def revenue_report():
             "category_sales": cat_data,
             "daily_sales": day_data,
             "payment_methods": pay_data
+        },
+        "reports": {
+            "new_users": report_new_users,
+            "sales": report_sales,
+            "online_payments": report_online,
+            "cod_payments": report_cod,
+            "returns": report_returns,
+            "custom_orders": report_custom,
+            "promo_orders": report_promo
         }
     }), 200
 

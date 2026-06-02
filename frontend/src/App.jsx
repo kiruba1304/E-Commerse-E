@@ -3,7 +3,7 @@ import {
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
   Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
-  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock,
+  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock, TrendingUp,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -613,6 +613,60 @@ export default function App() {
   const [priceFilter, setPriceFilter] = useState(500000); // Slider
   const [searchHover, setSearchHover] = useState(false);
   
+  // Smart Search States & Helpers
+  const [showSmartSearch, setShowSmartSearch] = useState(false);
+  const [localSearchVal, setLocalSearchVal] = useState("");
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      const saved = localStorage.getItem("recentSearches");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleCommitSearch = (query) => {
+    const cleanQuery = (query || "").trim();
+    setSearchQuery(cleanQuery);
+    setSelectedCategory(""); // Reset category when searching globally
+    setActiveCategoryPage(null); // Reset category page if any
+    
+    if (cleanQuery) {
+      // Save to recent searches
+      setRecentSearches(prev => {
+        const filtered = prev.filter(x => x.toLowerCase() !== cleanQuery.toLowerCase());
+        const updated = [cleanQuery, ...filtered].slice(0, 6);
+        try {
+          localStorage.setItem("recentSearches", JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+    }
+
+    setShowSmartSearch(false);
+    setLocalSearchVal("");
+    
+    // Scroll to catalog section
+    setTimeout(() => {
+      document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    localStorage.removeItem("recentSearches");
+  };
+
+  const getLiveMatches = () => {
+    if (!localSearchVal) return [];
+    const q = localSearchVal.toLowerCase();
+    return products.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      (p.description && p.description.toLowerCase().includes(q)) ||
+      (p.category_name && p.category_name.toLowerCase().includes(q))
+    ).slice(0, 8); // Limit to top 8 matches
+  };
+  
   // UI Details & Overlay states
   const [detailProduct, setDetailProduct] = useState(null);
   const [activeDetailImageIndex, setActiveDetailImageIndex] = useState(0);
@@ -807,6 +861,9 @@ export default function App() {
   const [adminProductCategoryFilter, setAdminProductCategoryFilter] = useState("");
   const [adminStartDate, setAdminStartDate] = useState("");
   const [adminEndDate, setAdminEndDate] = useState("");
+  const [revenueStartDate, setRevenueStartDate] = useState("");
+  const [revenueEndDate, setRevenueEndDate] = useState("");
+  const [activeReportTab, setActiveReportTab] = useState("sales");
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
   const [adminOrderSearch, setAdminOrderSearch] = useState("");
   const [adminReturnsCollapsed, setAdminReturnsCollapsed] = useState(false);
@@ -2230,7 +2287,7 @@ export default function App() {
       if (activePanel === 'products') { loadAdminProducts(); loadAdminCategories(); }
       if (activePanel === 'orders') loadAdminOrders();
       if (activePanel === 'inventory') loadAdminInventory();
-      if (activePanel === 'revenue') loadAdminRevenue();
+      if (activePanel === 'revenue') loadAdminRevenue(revenueStartDate, revenueEndDate);
       if (activePanel === 'popup_ads') loadAdminPopupAds();
       if (activePanel === 'coupons') loadAdminCoupons();
       if (activePanel === 'help_center') loadAdminHelpTickets();
@@ -2246,7 +2303,7 @@ export default function App() {
       }
       if (activePanel === 'billing_heartbeat') loadBillingHeartbeat();
     }
-  }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear]);
+  }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear, revenueStartDate, revenueEndDate]);
 
   const loadAdminShop = async () => {
     try {
@@ -2776,9 +2833,16 @@ export default function App() {
     } catch (e) {}
   };
 
-  const loadAdminRevenue = async () => {
+  const loadAdminRevenue = async (start = "", end = "") => {
     try {
-      const res = await fetch(`${API_BASE}/admin/revenue-report`, { headers: getHeaders() });
+      let url = `${API_BASE}/admin/revenue-report`;
+      const params = [];
+      if (start) params.push(`start_date=${start}`);
+      if (end) params.push(`end_date=${end}`);
+      if (params.length > 0) {
+        url += `?${params.join('&')}`;
+      }
+      const res = await fetch(url, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminRevenue(data);
     } catch (e) {}
@@ -5044,7 +5108,7 @@ export default function App() {
           onClick={() => { setCurrentView("opac"); setActiveCategoryPage(null); setSelectedCategory(""); }}
         >
           <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
-          <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem', color: '#222222', letterSpacing: '0.5px' }}>
+          <span className="navbar-brand-name" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem', color: '#222222', letterSpacing: '0.5px' }}>
             Nobaraa Fashion
           </span>
         </div>
@@ -5104,13 +5168,7 @@ export default function App() {
             style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
             title="Search Catalog"
             onClick={() => {
-              const catalog = document.getElementById("catalog-section");
-              if (catalog) {
-                catalog.scrollIntoView({ behavior: 'smooth' });
-                setTimeout(() => {
-                  document.getElementById("search-input")?.focus();
-                }, 500);
-              }
+              setShowSmartSearch(true);
             }}
             onMouseEnter={() => setSearchHover(true)}
             onMouseLeave={() => setSearchHover(false)}
@@ -5436,7 +5494,7 @@ export default function App() {
 
             {/* Bottom Icons Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', paddingBottom: '20px' }}>
-              <Search size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' }); }} />
+              <Search size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowSmartSearch(true); }} />
               <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if(role==='guest'){setLoginRoleTab("user");setShowLoginModal(true);}else{setCurrentView("user_dashboard"); setActivePanel("menu");} }} />
               
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowWishlistDrawer(true); }}>
@@ -5755,7 +5813,7 @@ export default function App() {
                       {/* 6. Address Type Buttons */}
                       <div>
                         <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '6px', fontWeight: 600 }}>Address Type</label>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="address-type-container">
                           {['House', 'Apartment', 'Business', 'Other'].map(type => (
                             <button
                               type="button"
@@ -8655,14 +8713,14 @@ export default function App() {
 
             {/* Account Settings Panel */}
             {activePanel === 'settings' && (
-              <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto' }}>
-                <form onSubmit={handleUpdateProfile} className="glass-panel" style={{ padding: '36px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
+                <form onSubmit={handleUpdateProfile} className="glass-panel settings-form-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div>
                     <h2 style={{ fontWeight: 800, fontSize: '1.8rem', fontFamily: "'Playfair Display', serif", marginBottom: '6px' }}>Account Settings</h2>
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Update your personal profile details and security credentials.</p>
                   </div>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="settings-grid-2col">
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Full Name</label>
                       <input 
@@ -8783,7 +8841,7 @@ export default function App() {
                             </div>
                             
                             {/* Row 1: Contact Phone & Pin Code */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div className="settings-grid-2col" style={{ gap: '12px' }}>
                               <div>
                                 <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Contact Phone</label>
                                 <input 
@@ -8887,7 +8945,7 @@ export default function App() {
                             </div>
 
                             {/* Row 5: Town/City & State */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            <div className="settings-grid-2col" style={{ gap: '12px' }}>
                               <div>
                                 <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Town/City</label>
                                 <input 
@@ -8934,7 +8992,7 @@ export default function App() {
                             {/* Row 6: Address Type Buttons */}
                             <div>
                               <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Address Type</label>
-                              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                              <div className="address-type-container" style={{ marginTop: '4px' }}>
                                 {['House', 'Apartment', 'Business', 'Other'].map(type => (
                                   <button
                                     type="button"
@@ -9543,14 +9601,40 @@ export default function App() {
                         key={model.id || index} 
                         className="admin-model-item"
                       >
-                        {/* Image Preview */}
-                        <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
-                          <img 
-                            src={model.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"} 
-                            alt="" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"; }}
+                        {/* Image Preview & Upload */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                          <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
+                            <img 
+                              src={model.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"} 
+                              alt="" 
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"; }}
+                            />
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            id={`saree-model-file-${index}`}
+                            style={{ display: 'none' }}
+                            onChange={e => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                handleUploadFile(file, (url) => {
+                                  const updated = [...(adminShop.saree_models || arr)];
+                                  updated[index] = { ...updated[index], image: url };
+                                  setAdminShop(prev => ({ ...prev, saree_models: updated }));
+                                });
+                              }
+                            }}
                           />
+                          <button 
+                            type="button"
+                            className="btn-secondary"
+                            style={{ padding: '2px 6px', fontSize: '0.7rem', minWidth: 'auto', height: 'auto' }}
+                            onClick={() => document.getElementById(`saree-model-file-${index}`).click()}
+                          >
+                            Upload
+                          </button>
                         </div>
 
                         {/* Card Title */}
@@ -10193,12 +10277,6 @@ export default function App() {
                             });
                           }
                         }}
-                      />
-                      <input 
-                        type="url" 
-                        placeholder="Image path URL (automatically filled after upload)"
-                        value={categoryForm.image_url || ""}
-                        onChange={e => setCategoryForm(prev => ({ ...prev, image_url: e.target.value }))}
                       />
                     </div>
                   </div>
@@ -11724,6 +11802,367 @@ export default function App() {
               const strokeW = 18;
               const circumference = 2 * Math.PI * donutRadius; // 502.65
 
+              const renderReportTable = (tab) => {
+                const reports = adminRevenue?.reports || {};
+                
+                if (tab === 'sales') {
+                  const list = reports.sales || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No sales data available for this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Items</th>
+                          <th>Final Amount</th>
+                          <th>Status</th>
+                          <th>Payment</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.customer?.name || item.user_name}</td>
+                            <td>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                {(item.items || []).map(i => `${i.product_name} x${i.quantity}`).join(', ')}
+                              </div>
+                            </td>
+                            <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
+                            <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span></td>
+                            <td>{item.payment_method}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'new_users') {
+                  const list = reports.new_users || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No new users signed in during this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>User ID</th>
+                          <th>Registered Date</th>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Contact Phone</th>
+                          <th>SuperCoins Balance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td style={{ fontWeight: 'bold' }}>{item.name || item.username}</td>
+                            <td>{item.email}</td>
+                            <td>{item.contact_phone || 'N/A'}</td>
+                            <td style={{ color: '#d4af37', fontWeight: 'bold' }}>{item.super_coins}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'online') {
+                  const list = reports.online_payments || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No online payments recorded for this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Razorpay Payment ID</th>
+                          <th>Final Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.customer?.name || item.user_name}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{item.razorpay_payment_id || 'UPI/Prepaid'}</td>
+                            <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
+                            <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'cod') {
+                  const list = reports.cod_payments || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No Cash-on-Delivery payments recorded for this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Final Amount</th>
+                          <th>Status</th>
+                          <th>Payment Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.customer?.name || item.user_name}</td>
+                            <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
+                            <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span></td>
+                            <td><span className={`status-badge ${item.payment_status.toLowerCase()}`}>{item.payment_status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'returns') {
+                  const list = reports.returns || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No returns reported in this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Returned Amount</th>
+                          <th>Return Reason</th>
+                          <th>Return Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.customer?.name || item.user_name}</td>
+                            <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
+                            <td style={{ fontSize: '0.75rem' }}>{item.return_reason || 'No reason provided'}</td>
+                            <td><span className={`status-badge ${item.return_request_status.toLowerCase()}`}>{item.return_request_status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'custom') {
+                  const list = reports.custom_orders || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No custom orders placed in this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Custom ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Product</th>
+                          <th>Specification</th>
+                          <th>Notes</th>
+                          <th>Quantity</th>
+                          <th>Quoted Price</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.user_name}</td>
+                            <td>{item.product_name}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem' }}>
+                                <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: item.selected_color_hex, border: '1px solid var(--border-subtle)' }} />
+                                {item.selected_color_name}
+                              </div>
+                            </td>
+                            <td style={{ fontSize: '0.75rem', maxWidth: '150px', whiteSpace: 'normal' }}>{item.customization_notes || 'N/A'}</td>
+                            <td>{item.quantity}</td>
+                            <td style={{ fontWeight: 'bold', color: item.quoted_price ? 'var(--accent-success)' : 'inherit' }}>
+                              {item.quoted_price ? `₹${item.quoted_price}` : 'Unquoted'}
+                            </td>
+                            <td><span className={`status-badge ${item.status.toLowerCase().replace(' ', '-')}`}>{item.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                
+                if (tab === 'promo') {
+                  const list = reports.promo_orders || [];
+                  if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No promo codes or discounts used in this range.</p>;
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Order ID</th>
+                          <th>Date</th>
+                          <th>Customer</th>
+                          <th>Original Price</th>
+                          <th>Discounted Amount</th>
+                          <th>Final Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map(item => (
+                          <tr key={item.id}>
+                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                            <td>{item.customer?.name || item.user_name}</td>
+                            <td>₹{item.total_amount}</td>
+                            <td style={{ color: '#ff4d4f', fontWeight: 'bold' }}>-₹{item.discount_amount}</td>
+                            <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                return null;
+              };
+
+              const exportReportCSV = (tab) => {
+                const reports = adminRevenue?.reports || {};
+                let dataList = [];
+                let headers = [];
+                let filename = `report_${tab}.csv`;
+                
+                if (tab === 'sales') {
+                  dataList = reports.sales || [];
+                  headers = ["Order ID", "Date", "Customer Name", "Items", "Final Amount", "Status", "Payment Method"];
+                } else if (tab === 'new_users') {
+                  dataList = reports.new_users || [];
+                  headers = ["User ID", "Registration Date", "Name", "Email", "Phone", "SuperCoins Balance"];
+                } else if (tab === 'online') {
+                  dataList = reports.online_payments || [];
+                  headers = ["Order ID", "Date", "Customer Name", "Razorpay Payment ID", "Final Amount", "Status"];
+                } else if (tab === 'cod') {
+                  dataList = reports.cod_payments || [];
+                  headers = ["Order ID", "Date", "Customer Name", "Final Amount", "Status", "Payment Status"];
+                } else if (tab === 'returns') {
+                  dataList = reports.returns || [];
+                  headers = ["Order ID", "Date", "Customer Name", "Returned Amount", "Return Reason", "Return Status"];
+                } else if (tab === 'custom') {
+                  dataList = reports.custom_orders || [];
+                  headers = ["Custom Order ID", "Date", "Customer Name", "Product", "Selected Color", "Notes", "Quantity", "Quoted Price", "Status"];
+                } else if (tab === 'promo') {
+                  dataList = reports.promo_orders || [];
+                  headers = ["Order ID", "Date", "Customer Name", "Original Price", "Discount Amount", "Final Amount"];
+                }
+                
+                if (dataList.length === 0) {
+                  addToast("Export Empty", "No data to export for this report range.", "warning");
+                  return;
+                }
+                
+                let csvRows = [headers.join(",")];
+                
+                dataList.forEach(item => {
+                  let row = [];
+                  if (tab === 'sales') {
+                    const itemNames = (item.items || []).map(i => `${i.product_name} x${i.quantity}`).join('; ');
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.customer?.name || item.user_name || ''}"`,
+                      `"${itemNames}"`,
+                      item.final_amount,
+                      item.status,
+                      item.payment_method
+                    ];
+                  } else if (tab === 'new_users') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.name || item.username || ''}"`,
+                      item.email,
+                      item.contact_phone || '',
+                      item.super_coins
+                    ];
+                  } else if (tab === 'online') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.customer?.name || item.user_name || ''}"`,
+                      item.razorpay_payment_id || 'UPI/Prepaid',
+                      item.final_amount,
+                      item.status
+                    ];
+                  } else if (tab === 'cod') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.customer?.name || item.user_name || ''}"`,
+                      item.final_amount,
+                      item.status,
+                      item.payment_status
+                    ];
+                  } else if (tab === 'returns') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.customer?.name || item.user_name || ''}"`,
+                      item.final_amount,
+                      `"${item.return_reason || ''}"`,
+                      item.return_request_status
+                    ];
+                  } else if (tab === 'custom') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.user_name || ''}"`,
+                      `"${item.product_name || ''}"`,
+                      `"${item.selected_color_name || ''} (${item.selected_color_hex || ''})"`,
+                      `"${(item.customization_notes || '').replace(/"/g, '""')}"`,
+                      item.quantity,
+                      item.quoted_price || '',
+                      item.status
+                    ];
+                  } else if (tab === 'promo') {
+                    row = [
+                      item.id,
+                      new Date(item.created_at).toLocaleDateString(),
+                      `"${item.customer?.name || item.user_name || ''}"`,
+                      item.total_amount,
+                      item.discount_amount,
+                      item.final_amount
+                    ];
+                  }
+                  csvRows.push(row.join(","));
+                });
+                
+                const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              };
+
               const categoryGradients = [
                 { start: '#9a84c8', end: '#b9a4ea' }, // Lavender
                 { start: '#e84e7e', end: '#f48fb1' }, // Red-Pink
@@ -11739,6 +12178,61 @@ export default function App() {
               return (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                   
+                  {/* Date Filter Header Row */}
+                  <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <h3 style={{ fontWeight: 900, fontSize: '1.25rem', color: '#7a4ea5', margin: 0, fontFamily: "'Playfair Display', serif" }}>Graphical Revenue & Subsets</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Filter all stats, graphs, and table reports by a custom date range.</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
+                        <input 
+                          type="date" 
+                          value={revenueStartDate} 
+                          onChange={(e) => setRevenueStartDate(e.target.value)} 
+                          style={{ 
+                            padding: '6px 12px', 
+                            borderRadius: '6px', 
+                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                            background: '#ffffff',
+                            color: 'var(--text-main)',
+                            fontSize: '0.8rem',
+                            outline: 'none',
+                            height: '34px'
+                          }} 
+                        />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
+                        <input 
+                          type="date" 
+                          value={revenueEndDate} 
+                          onChange={(e) => setRevenueEndDate(e.target.value)} 
+                          style={{ 
+                            padding: '6px 12px', 
+                            borderRadius: '6px', 
+                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                            background: '#ffffff',
+                            color: 'var(--text-main)',
+                            fontSize: '0.8rem',
+                            outline: 'none',
+                            height: '34px'
+                          }} 
+                        />
+                      </div>
+                      {(revenueStartDate || revenueEndDate) && (
+                        <button 
+                          onClick={() => { setRevenueStartDate(''); setRevenueEndDate(''); }} 
+                          className="btn-secondary" 
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', height: '34px' }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Stats */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
                     <div className="glass-panel" style={{ padding: '20px' }}>
@@ -11766,138 +12260,203 @@ export default function App() {
                     <div className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
                       <h4 style={{ fontWeight: 800, marginBottom: '16px', letterSpacing: '0.5px' }}>Daily Sales Progress (past week)</h4>
                       
-                      {dailySales.length > 0 ? (
-                        <div style={{ position: 'relative', width: '100%', height: '280px' }}>
-                          <svg viewBox={`0 0 ${svgW} ${svgH}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
-                            <defs>
-                              <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#9a84c8" />
-                                <stop offset="100%" stopColor="#b9a4ea" />
-                              </linearGradient>
-                            </defs>
+                      {dailySales.length > 0 ? (() => {
+                        const rawMax = Math.max(...dailySales.map(x => x.revenue), 0);
+                        const chartMaxLimit = rawMax <= 1000 ? 1000 : Math.ceil(rawMax / 1000) * 1000;
 
-                            {/* Y Grid Lines & Y Labels */}
-                            {[0, 1, 2, 3, 4].map((i) => {
-                              const yVal = (i / 4) * maxBarValue;
-                              const yPos = padTop + chartH - (i / 4) * chartH;
-                              return (
-                                <g key={i}>
-                                  <line 
-                                    x1={padLeft} 
-                                    y1={yPos} 
-                                    x2={svgW - padRight} 
-                                    y2={yPos} 
-                                    stroke="rgba(154, 132, 200, 0.08)" 
-                                    strokeDasharray="4 4" 
-                                  />
+                        const getXPos = (idx) => {
+                          if (dailySales.length <= 1) {
+                            return padLeft + chartW / 2;
+                          }
+                          return padLeft + idx * (chartW / (dailySales.length - 1));
+                        };
+
+                        const points = dailySales.map((item, idx) => ({
+                          x: getXPos(idx),
+                          y: padTop + chartH - (item.revenue / chartMaxLimit) * chartH,
+                          item,
+                          idx
+                        }));
+
+                        let lineD = "";
+                        let areaD = "";
+                        if (points.length > 0) {
+                          lineD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
+                          const bottomY = padTop + chartH;
+                          areaD = `M ${points[0].x} ${bottomY} L ${points[0].x} ${points[0].y} ` + 
+                                  points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ") + 
+                                  ` L ${points[points.length - 1].x} ${bottomY} Z`;
+                        }
+
+                        return (
+                          <div style={{ position: 'relative', width: '100%', height: '280px' }}>
+                            <svg viewBox={`0 0 ${svgW} ${svgH}`} width="100%" height="100%" style={{ overflow: 'visible' }}>
+                              <defs>
+                                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.22" />
+                                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.01" />
+                                </linearGradient>
+                              </defs>
+
+                              {/* Y Grid Lines & Y Labels */}
+                              {Array.from({ length: 11 }, (_, i) => {
+                                const yVal = (i / 10) * chartMaxLimit;
+                                const yPos = padTop + chartH - (i / 10) * chartH;
+                                const isTargetLine = i === 10;
+                                return (
+                                  <g key={i}>
+                                    <line 
+                                      x1={padLeft} 
+                                      y1={yPos} 
+                                      x2={svgW - padRight} 
+                                      y2={yPos} 
+                                      stroke={isTargetLine ? "#ef4444" : "#f1f5f9"} 
+                                      strokeWidth={isTargetLine ? 1.5 : 1}
+                                      strokeDasharray={isTargetLine ? "4 4" : undefined} 
+                                    />
+                                    <text
+                                      x={padLeft - 8}
+                                      y={yPos + 4}
+                                      textAnchor="end"
+                                      fill="var(--text-muted)"
+                                      style={{ fontSize: '9px', fontFamily: "'Jost', sans-serif", fontWeight: 550 }}
+                                    >
+                                      {yVal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                                    </text>
+                                  </g>
+                                );
+                              })}
+
+                              {/* Vertical Grid Lines */}
+                              {points.map((p, idx) => (
+                                <line
+                                  key={`vgrid-${idx}`}
+                                  x1={p.x}
+                                  y1={padTop}
+                                  x2={p.x}
+                                  y2={padTop + chartH}
+                                  stroke="#f8fafc"
+                                  strokeWidth={1}
+                                />
+                              ))}
+
+                              {/* Area Shading */}
+                              {areaD && (
+                                <path 
+                                  d={areaD} 
+                                  fill="url(#areaGrad)" 
+                                />
+                              )}
+
+                              {/* Trend Line */}
+                              {lineD && (
+                                <path 
+                                  d={lineD} 
+                                  fill="none" 
+                                  stroke="#3b82f6" 
+                                  strokeWidth="2.5" 
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              )}
+
+                              {/* Markers & Hover Interactivity */}
+                              {points.map((p, idx) => {
+                                const step = chartW / (dailySales.length - 1 || 1);
+                                const rectX = p.x - step / 2;
+                                const rectW = step;
+                                return (
+                                  <g key={idx}>
+                                    <circle
+                                      cx={p.x}
+                                      cy={p.y}
+                                      r={hoveredBarIndex === idx ? 5.5 : 3.5}
+                                      fill="#ffffff"
+                                      stroke="#3b82f6"
+                                      strokeWidth={2}
+                                      style={{
+                                        transition: 'all 0.15s ease',
+                                        filter: hoveredBarIndex === idx ? 'drop-shadow(0px 0px 4px rgba(59, 130, 246, 0.5))' : 'none'
+                                      }}
+                                    />
+                                    {/* Interaction hit box */}
+                                    <rect
+                                      x={rectX}
+                                      y={padTop}
+                                      width={rectW}
+                                      height={chartH + padBottom}
+                                      fill="transparent"
+                                      style={{ cursor: 'pointer' }}
+                                      onMouseEnter={() => setHoveredBarIndex(idx)}
+                                      onMouseLeave={() => setHoveredBarIndex(null)}
+                                    />
+                                  </g>
+                                );
+                              })}
+
+                              {/* X Axis Date Labels */}
+                              {points.map((p, idx) => {
+                                const dateObj = new Date(p.item.date);
+                                const formattedLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                return (
                                   <text
-                                    x={padLeft - 8}
-                                    y={yPos + 4}
-                                    textAnchor="end"
-                                    fill="var(--text-muted)"
-                                    style={{ fontSize: '10px', fontFamily: "'Jost', sans-serif", fontWeight: 500 }}
-                                  >
-                                    {formatYLabel(yVal)}
-                                  </text>
-                                </g>
-                              );
-                            })}
-
-                            {/* Bars & Hover Tooltip logic */}
-                            {dailySales.map((item, idx) => {
-                              const step = chartW / dailySales.length;
-                              const barW = Math.max(step * 0.55, 14);
-                              const barH = (item.revenue / maxBarValue) * chartH;
-                              const xPos = padLeft + idx * step + (step - barW) / 2;
-                              const yPos = padTop + chartH - barH;
-                              const pathD = getBarPath(xPos, yPos, barW, barH, 5);
-
-                              return (
-                                <g key={idx}>
-                                  {/* Bar Path */}
-                                  <path
-                                    d={pathD}
-                                    fill={hoveredBarIndex === idx ? 'var(--accent-primary)' : 'url(#barGrad)'}
-                                    style={{
-                                      transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                                      cursor: 'pointer',
-                                      filter: hoveredBarIndex === idx ? 'drop-shadow(0px 4px 10px rgba(154, 132, 200, 0.3))' : 'none'
-                                    }}
-                                    onMouseEnter={() => setHoveredBarIndex(idx)}
-                                    onMouseLeave={() => setHoveredBarIndex(null)}
-                                  />
-
-                                  {/* Invisible wider interaction area for easier hovering */}
-                                  <rect
-                                    x={padLeft + idx * step}
-                                    y={padTop}
-                                    width={step}
-                                    height={chartH + padBottom}
-                                    fill="transparent"
-                                    style={{ cursor: 'pointer' }}
-                                    onMouseEnter={() => setHoveredBarIndex(idx)}
-                                    onMouseLeave={() => setHoveredBarIndex(null)}
-                                  />
-
-                                  {/* X Axis Date Label */}
-                                  <text
-                                    x={xPos + barW / 2}
+                                    key={`xlabel-${idx}`}
+                                    x={p.x}
                                     y={padTop + chartH + 18}
                                     textAnchor="middle"
                                     fill="var(--text-muted)"
-                                    style={{ fontSize: '10.5px', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}
+                                    style={{ fontSize: '10px', fontFamily: "'Jost', sans-serif", fontWeight: 600 }}
                                   >
-                                    {item.date.split('-').slice(1).join('/')}
+                                    {formattedLabel}
                                   </text>
-                                </g>
+                                );
+                              })}
+                            </svg>
+
+                            {/* HTML Floating Tooltip */}
+                            {hoveredBarIndex !== null && (() => {
+                              const p = points[hoveredBarIndex];
+                              const item = p.item;
+                              
+                              const tooltipLeftPct = (p.x / svgW) * 100;
+                              const tooltipTopPct = (p.y / svgH) * 100;
+
+                              const dateObj = new Date(item.date);
+                              const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                              return (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${tooltipLeftPct}%`,
+                                    top: `${tooltipTopPct}%`,
+                                    transform: 'translate(-50%, -120%)',
+                                    background: 'rgba(255, 255, 255, 0.95)',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    borderRadius: '6px',
+                                    padding: '8px 12px',
+                                    boxShadow: '0 8px 24px rgba(59, 130, 246, 0.15)',
+                                    zIndex: 10,
+                                    pointerEvents: 'none',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '2px',
+                                    whiteSpace: 'nowrap',
+                                    backdropFilter: 'blur(4px)'
+                                  }}
+                                >
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                    {formattedDate} 12:00 AM
+                                  </span>
+                                  <span style={{ fontSize: '0.9rem', color: '#3b82f6', fontWeight: 800 }}>
+                                    ₹{item.revenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
                               );
-                            })}
-                          </svg>
-
-                          {/* HTML Floating Tooltip */}
-                          {hoveredBarIndex !== null && (() => {
-                            const step = chartW / dailySales.length;
-                            const barW = Math.max(step * 0.55, 14);
-                            const item = dailySales[hoveredBarIndex];
-                            const barH = (item.revenue / maxBarValue) * chartH;
-                            const xPos = padLeft + hoveredBarIndex * step + (step - barW) / 2 + barW / 2;
-                            const yPos = padTop + chartH - barH;
-
-                            const tooltipLeftPct = (xPos / svgW) * 100;
-                            const tooltipTopPct = (yPos / svgH) * 100;
-
-                            return (
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  left: `${tooltipLeftPct}%`,
-                                  top: `${tooltipTopPct}%`,
-                                  transform: 'translate(-50%, -120%)',
-                                  background: 'rgba(255, 255, 255, 0.95)',
-                                  border: '1px solid rgba(154, 132, 200, 0.3)',
-                                  borderRadius: '5px',
-                                  padding: '8px 12px',
-                                  boxShadow: '0 8px 24px rgba(154, 132, 200, 0.15)',
-                                  zIndex: 10,
-                                  pointerEvents: 'none',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                  whiteSpace: 'nowrap',
-                                  backdropFilter: 'blur(4px)'
-                                }}
-                              >
-                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                  {new Date(item.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </span>
-                                <span style={{ fontSize: '0.85rem', color: '#7a4ea5', fontWeight: 800 }}>
-                                  ₹{item.revenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      ) : (
+                            })()}
+                          </div>
+                        );
+                      })() : (
                         <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No daily sales recorded yet.</p>
                         </div>
@@ -12088,6 +12647,64 @@ export default function App() {
                       )}
                     </div>
 
+                  </div>
+
+                  {/* Detailed Reports Section */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <h4 style={{ fontWeight: 800, letterSpacing: '0.5px', margin: 0, color: '#2b0b57' }}>Detailed Report Subsets</h4>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>View or export filtered subsets of your shop metrics.</p>
+                      </div>
+                      
+                      {/* Export CSV for selected report */}
+                      <button
+                        type="button"
+                        onClick={() => exportReportCSV(activeReportTab)}
+                        className="btn-secondary"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderColor: '#7a4ea5', color: '#7a4ea5', height: '32px' }}
+                      >
+                        <Download size={14} /> Export CSV
+                      </button>
+                    </div>
+
+                    {/* Report Tab Pills */}
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>
+                      {[
+                        { id: 'sales', label: 'Sales Report', count: (adminRevenue.reports?.sales || []).length },
+                        { id: 'new_users', label: 'New Users', count: (adminRevenue.reports?.new_users || []).length },
+                        { id: 'online', label: 'Online Payments', count: (adminRevenue.reports?.online_payments || []).length },
+                        { id: 'cod', label: 'COD Payments', count: (adminRevenue.reports?.cod_payments || []).length },
+                        { id: 'returns', label: 'Returned Orders', count: (adminRevenue.reports?.returns || []).length },
+                        { id: 'custom', label: 'Custom Orders', count: (adminRevenue.reports?.custom_orders || []).length },
+                        { id: 'promo', label: 'Promo Discounts', count: (adminRevenue.reports?.promo_orders || []).length },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setActiveReportTab(tab.id)}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            border: '1px solid',
+                            transition: 'all 0.2s',
+                            background: activeReportTab === tab.id ? '#7a4ea5' : 'transparent',
+                            color: activeReportTab === tab.id ? '#ffffff' : 'var(--text-muted)',
+                            borderColor: activeReportTab === tab.id ? '#7a4ea5' : 'var(--border-subtle)'
+                          }}
+                        >
+                          {tab.label} ({tab.count})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Report Data Table */}
+                    <div style={{ overflowX: 'auto' }}>
+                      {renderReportTable(activeReportTab)}
+                    </div>
                   </div>
 
                 </div>
@@ -14159,17 +14776,7 @@ export default function App() {
         {/* Search Item */}
         <button 
           onClick={() => {
-            setCurrentView("opac");
-            setActiveCategoryPage(null);
-            setTimeout(() => {
-              const catalog = document.getElementById("catalog-section");
-              if (catalog) {
-                catalog.scrollIntoView({ behavior: 'smooth' });
-                setTimeout(() => {
-                  document.getElementById("search-input")?.focus();
-                }, 500);
-              }
-            }, 100);
+            setShowSmartSearch(true);
           }}
           style={{
             background: 'none',
@@ -14569,6 +15176,305 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* SMART / QUICK SEARCH OVERLAY (FLIPKART ACCURATE MOBILE OVERLAY & DESKTOP SUITE) */}
+      {showSmartSearch && (
+        <div 
+          className="smart-search-overlay" 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: '#ffffff',
+            zIndex: 20000,
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {/* Header Row */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: isMobile ? '12px 16px' : '18px 60px',
+            borderBottom: '1px solid #eeeeee',
+            background: '#ffffff',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <button 
+              onClick={() => {
+                setShowSmartSearch(false);
+                setLocalSearchVal("");
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#222222',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '8px'
+              }}
+            >
+              <ArrowLeft size={24} />
+            </button>
+
+            <div style={{
+              position: 'relative',
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <Search 
+                size={18} 
+                style={{
+                  position: 'absolute',
+                  left: '16px',
+                  color: '#7a4ea5'
+                }} 
+              />
+              <input 
+                type="text"
+                placeholder="Search for sarees, lehengas, silk, categories..."
+                value={localSearchVal}
+                onChange={e => setLocalSearchVal(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    handleCommitSearch(localSearchVal);
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 40px 12px 46px',
+                  background: '#fcfafc',
+                  border: '1.5px solid rgba(122, 78, 165, 0.15)',
+                  borderRadius: '30px',
+                  fontSize: '0.95rem',
+                  color: '#222222',
+                  outline: 'none',
+                  fontFamily: "'Jost', sans-serif"
+                }}
+                autoFocus
+              />
+              {localSearchVal && (
+                <button
+                  onClick={() => setLocalSearchVal("")}
+                  style={{
+                    position: 'absolute',
+                    right: '16px',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#666666',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {!isMobile && (
+              <button 
+                onClick={() => handleCommitSearch(localSearchVal)}
+                className="btn-primary"
+                style={{
+                  padding: '10px 24px',
+                  borderRadius: '30px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700
+                }}
+              >
+                Search
+              </button>
+            )}
+          </div>
+
+          {/* Results Suggestion Drawer Content */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: isMobile ? '20px 16px' : '30px 60px',
+            background: '#fafafa'
+          }}>
+            {!localSearchVal ? (
+              // Initial State: suggestions
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '800px', margin: '0 auto' }}>
+                
+                {/* Recent Searches */}
+                {recentSearches.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                        <Clock size={14} /> Recent Searches
+                      </h4>
+                      <button 
+                        onClick={clearRecentSearches}
+                        style={{ background: 'none', border: 'none', color: '#7a4ea5', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {recentSearches.map((s, idx) => (
+                        <button 
+                          key={idx}
+                          onClick={() => handleCommitSearch(s)}
+                          className="search-tag-item"
+                        >
+                          <Clock size={12} style={{ opacity: 0.6 }} /> {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Popular Searches */}
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                    <TrendingUp size={14} color="#7a4ea5" /> Popular Searches
+                  </h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {["Royal Purple Saree", "Kanjeevaram", "Banarasi Silk", "Lehenga", "Saree Collections", "Bespoke Customization"].map((s, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => handleCommitSearch(s)}
+                        className="search-tag-item"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Browse Categories */}
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '16px', margin: 0 }}>
+                    Browse Categories
+                  </h4>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                    gap: '16px'
+                  }}>
+                    {categories.slice(0, 4).map(c => (
+                      <div 
+                        key={c.id}
+                        onClick={() => {
+                          setActiveCategoryPage(c);
+                          setShowSmartSearch(false);
+                          setLocalSearchVal("");
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="browse-cat-card"
+                      >
+                        <div style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          background: '#f5edff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#7a4ea5'
+                        }}>
+                          {getCategoryIcon(c.name)}
+                        </div>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#2b0b57' }}>{c.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              // Suggestions lists
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '800px', margin: '0 auto' }}>
+                
+                {/* Category Scope Suggestions */}
+                {categories.filter(c => c.name.toLowerCase().includes(localSearchVal.toLowerCase())).map(c => (
+                  <div 
+                    key={`cat-${c.id}`}
+                    onClick={() => {
+                      setSelectedCategory(c.id.toString());
+                      setSearchQuery("");
+                      setShowSmartSearch(false);
+                      setLocalSearchVal("");
+                      setTimeout(() => {
+                        document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' });
+                      }, 100);
+                    }}
+                    className="search-cat-suggestion"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Search size={16} color="#7a4ea5" />
+                      <span style={{ fontSize: '0.9rem' }}>
+                        Search for <strong style={{ color: '#7a4ea5' }}>"{localSearchVal}"</strong> in <strong style={{ color: '#2b0b57' }}>{c.name}</strong>
+                      </span>
+                    </div>
+                    <ChevronRight size={16} color="#999999" />
+                  </div>
+                ))}
+
+                {/* Product Matches */}
+                <div>
+                  <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px', margin: 0 }}>
+                    Matching Products ({getLiveMatches().length})
+                  </h4>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                    {getLiveMatches().length > 0 ? (
+                      getLiveMatches().map(p => (
+                        <div 
+                          key={`prod-${p.id}`}
+                          onClick={() => {
+                            handleProductSelection(p.id);
+                            setShowSmartSearch(false);
+                            setLocalSearchVal("");
+                          }}
+                          className="search-product-match"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <img 
+                              src={p.images[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=50&q=80" } 
+                              alt={p.name}
+                              style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #eeeeee' }}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#2b0b57' }}>{p.name}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#7a4ea5', fontWeight: 600 }}>{p.category_name}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                              <span style={{ fontWeight: 800, color: '#2b0b57', fontSize: '0.9rem' }}>₹{p.price.toFixed(2)}</span>
+                              {p.original_price > p.price && (
+                                <span style={{ textDecoration: 'line-through', fontSize: '0.75rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                              )}
+                            </div>
+                            <ChevronRight size={16} color="#999999" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '36px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#666666', fontSize: '0.9rem' }}>
+                        No direct product matches found for "{localSearchVal}".
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
         </div>
       )}
