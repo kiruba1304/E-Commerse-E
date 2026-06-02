@@ -3153,6 +3153,7 @@ export default function App() {
   };
 
   const handleDeleteShop = async (shopId) => {
+    if (!window.confirm("Are you sure you want to WIPE this shop? This will permanently delete all its products, categories, admins, orders, reviews, customization requests, and physical upload photos from disk. This action is irreversible.")) return;
     try {
       const res = await fetch(`${API_BASE}/super-admin/shops/${shopId}`, {
         method: 'DELETE',
@@ -13561,9 +13562,13 @@ export default function App() {
                             Coins: {s.super_coin_enabled ? `Ratio ₹${s.super_coin_ratio}` : "Disabled"}
                           </span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <button onClick={() => setShopForm(s)} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
-                          <button onClick={() => handleDeleteShop(s.id)} className="btn-danger" style={{ padding: '6px' }}><Trash2 size={12} /></button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+                          <button onClick={() => setShopForm(s)} className="btn-secondary" style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 'bold', justifyContent: 'center' }} title="Edit Shop">
+                            <Edit2 size={12} /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteShop(s.id)} className="btn-danger" style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 'bold', justifyContent: 'center' }} title="Wipe Shop Data">
+                            <Trash2 size={12} /> Wipe Data
+                          </button>
                         </div>
                       </div>
                     ))}

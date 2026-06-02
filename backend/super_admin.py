@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from models import db, SuperAdmin, Shop, Admin, User, Order, SystemLog
 from auth_middleware import generate_token, token_required, role_required
 
@@ -164,17 +164,133 @@ def update_shop(shop_id):
 @super_admin_bp.route('/shops/<int:shop_id>', methods=['DELETE'])
 @role_required(['super_admin'])
 def delete_shop(shop_id):
+    from models import CustomizationOrder, Collection, Notification, HelpTicket, Coupon, PopupAd, Product, Category, Admin, Order, OrderItem, Review, CartItem, WishlistItem, SystemLog
+    import os
+    import json
+
     shop = Shop.query.get(shop_id)
     if not shop:
         return jsonify({"error": "Shop not found"}), 404
 
     shop_name = shop.name
-    db.session.delete(shop)
-    db.session.commit()
+    upload_folder = current_app.config.get('UPLOAD_FOLDER')
 
-    log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Deleted shop '{shop_name}' (ID: {shop_id})")
+    def delete_file(url):
+        if not url or not isinstance(url, str) or not upload_folder:
+            return
+        # Handle relative or absolute API urls
+        if url.startswith('/api/uploads/'):
+            filename = url.replace('/api/uploads/', '')
+            filename = os.path.basename(filename)  # sanitize
+            filepath = os.path.join(upload_folder, filename)
+            if os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                    print(f"Deleted upload photo: {filepath}")
+                except Exception as e:
+                    print(f"Error deleting file {filepath}: {e}")
 
-    return jsonify({"message": "Shop and all associated data deleted successfully"}), 200
+    try:
+        # 1. Delete physical photo uploads associated with the shop's entities
+        # Shop logo
+        if shop.logo_url:
+            delete_file(shop.logo_url)
+            
+        # Shop banners
+        if shop.banners_json:
+            try:
+                banners = json.loads(shop.banners_json)
+                for banner in banners:
+                    if isinstance(banner, dict) and 'image' in banner:
+                        delete_file(banner['image'])
+            except Exception as e:
+                print(f"Error parsing banners_json for photo deletion: {e}")
+
+        # Products (images)
+        products = Product.query.filter_by(shop_id=shop_id).all()
+        product_ids = [p.id for p in products]
+        for p in products:
+            if p.images_json:
+                try:
+                    images = json.loads(p.images_json)
+                    for img in images:
+                        delete_file(img)
+                except Exception as e:
+                    print(f"Error parsing images_json for product {p.id}: {e}")
+
+        # Categories (images)
+        categories = Category.query.filter_by(shop_id=shop_id).all()
+        for cat in categories:
+            if cat.image_url:
+                delete_file(cat.image_url)
+
+        # Reviews (images)
+        if product_ids:
+            reviews = Review.query.filter(Review.product_id.in_(product_ids)).all()
+            for rev in reviews:
+                if rev.image_url:
+                    delete_file(rev.image_url)
+
+        # Orders (return request images)
+        orders = Order.query.filter_by(shop_id=shop_id).all()
+        order_ids = [o.id for o in orders]
+        for o in orders:
+            if o.return_image_url:
+                delete_file(o.return_image_url)
+
+        # 2. Step-by-step cascading database record deletion to prevent foreign key errors on MySQL
+        # Customization orders
+        CustomizationOrder.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Collections
+        Collection.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Notifications
+        Notification.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Help tickets
+        HelpTicket.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Coupons
+        Coupon.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Popup ads
+        PopupAd.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Reviews, Cart Items, and Wishlist Items associated with shop's products
+        if product_ids:
+            Review.query.filter(Review.product_id.in_(product_ids)).delete(synchronize_session=False)
+            CartItem.query.filter(CartItem.product_id.in_(product_ids)).delete(synchronize_session=False)
+            WishlistItem.query.filter(WishlistItem.product_id.in_(product_ids)).delete(synchronize_session=False)
+
+        # Order Items and Orders
+        if order_ids:
+            OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).delete(synchronize_session=False)
+        Order.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Products
+        Product.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Categories
+        Category.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Admins
+        Admin.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # System Logs (related to shop)
+        SystemLog.query.filter_by(shop_id=shop_id).delete(synchronize_session=False)
+
+        # Finally, delete the shop itself
+        db.session.delete(shop)
+        db.session.commit()
+
+        # Log system action
+        log_system_action('super_admin', request.user['user_id'], request.user['username'], f"Wiped and deleted shop '{shop_name}' (ID: {shop_id})")
+
+        return jsonify({"message": f"Shop '{shop_name}' and all associated database records/photos wiped successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to wipe shop data: {str(e)}"}), 500
 
 # ADMIN CREATION & ALLOCATION
 @super_admin_bp.route('/admins', methods=['POST'])

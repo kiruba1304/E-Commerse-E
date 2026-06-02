@@ -5,3 +5,4 @@ bcrypt
 pyjwt
 razorpay
 python-dotenv
+pymysql

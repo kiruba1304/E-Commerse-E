@@ -29,7 +29,40 @@ RAZORPAY_KEY_SECRET = 'YOUR_RAZORPAY_KEY_SECRET'
 razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'ecommerce.db')}"
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
+DB_PORT = os.getenv('DB_PORT')
+DB_NAME = os.getenv('DB_NAME')
+
+def create_database_if_not_exists():
+    if DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
+        try:
+            import pymysql
+            conn = pymysql.connect(
+                host=DB_HOST,
+                port=int(DB_PORT),
+                user=DB_USER,
+                password=DB_PASSWORD
+            )
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+                conn.commit()
+                print(f"Database `{DB_NAME}` verified/created successfully.")
+            except Exception as e:
+                print(f"Error creating database `{DB_NAME}`: {e}")
+            finally:
+                conn.close()
+        except Exception as e:
+            print(f"Warning: Could not connect to MySQL server to verify/create database: {e}")
+
+if DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
+    import urllib.parse
+    encoded_password = urllib.parse.quote_plus(DB_PASSWORD)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'ecommerce.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # File Upload Configuration
@@ -56,6 +89,7 @@ def upload_file():
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+create_database_if_not_exists()
 db.init_app(app)
 
 # Register Blueprints
@@ -296,10 +330,119 @@ def sanitize_database_urls():
     except Exception as e:
         print(f"Error sanitizing database URLs: {e}")
 
+# SQLite to MySQL Data Migration Utility
+def migrate_sqlite_to_mysql():
+    sqlite_path = os.path.join(BASE_DIR, 'ecommerce.db')
+    if not os.path.exists(sqlite_path):
+        print("Local SQLite database ecommerce.db not found. Skipping data migration.")
+        return
+
+    try:
+        import pymysql
+    except ImportError:
+        print("Warning: pymysql is not installed. SQLite to MySQL data migration skipped.")
+        return
+
+    # Check if MySQL has data
+    try:
+        sa_count = SuperAdmin.query.count()
+        shop_count = Shop.query.count()
+        if sa_count > 0 or shop_count > 0:
+            print("MySQL database already has data. Skipping SQLite to MySQL migration.")
+            return
+    except Exception as e:
+        print(f"Error checking MySQL database contents: {e}. Skipping migration.")
+        return
+
+    print("MySQL database is empty. Starting migration from SQLite...")
+    
+    import sqlite3
+    
+    # Connect to local SQLite
+    sqlite_conn = sqlite3.connect(sqlite_path)
+    sqlite_conn.row_factory = sqlite3.Row
+    sqlite_curr = sqlite_conn.cursor()
+    
+    # Connect to MySQL using environmental variables
+    DB_USER = os.getenv('DB_USER')
+    DB_PASSWORD = os.getenv('DB_PASSWORD')
+    DB_HOST = os.getenv('DB_HOST')
+    DB_PORT = os.getenv('DB_PORT')
+    DB_NAME = os.getenv('DB_NAME')
+    
+    try:
+        mysql_conn = pymysql.connect(
+            host=DB_HOST,
+            port=int(DB_PORT),
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME
+        )
+        mysql_curr = mysql_conn.cursor()
+    except Exception as e:
+        print(f"Could not connect to MySQL to run migration: {e}")
+        sqlite_conn.close()
+        return
+
+    try:
+        # Disable foreign key checks on MySQL
+        mysql_curr.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        
+        # Get tables from SQLite
+        sqlite_curr.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+        tables = [row[0] for row in sqlite_curr.fetchall()]
+        
+        for table in tables:
+            try:
+                sqlite_curr.execute(f"SELECT * FROM `{table}`")
+                rows = sqlite_curr.fetchall()
+                if not rows:
+                    print(f"Table `{table}` is empty in SQLite. Skipping.")
+                    continue
+                    
+                columns = rows[0].keys()
+                col_names_str = ", ".join([f"`{col}`" for col in columns])
+                placeholders = ", ".join(["%s"] * len(columns))
+                insert_query = f"INSERT INTO `{table}` ({col_names_str}) VALUES ({placeholders})"
+                
+                data_to_insert = []
+                for row in rows:
+                    row_data = []
+                    for col in columns:
+                        val = row[col]
+                        row_data.append(val)
+                    data_to_insert.append(row_data)
+                    
+                mysql_curr.executemany(insert_query, data_to_insert)
+                print(f"Migrated {len(data_to_insert)} rows to table `{table}`.")
+            except Exception as table_err:
+                print(f"Failed to migrate table `{table}`: {table_err}")
+            
+        mysql_conn.commit()
+        print("SQLite to MySQL migration completed successfully!")
+    except Exception as e:
+        mysql_conn.rollback()
+        print(f"Error during SQLite to MySQL migration transaction: {e}")
+    finally:
+        try:
+            mysql_curr.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        except Exception:
+            pass
+        mysql_conn.close()
+        sqlite_conn.close()
+
 # SEEDING DATABASE LOGIC
 def seed_database():
     with app.app_context():
         db.create_all()
+        
+        # Automatic SQLite to MySQL migration if using MySQL
+        if db.engine.name == 'mysql':
+            try:
+                migrate_sqlite_to_mysql()
+            except Exception as e:
+                print(f"Error during SQLite to MySQL migration: {e}")
+                
         ensure_shop_billing_heartbeat_column()
         ensure_online_order_sequence_columns()
         ensure_dtdc_columns()
@@ -536,6 +679,8 @@ def seed_database():
         print("Database seeding completed successfully.")
 
 def ensure_shop_billing_heartbeat_column():
+    if db.engine.name != 'sqlite':
+        return
     with db.engine.begin() as connection:
         result = connection.execute(text("PRAGMA table_info(shops)"))
         columns = [row[1] for row in result.fetchall()]
@@ -544,6 +689,8 @@ def ensure_shop_billing_heartbeat_column():
 
 
 def ensure_dtdc_columns():
+    if db.engine.name != 'sqlite':
+        return
     with db.engine.begin() as connection:
         shop_result = connection.execute(text("PRAGMA table_info(shops)"))
         shop_columns = [row[1] for row in shop_result.fetchall()]
@@ -605,6 +752,8 @@ def ensure_dtdc_columns():
 
 
 def ensure_online_order_sequence_columns():
+    if db.engine.name != 'sqlite':
+        return
     with db.engine.begin() as connection:
         shop_result = connection.execute(text("PRAGMA table_info(shops)"))
         shop_columns = [row[1] for row in shop_result.fetchall()]
@@ -641,6 +790,8 @@ def backfill_online_order_numbers():
 
 
 def ensure_shipping_columns():
+    if db.engine.name != 'sqlite':
+        return
     with db.engine.begin() as connection:
         shop_result = connection.execute(text("PRAGMA table_info(shops)"))
         shop_columns = [row[1] for row in shop_result.fetchall()]
