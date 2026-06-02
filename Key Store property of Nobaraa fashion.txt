@@ -1,0 +1,8 @@
+Key Store property of Nobaraa fashion apk
+
+
+
+storePassword=nobaraa123
+keyPassword=nobaraa123
+keyAlias=nobaraa-key-alias
+storeFile=../nobaraa-release-key.jks
