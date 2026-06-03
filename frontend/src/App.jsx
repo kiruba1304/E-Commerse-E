@@ -920,7 +920,7 @@ export default function App() {
   // Admin edits/creations
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
-  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "" });
+  const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "", show_description: false });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
   const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
@@ -2517,7 +2517,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Category Saved", `Category '${categoryForm.name}' updated.`, "success");
-        setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "" });
+        setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "", show_description: false });
         loadAdminCategories();
       }
     } catch (e) { }
@@ -6707,8 +6707,8 @@ export default function App() {
                 {/* Premium Luxury Jumbotron Cover for Category */}
                 <div style={{
                   position: 'relative',
-                  height: isMobile ? '200px' : '350px',
-                  background: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
+                  height: isMobile ? '200px' : '300px',
+                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                   display: 'flex',
@@ -6717,30 +6717,39 @@ export default function App() {
                   textAlign: 'center',
                   color: 'white',
                   padding: isMobile ? '20px 16px' : '40px',
-                  marginBottom: isMobile ? '20px' : '40px'
+                  marginBottom: '20px'
                 }}>
                   <div>
                     <h1 style={{
                       fontFamily: 'var(--font-serif)',
                       fontSize: isMobile ? '1.8rem' : '3rem',
                       fontWeight: 700,
-                      marginBottom: '12px',
+                      marginBottom: 0,
                       letterSpacing: '2px',
                       textTransform: 'uppercase'
                     }}>
                       {activeCategoryPage.name}
                     </h1>
-                    <p style={{
-                      fontSize: isMobile ? '0.85rem' : '1.1rem',
-                      maxWidth: '650px',
-                      margin: '0 auto',
-                      opacity: 0.9,
-                      fontWeight: 300,
-                      fontFamily: "'Jost', sans-serif"
-                    }}>
-                      {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
-                    </p>
                   </div>
+                </div>
+
+                {/* Category Description below the Cover Image */}
+                <div style={{
+                  maxWidth: '800px',
+                  margin: '0 auto 30px',
+                  padding: isMobile ? '0 16px' : '0 24px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    fontSize: isMobile ? '0.9rem' : '1.05rem',
+                    color: '#555555',
+                    lineHeight: '1.6',
+                    fontFamily: "'Jost', sans-serif",
+                    margin: 0,
+                    wordBreak: 'break-word'
+                  }}>
+                    {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
+                  </p>
                 </div>
 
                 {/* Dedicated Category Product Catalog Grid */}
@@ -7228,6 +7237,20 @@ export default function App() {
                                         }}>
                                           {c.name}
                                         </span>
+                                        {c.show_description && c.description && (
+                                          <p style={{
+                                            fontFamily: "'Jost', sans-serif",
+                                            fontSize: '0.82rem',
+                                            color: '#666666',
+                                            textAlign: 'center',
+                                            marginTop: '6px',
+                                            marginBottom: '0',
+                                            lineHeight: 1.4,
+                                            maxWidth: '260px'
+                                          }}>
+                                            {c.description}
+                                          </p>
+                                        )}
                                         <span style={{
                                           fontFamily: "'Jost', sans-serif",
                                           fontWeight: 800,
@@ -7541,6 +7564,20 @@ export default function App() {
                                   }}>
                                     {c.name}
                                   </span>
+                                  {c.show_description && c.description && (
+                                    <p style={{
+                                      fontFamily: "'Jost', sans-serif",
+                                      fontSize: '0.82rem',
+                                      color: '#666666',
+                                      textAlign: 'center',
+                                      marginTop: '6px',
+                                      marginBottom: '0',
+                                      lineHeight: 1.4,
+                                      maxWidth: '260px'
+                                    }}>
+                                      {c.description}
+                                    </p>
+                                  )}
                                   <span style={{
                                     fontFamily: "'Jost', sans-serif",
                                     fontWeight: 800,
@@ -10304,49 +10341,140 @@ export default function App() {
                       </span>
                     </div>
                   )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', marginBottom: '8px' }}>
+                    <input
+                      type="checkbox"
+                      id="show_description"
+                      checked={!!categoryForm.show_description}
+                      onChange={e => setCategoryForm(prev => ({ ...prev, show_description: e.target.checked }))}
+                    />
+                    <label htmlFor="show_description" style={{ fontSize: '0.82rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 500 }}>
+                      Show Category Description on Home Screen
+                    </label>
+                  </div>
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                     Save Category <Check size={16} />
                   </button>
                 </form>
 
-                {/* Categories Table list */}
+                {/* Categories Cards list */}
                 <div>
-                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Active Product Categories</h3>
-                  <div className="responsive-table-container glass-panel">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Description</th>
-                          {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && <th>Shipping Charge</th>}
-                          <th style={{ textAlign: 'right' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adminCategories.map(c => (
-                          <tr key={c.id}>
-                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{c.name}</td>
-                            <td>{c.description}</td>
-                            {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
-                              <td style={{ color: 'var(--text-main)', fontWeight: 600 }}>₹{(c.shipping_charge ?? 0).toFixed(2)}</td>
+                  <h3 style={{ fontWeight: 800, marginBottom: '20px' }}>Active Product Categories</h3>
+                  <div style={{
+                    maxHeight: '620px',
+                    overflowY: 'auto',
+                    paddingRight: '8px',
+                    paddingBottom: '16px'
+                  }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                      gap: '24px'
+                    }}>
+                      {adminCategories.map(c => (
+                      <div key={c.id} className="glass-panel" style={{
+                        padding: '20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                        borderRadius: '16px',
+                        position: 'relative',
+                        border: '1px solid rgba(154, 132, 200, 0.18)',
+                        background: '#ffffff'
+                      }}>
+                        {/* Cover Image */}
+                        <div style={{
+                          width: '100%',
+                          height: '140px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          background: '#f8f5fc',
+                          border: '1px solid rgba(154, 132, 200, 0.08)'
+                        }}>
+                          {c.image_url ? (
+                            <img src={c.image_url} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                              No Cover Image
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title & Info */}
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+                            <h4 style={{ margin: 0, fontWeight: 750, color: 'var(--text-main)', fontSize: '1.05rem' }}>{c.name}</h4>
+                            {c.show_description && (
+                              <span style={{
+                                fontSize: '0.65rem',
+                                background: 'rgba(154, 132, 200, 0.12)',
+                                color: '#7a4ea5',
+                                padding: '2px 8px',
+                                borderRadius: '10px',
+                                fontWeight: 600
+                              }}>
+                                On Home Screen
+                              </span>
                             )}
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setCategoryForm({ ...c, return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "", shipping_charge: c.shipping_charge !== null && c.shipping_charge !== undefined ? c.shipping_charge : "" })} className="btn-secondary" style={{ padding: '6px' }}>
-                                  <Edit2 size={14} />
-                                </button>
-                                <button onClick={() => handleDeleteCategory(c.id)} className="btn-danger" style={{ padding: '6px' }}>
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                          </div>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '0.82rem',
+                            color: '#666666',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.4',
+                            minHeight: '40px'
+                          }}>
+                            {c.description || <em style={{ color: 'var(--text-muted)' }}>No description</em>}
+                          </p>
+                        </div>
+
+                        {/* Badges/Details */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '0.75rem', marginTop: 'auto', padding: '4px 0' }}>
+                          {c.customization_enabled && (
+                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Customizable</span>
+                          )}
+                          {c.return_window_days !== null && c.return_window_days !== undefined && (
+                            <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{c.return_window_days} Days Return</span>
+                          )}
+                          {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
+                            <span style={{ background: 'rgba(154, 132, 200, 0.08)', color: '#7a4ea5', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Shipping: ₹{(c.shipping_charge ?? 0).toFixed(2)}</span>
+                          )}
+                        </div>
+
+                        {/* Actions Footer */}
+                        <div style={{
+                          display: 'flex',
+                          gap: '10px',
+                          borderTop: '1px solid rgba(154, 132, 200, 0.1)',
+                          paddingTop: '12px',
+                          marginTop: '4px'
+                        }}>
+                          <button
+                            onClick={() => setCategoryForm({
+                              ...c,
+                              show_description: !!c.show_description,
+                              return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "",
+                              shipping_charge: c.shipping_charge !== null && c.shipping_charge !== undefined ? c.shipping_charge : ""
+                            })}
+                            className="btn-secondary"
+                            style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
+                          >
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(c.id)}
+                            className="btn-danger"
+                            style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
+              </div>
               </div>
             )}
 

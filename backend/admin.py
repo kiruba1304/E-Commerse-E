@@ -329,7 +329,8 @@ def manage_categories():
         shop_id=shop_id,
         customization_enabled=bool(data.get('customization_enabled', False)),
         return_window_days=return_window_days,
-        shipping_charge=shipping_charge
+        shipping_charge=shipping_charge,
+        show_description=bool(data.get('show_description', False))
     )
     db.session.add(cat)
     db.session.commit()
@@ -385,6 +386,9 @@ def modify_category(cat_id):
                 return jsonify({"error": "Invalid shipping charge value"}), 400
         else:
             cat.shipping_charge = 0.0
+
+    if 'show_description' in data:
+        cat.show_description = bool(data['show_description'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated product category '{cat.name}'")

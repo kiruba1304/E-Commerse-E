@@ -354,6 +354,7 @@ class Category(db.Model):
     customization_enabled = db.Column(db.Boolean, default=False)
     return_window_days = db.Column(db.Integer, nullable=True)
     shipping_charge = db.Column(db.Float, default=0.0)
+    show_description = db.Column(db.Boolean, default=False, nullable=False)
 
     products = db.relationship('Product', backref='category', lazy=True)
 
@@ -366,7 +367,8 @@ class Category(db.Model):
             "shop_id": self.shop_id,
             "customization_enabled": self.customization_enabled or False,
             "return_window_days": self.return_window_days,
-            "shipping_charge": self.shipping_charge if self.shipping_charge is not None else 0.0
+            "shipping_charge": self.shipping_charge if self.shipping_charge is not None else 0.0,
+            "show_description": self.show_description or False
         }
 
 class Product(db.Model):
@@ -866,5 +868,22 @@ class CustomizationOrder(db.Model):
             "payment_method": self.payment_method,
             "payment_status": self.payment_status,
             "razorpay_payment_id": self.razorpay_payment_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+class UploadedFile(db.Model):
+    __tablename__ = 'uploaded_files'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    filename = db.Column(db.String(255), primary_key=True)
+    mime_type = db.Column(db.String(100), nullable=False)
+    data = db.Column(db.LargeBinary(length=16777215), nullable=False) # MEDIUMBLOB up to 16MB
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def serialize(self):
+        return {
+            "filename": self.filename,
+            "mime_type": self.mime_type,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

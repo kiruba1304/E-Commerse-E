@@ -176,19 +176,32 @@ def delete_shop(shop_id):
     upload_folder = current_app.config.get('UPLOAD_FOLDER')
 
     def delete_file(url):
-        if not url or not isinstance(url, str) or not upload_folder:
+        if not url or not isinstance(url, str):
             return
         # Handle relative or absolute API urls
         if url.startswith('/api/uploads/'):
             filename = url.replace('/api/uploads/', '')
             filename = os.path.basename(filename)  # sanitize
-            filepath = os.path.join(upload_folder, filename)
-            if os.path.exists(filepath):
-                try:
-                    os.remove(filepath)
-                    print(f"Deleted upload photo: {filepath}")
-                except Exception as e:
-                    print(f"Error deleting file {filepath}: {e}")
+            
+            # Delete from database if it exists
+            try:
+                from models import UploadedFile
+                uploaded_file = UploadedFile.query.get(filename)
+                if uploaded_file:
+                    db.session.delete(uploaded_file)
+                    print(f"Deleted database upload: {filename}")
+            except Exception as e:
+                print(f"Error deleting database upload {filename}: {e}")
+                
+            # Fallback/cleanup physical file if it exists
+            if upload_folder:
+                filepath = os.path.join(upload_folder, filename)
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                        print(f"Deleted upload photo: {filepath}")
+                    except Exception as e:
+                        print(f"Error deleting file {filepath}: {e}")
 
     try:
         # 1. Delete physical photo uploads associated with the shop's entities

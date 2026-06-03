@@ -7,10 +7,10 @@ if hasattr(time, 'tzset'):
     time.tzset()
 
 import uuid
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order
+from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order, UploadedFile
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -111,13 +111,37 @@ def upload_file():
         filename = secure_filename(file.filename)
         name, ext = os.path.splitext(filename)
         unique_filename = f"{name}_{uuid.uuid4().hex}{ext}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(filepath)
+        
+        # Save to database as binary data
+        try:
+            file_data = file.read()
+            mime_type = file.mimetype or "application/octet-stream"
+            uploaded_file = UploadedFile(
+                filename=unique_filename,
+                mime_type=mime_type,
+                data=file_data
+            )
+            db.session.add(uploaded_file)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": f"Failed to save image to database: {str(e)}"}), 500
+            
         url = f"/api/uploads/{unique_filename}"
         return jsonify({"url": url}), 200
 
 @app.route('/api/uploads/<path:filename>', methods=['GET'])
 def serve_uploaded_file(filename):
+    # Try serving from database first
+    try:
+        base_filename = os.path.basename(filename)
+        uploaded_file = UploadedFile.query.get(base_filename)
+        if uploaded_file:
+            return Response(uploaded_file.data, mimetype=uploaded_file.mime_type)
+    except Exception as e:
+        print(f"Error fetching upload from DB: {e}")
+
+    # Fallback to serving from the local filesystem for backward compatibility
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/')
@@ -494,6 +518,7 @@ def seed_database():
         ensure_online_order_sequence_columns()
         ensure_dtdc_columns()
         ensure_shipping_columns()
+        ensure_show_description_column()
         backfill_online_order_numbers()
         sanitize_database_urls()
 
@@ -860,6 +885,21 @@ def ensure_shipping_columns():
             connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_charge FLOAT DEFAULT 0.0"))
         if 'shipping_gst' not in order_columns:
             connection.execute(text("ALTER TABLE orders ADD COLUMN shipping_gst FLOAT DEFAULT 0.0"))
+
+def ensure_show_description_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('categories')]
+        if 'show_description' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE categories ADD COLUMN show_description BOOLEAN DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE categories ADD COLUMN show_description TINYINT(1) DEFAULT 0 NOT NULL"))
+            print("Successfully added show_description column to categories table.")
+    except Exception as e:
+        print(f"Error ensuring show_description column: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():
