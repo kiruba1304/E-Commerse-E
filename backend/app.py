@@ -1,4 +1,11 @@
 import os
+import time
+
+# Set default timezone to Indian Standard Time (IST)
+os.environ['TZ'] = 'Asia/Kolkata'
+if hasattr(time, 'tzset'):
+    time.tzset()
+
 import uuid
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS

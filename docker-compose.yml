@@ -9,6 +9,8 @@ services:
       - "5500:5500"
     env_file:
       - ./backend/.env
+    environment:
+      - TZ=Asia/Kolkata
     volumes:
       - backend_uploads:/app/uploads
     restart: always

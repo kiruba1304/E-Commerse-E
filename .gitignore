@@ -38,3 +38,5 @@ Billing-Desktop/
 backend/ecommerce.db
 *.db
 *.sqlite3
+# Backend files
+backend/backend.zip
