@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.development
+.env.production
+*.log
+.git/
+.gitignore
+.eslint.config.js
+eslint.config.js
+README.md

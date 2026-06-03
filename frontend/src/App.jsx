@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag, 
-  Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert, 
-  Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail, 
+import {
+  ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag,
+  Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert,
+  Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail,
   BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock, TrendingUp,
   Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload
 } from 'lucide-react';
@@ -12,12 +12,12 @@ import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 const API_BASE = "/api";
 
 const INDIAN_STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", 
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", 
-  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", 
-  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", 
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+  "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
   "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
-  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", 
+  "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
   "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
 ];
 
@@ -49,12 +49,12 @@ const NobaraaLogo = ({ size = 60, color = "#7a4ea5" }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="44" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
     <circle cx="50" cy="50" r="40" stroke={color} strokeWidth="1" />
-    <path 
+    <path
       d="M38 32 C38 32 30 48 34 58 C38 68 44 68 44 58 C44 48 54 38 62 48 C70 58 64 68 64 68 M34 50 C44 50 48 40 56 34 C64 28 68 38 62 48 C56 58 50 68 44 68 C38 68 34 58 38 48 C42 38 50 32 58 32"
-      stroke={color} 
-      strokeWidth="4.5" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+      stroke={color}
+      strokeWidth="4.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
     <path d="M78 22 C80 20 84 22 84 25 C84 28 80 30 78 28 Z" fill={color} />
     <path d="M84 25 C86 23 90 25 90 28 C90 31 86 33 84 31 Z" fill={color} />
@@ -108,12 +108,12 @@ const renderCollectionTitle = (name) => {
   const parts = name.split('&');
   if (parts.length > 1) {
     return (
-      <h2 style={{ 
-        fontFamily: "'Playfair Display', serif", 
-        fontSize: '2.5rem', 
-        fontWeight: 700, 
-        color: '#2b0b57', 
-        textAlign: 'center', 
+      <h2 style={{
+        fontFamily: "'Playfair Display', serif",
+        fontSize: '2.5rem',
+        fontWeight: 700,
+        color: '#2b0b57',
+        textAlign: 'center',
         margin: '0 auto 10px',
         lineHeight: 1.2
       }}>
@@ -121,18 +121,18 @@ const renderCollectionTitle = (name) => {
       </h2>
     );
   }
-  
+
   const words = name.split(' ');
   if (words.length > 1) {
     const lastWord = words[words.length - 1];
     const rest = words.slice(0, -1).join(' ');
     return (
-      <h2 style={{ 
-        fontFamily: "'Playfair Display', serif", 
-        fontSize: '2.5rem', 
-        fontWeight: 700, 
-        color: '#2b0b57', 
-        textAlign: 'center', 
+      <h2 style={{
+        fontFamily: "'Playfair Display', serif",
+        fontSize: '2.5rem',
+        fontWeight: 700,
+        color: '#2b0b57',
+        textAlign: 'center',
         margin: '0 auto 10px',
         lineHeight: 1.2
       }}>
@@ -140,14 +140,14 @@ const renderCollectionTitle = (name) => {
       </h2>
     );
   }
-  
+
   return (
-    <h2 style={{ 
-      fontFamily: "'Playfair Display', serif", 
-      fontSize: '2.5rem', 
-      fontWeight: 700, 
-      color: '#2b0b57', 
-      textAlign: 'center', 
+    <h2 style={{
+      fontFamily: "'Playfair Display', serif",
+      fontSize: '2.5rem',
+      fontWeight: 700,
+      color: '#2b0b57',
+      textAlign: 'center',
       margin: '0 auto 10px',
       lineHeight: 1.2
     }}>
@@ -211,7 +211,7 @@ function NobaraaHero({ sareeModels = [] }) {
     setCoords({ x: 0, y: 0 });
   };
 
-  const transformStyle = isHovered 
+  const transformStyle = isHovered
     ? { transform: `rotateX(${12 - coords.y * 15}deg) rotateY(${coords.x * 20}deg) translateZ(0px)` }
     : { animation: 'auto-float-rotate 8s ease-in-out infinite alternate' };
 
@@ -243,10 +243,10 @@ function NobaraaHero({ sareeModels = [] }) {
         <p className="nobaraa-hero-subtitle">
           Discover the latest trends, timeless elegance and fashion made for you.
         </p>
-        <button 
+        <button
           onClick={() => {
             document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
-          }} 
+          }}
           className="nobaraa-hero-btn"
         >
           SHOP NOW
@@ -256,21 +256,21 @@ function NobaraaHero({ sareeModels = [] }) {
 
       {/* Center Logo Emblem */}
       <div className="nobaraa-hero-center-logo">
-        <img 
-          src="/nobaraa_logo_emblem.png" 
-          alt="Nobaraa Fashion Logo" 
-          style={{ 
-            width: '250px', 
-            height: '250px', 
+        <img
+          src="/nobaraa_logo_emblem.png"
+          alt="Nobaraa Fashion Logo"
+          style={{
+            width: '250px',
+            height: '250px',
             objectFit: 'contain',
             filter: 'drop-shadow(0 8px 24px rgba(122, 78, 165, 0.12))',
             animation: 'auto-float-rotate-logo 6s ease-in-out infinite alternate'
-          }} 
+          }}
         />
       </div>
 
       <div className="nobaraa-hero-scene-container">
-        <div 
+        <div
           className="nobaraa-podium-scene"
           style={transformStyle}
           onMouseMove={handleMouseMove}
@@ -292,10 +292,10 @@ function NobaraaHero({ sareeModels = [] }) {
             justifyContent: 'center',
             alignItems: 'center'
           }}>
-            <img 
-              src="/nobaraa_logo_emblem.png" 
-              alt="" 
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            <img
+              src="/nobaraa_logo_emblem.png"
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </div>
 
@@ -307,9 +307,9 @@ function NobaraaHero({ sareeModels = [] }) {
           {/* Saree Wear Models (fashion animated) */}
           <div className="nobaraa-model-container">
             {modelsToUse.map((model, idx) => (
-              <img 
+              <img
                 key={model.id || idx}
-                src={model.image || null} 
+                src={model.image || null}
                 alt={model.name}
                 className={`nobaraa-model-image ${activeModel === idx ? 'active' : 'inactive'}`}
               />
@@ -338,14 +338,14 @@ function NobaraaHero({ sareeModels = [] }) {
             cursor: 'pointer',
             zIndex: 8,
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'rotateY(-15deg) rotateX(10deg) translateZ(145px) rotateZ(-2deg)';
-            e.currentTarget.style.boxShadow = '0 16px 36px rgba(122, 78, 165, 0.28)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'rotateY(-25deg) rotateX(15deg) translateZ(105px) rotateZ(-6deg)';
-            e.currentTarget.style.boxShadow = '0 8px 24px rgba(122,78,165,0.12)';
-          }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'rotateY(-15deg) rotateX(10deg) translateZ(145px) rotateZ(-2deg)';
+              e.currentTarget.style.boxShadow = '0 16px 36px rgba(122, 78, 165, 0.28)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'rotateY(-25deg) rotateX(15deg) translateZ(105px) rotateZ(-6deg)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(122,78,165,0.12)';
+            }}
           >
             <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.5rem', color: '#7a4ea5', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
               Collection
@@ -436,59 +436,59 @@ function FeaturesBar({ isMobile }) {
       boxShadow: '0 8px 30px rgba(122, 78, 165, 0.05)'
     }}>
       {/* Corner Flowers */}
-      <img 
-        src="/nobaraa_flowers.png" 
-        style={{ 
-          position: 'absolute', 
-          bottom: isMobile ? '-20px' : '-30px', 
-          left: isMobile ? '-20px' : '-30px', 
-          width: isMobile ? '100px' : '180px', 
-          height: 'auto', 
-          opacity: 0.6, 
-          transform: 'rotate(15deg)', 
-          pointerEvents: 'none' 
-        }} 
-        alt="" 
+      <img
+        src="/nobaraa_flowers.png"
+        style={{
+          position: 'absolute',
+          bottom: isMobile ? '-20px' : '-30px',
+          left: isMobile ? '-20px' : '-30px',
+          width: isMobile ? '100px' : '180px',
+          height: 'auto',
+          opacity: 0.6,
+          transform: 'rotate(15deg)',
+          pointerEvents: 'none'
+        }}
+        alt=""
       />
-      <img 
-        src="/nobaraa_flowers.png" 
-        style={{ 
-          position: 'absolute', 
-          top: isMobile ? '-20px' : '-30px', 
-          right: isMobile ? '-20px' : '-30px', 
-          width: isMobile ? '100px' : '180px', 
-          height: 'auto', 
-          opacity: 0.6, 
-          transform: 'rotate(-105deg) scaleX(-1)', 
-          pointerEvents: 'none' 
-        }} 
-        alt="" 
+      <img
+        src="/nobaraa_flowers.png"
+        style={{
+          position: 'absolute',
+          top: isMobile ? '-20px' : '-30px',
+          right: isMobile ? '-20px' : '-30px',
+          width: isMobile ? '100px' : '180px',
+          height: 'auto',
+          opacity: 0.6,
+          transform: 'rotate(-105deg) scaleX(-1)',
+          pointerEvents: 'none'
+        }}
+        alt=""
       />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? '24px' : '40px', zIndex: 2, position: 'relative' }}>
-        
+
         {/* Left Side: Pitch */}
         <div style={{ flex: '1 1 300px', maxWidth: '380px', textAlign: 'left' }}>
-          <h2 style={{ 
-            fontFamily: "'Playfair Display', serif", 
-            fontSize: isMobile ? '1.8rem' : '2.5rem', 
-            fontWeight: 700, 
-            color: '#2b0b57', 
+          <h2 style={{
+            fontFamily: "'Playfair Display', serif",
+            fontSize: isMobile ? '1.8rem' : '2.5rem',
+            fontWeight: 700,
+            color: '#2b0b57',
             lineHeight: '1.2',
             margin: '0 0 16px 0'
           }}>
             Why Choose <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: isMobile ? '2.4rem' : '3.2rem', display: 'block', marginTop: '2px', textTransform: 'none' }}>Nobaraa Fashion? ♡</span>
           </h2>
-          <p style={{ 
-            fontFamily: "'Jost', sans-serif", 
-            color: '#555555', 
-            fontSize: '0.95rem', 
-            lineHeight: 1.6, 
-            marginBottom: '24px' 
+          <p style={{
+            fontFamily: "'Jost', sans-serif",
+            color: '#555555',
+            fontSize: '0.95rem',
+            lineHeight: 1.6,
+            marginBottom: '24px'
           }}>
             We bring you the best in fashion with quality you can trust and service you'll love.
           </p>
-          <button 
+          <button
             onClick={() => {
               const catalog = document.getElementById('catalog-section');
               if (catalog) catalog.scrollIntoView({ behavior: 'smooth' });
@@ -517,11 +517,11 @@ function FeaturesBar({ isMobile }) {
         </div>
 
         {/* Right Side: Features Grid */}
-        <div style={{ 
-          flex: '2 2 500px', 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '24px' 
+        <div style={{
+          flex: '2 2 500px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '24px'
         }}>
           {perks.map((perk, index) => (
             <div key={index} style={{
@@ -545,25 +545,25 @@ function FeaturesBar({ isMobile }) {
                 marginBottom: '16px',
                 transition: 'transform 0.3s ease'
               }}
-              className="feature-circle-icon"
+                className="feature-circle-icon"
               >
                 {perk.icon}
               </div>
-              <h4 style={{ 
-                fontFamily: "'Playfair Display', serif", 
-                fontWeight: 700, 
-                fontSize: '1.15rem', 
-                color: '#2b0b57', 
-                margin: '0 0 8px 0' 
+              <h4 style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: '1.15rem',
+                color: '#2b0b57',
+                margin: '0 0 8px 0'
               }}>
                 {perk.title}
               </h4>
-              <p style={{ 
-                fontFamily: "'Jost', sans-serif", 
-                fontSize: '0.82rem', 
-                color: '#666666', 
-                margin: 0, 
-                lineHeight: 1.4 
+              <p style={{
+                fontFamily: "'Jost', sans-serif",
+                fontSize: '0.82rem',
+                color: '#666666',
+                margin: 0,
+                lineHeight: 1.4
               }}>
                 {perk.subtitle}
               </p>
@@ -590,14 +590,14 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState("");
   const [role, setRole] = useState("guest"); // guest, user, admin, super_admin
-  
+
   // Navigation states
   const [currentView, setCurrentView] = useState("opac"); // opac, user_dashboard, admin_dashboard, super_admin_dashboard
   const [activePanel, setActivePanel] = useState(window.innerWidth <= 768 ? "menu" : "orders"); // active sub-panel in dashboards
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "", addresses: [] });
-  
+
   // Shared functional states
   const [shops, setShops] = useState([]);
   const [activeShopId, setActiveShopId] = useState(""); // Filter OPAC/User by Shop
@@ -612,7 +612,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [priceFilter, setPriceFilter] = useState(500000); // Slider
   const [searchHover, setSearchHover] = useState(false);
-  
+
   // Smart Search States & Helpers
   const [showSmartSearch, setShowSmartSearch] = useState(false);
   const [localSearchVal, setLocalSearchVal] = useState("");
@@ -630,7 +630,7 @@ export default function App() {
     setSearchQuery(cleanQuery);
     setSelectedCategory(""); // Reset category when searching globally
     setActiveCategoryPage(null); // Reset category page if any
-    
+
     if (cleanQuery) {
       // Save to recent searches
       setRecentSearches(prev => {
@@ -638,14 +638,14 @@ export default function App() {
         const updated = [cleanQuery, ...filtered].slice(0, 6);
         try {
           localStorage.setItem("recentSearches", JSON.stringify(updated));
-        } catch (e) {}
+        } catch (e) { }
         return updated;
       });
     }
 
     setShowSmartSearch(false);
     setLocalSearchVal("");
-    
+
     // Scroll to catalog section
     setTimeout(() => {
       document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' });
@@ -660,13 +660,13 @@ export default function App() {
   const getLiveMatches = () => {
     if (!localSearchVal) return [];
     const q = localSearchVal.toLowerCase();
-    return products.filter(p => 
-      p.name.toLowerCase().includes(q) || 
+    return products.filter(p =>
+      p.name.toLowerCase().includes(q) ||
       (p.description && p.description.toLowerCase().includes(q)) ||
       (p.category_name && p.category_name.toLowerCase().includes(q))
     ).slice(0, 8); // Limit to top 8 matches
   };
-  
+
   // UI Details & Overlay states
   const [detailProduct, setDetailProduct] = useState(null);
   const [activeDetailImageIndex, setActiveDetailImageIndex] = useState(0);
@@ -773,7 +773,7 @@ export default function App() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
-  
+
   // Form states
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [registerForm, setRegisterForm] = useState({ username: "", email: "", password: "", name: "", contact_phone: "" });
@@ -873,7 +873,7 @@ export default function App() {
   const filteredAdminOrders = adminOrders.filter(o => {
     if (!o.created_at) return true;
     const orderDate = new Date(o.created_at);
-    
+
     // Quick Date Filters
     const now = new Date();
     if (adminDateFilter === 'today') {
@@ -901,22 +901,22 @@ export default function App() {
       const matchStatus = o.status ? o.status.toLowerCase().includes(query) : false;
       const matchRP = o.razorpay_payment_id ? o.razorpay_payment_id.toLowerCase().includes(query) : false;
       const matchItems = o.items ? o.items.some(item => item.product_name && item.product_name.toLowerCase().includes(query)) : false;
-      
+
       if (!matchId && !matchBuyer && !matchAddress && !matchMethod && !matchStatus && !matchRP && !matchItems) {
         return false;
       }
     }
     return true;
   });
-  
+
   const filteredAdminProducts = adminProducts.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(adminProductSearch.toLowerCase()) || 
-                          p.id.toString().includes(adminProductSearch);
-    const matchesCategory = !adminProductCategoryFilter || 
-                            p.category_id?.toString() === adminProductCategoryFilter.toString();
+    const matchesSearch = p.name.toLowerCase().includes(adminProductSearch.toLowerCase()) ||
+      p.id.toString().includes(adminProductSearch);
+    const matchesCategory = !adminProductCategoryFilter ||
+      p.category_id?.toString() === adminProductCategoryFilter.toString();
     return matchesSearch && matchesCategory;
   });
-  
+
   // Admin edits/creations
   const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
@@ -949,7 +949,7 @@ export default function App() {
   const [superOrders, setSuperOrders] = useState([]);
   const [superCustomers, setSuperCustomers] = useState([]);
   const [superCustomerSearch, setSuperCustomerSearch] = useState("");
-  
+
   // Super Admin forms
   const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
   const [newAdminForm, setNewAdminForm] = useState({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
@@ -969,7 +969,7 @@ export default function App() {
       const typeMatch = action.match(/Type:\s*([^\s|]+)/);
       const toMatch = action.match(/To:\s*([^\s|()]+)/);
       const errMatch = action.match(/\(Error:\s*([^)]+)\)/);
-      
+
       const type = typeMatch ? typeMatch[1] : 'unknown';
       const recipient = toMatch ? toMatch[1] : 'unknown';
       const error = errMatch ? errMatch[1] : null;
@@ -980,22 +980,22 @@ export default function App() {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ 
-              background: isSuccess ? 'rgba(154, 132, 200, 0.1)' : 'rgba(232, 78, 126, 0.1)', 
-              color: badgeColor, 
-              padding: '2px 8px', 
-              borderRadius: '12px', 
-              fontSize: '0.75rem', 
-              fontWeight: 700 
+            <span style={{
+              background: isSuccess ? 'rgba(154, 132, 200, 0.1)' : 'rgba(232, 78, 126, 0.1)',
+              color: badgeColor,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.75rem',
+              fontWeight: 700
             }}>
               {isSuccess ? 'SENT' : 'FAILED'}
             </span>
-            <span style={{ 
-              background: '#f3f0f7', 
-              color: '#5c3a85', 
-              padding: '2px 8px', 
-              borderRadius: '4px', 
-              fontSize: '0.75rem', 
+            <span style={{
+              background: '#f3f0f7',
+              color: '#5c3a85',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '0.75rem',
               fontWeight: 600,
               display: 'inline-flex',
               alignItems: 'center',
@@ -1088,7 +1088,7 @@ export default function App() {
         const lastUsedId = user.last_used_address_id;
         const lastUsedAddr = savedAddresses.find(addr => addr.id === lastUsedId);
         const defaultAddr = lastUsedAddr || savedAddresses[0];
-        
+
         setCheckoutData(prev => ({
           ...prev,
           shipping_address: defaultAddr.address,
@@ -1151,7 +1151,7 @@ export default function App() {
       setUser(JSON.parse(cachedUser));
       setRole(cachedRole);
       currentRole = cachedRole;
-      
+
       // Auto Route depending on role
       if (cachedRole === 'user') {
         setCurrentView("opac");
@@ -1164,7 +1164,7 @@ export default function App() {
         setActivePanel("shop_creation");
       }
     }
-    
+
     fetchShops();
 
     // Check if deep linking product parameter is present
@@ -1340,7 +1340,7 @@ export default function App() {
         setShowLoginModal(false);
         setLoginForm({ username: "", password: "" });
         addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
-        
+
         // Navigation redirect
         if (data.user.role === 'user') {
           setCurrentView("opac");
@@ -1381,7 +1381,7 @@ export default function App() {
         setShowRegister(false);
         setRegisterForm({ username: "", email: "", password: "", name: "", contact_phone: "" });
         addToast("Registration Success", "Account created successfully! Enjoy your 50 free SuperCoins.", "success");
-        
+
         setCurrentView("opac");
         setActivePanel("orders");
       } else {
@@ -1407,7 +1407,7 @@ export default function App() {
         btn.type = 'button';
         btn.style.cssText = 'width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; gap: 10px; border-radius: 12px; border: 1px solid #d8c8ee; background: linear-gradient(180deg, #ffffff 0%, #faf7ff 100%); color: #6f46a8; font-size: 0.92rem; font-weight: 600; box-shadow: 0 8px 18px rgba(122, 78, 165, 0.08); cursor: pointer; transition: all 0.2s;';
         btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>Continue with Google';
-        
+
         btn.addEventListener('click', async () => {
           try {
             await GoogleAuth.initialize();
@@ -1439,7 +1439,7 @@ export default function App() {
             addToast("Google Sign-In Cancelled", err.message || "Sign in cancelled.", "danger");
           }
         });
-        
+
         googleButtonRef.current.appendChild(btn);
       }
       return () => {
@@ -1536,7 +1536,7 @@ export default function App() {
         headers: getHeaders(),
         body: endpoint === "/user/logout" ? JSON.stringify({ shop_id: activeShopId }) : undefined
       });
-    } catch (e) {}
+    } catch (e) { }
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -1727,7 +1727,7 @@ export default function App() {
       if (res.ok) {
         setUserDashboardData(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadUserCart = async () => {
@@ -1737,7 +1737,7 @@ export default function App() {
       if (res.ok) {
         setCart(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadUserWishlist = async () => {
@@ -1747,7 +1747,7 @@ export default function App() {
       if (res.ok) {
         setWishlist(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadUserOrders = async () => {
@@ -1757,7 +1757,7 @@ export default function App() {
       if (res.ok) {
         setMyOrders(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadUserCustomizations = async () => {
@@ -1767,7 +1767,7 @@ export default function App() {
       if (res.ok) {
         setUserCustomizations(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleQuoteAction = async (custId, action) => {
@@ -1798,7 +1798,7 @@ export default function App() {
       if (res.ok) {
         setUserHelpTickets(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadUserNotifications = async () => {
@@ -1808,14 +1808,14 @@ export default function App() {
       if (res.ok) {
         setUserNotifications(data);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleAddToCart = async (productId, qty = 1, showToast = true) => {
     if (role !== 'user') {
       const prod = products.find(p => p.id === productId);
       if (!prod) return;
-      
+
       setCart(prev => {
         const existing = prev.find(item => item.product_id === productId);
         let newCart;
@@ -1825,8 +1825,8 @@ export default function App() {
             addToast("Stock Limit", `Only ${prod.stock} units available.`, "warning");
             return prev;
           }
-          newCart = prev.map(item => 
-            item.product_id === productId 
+          newCart = prev.map(item =>
+            item.product_id === productId
               ? { ...item, quantity: newQty }
               : item
           );
@@ -1866,7 +1866,7 @@ export default function App() {
       } else {
         addToast("Cart Error", data.error || "Out of stock.", "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleAddToWishlist = async (productId) => {
@@ -1903,7 +1903,7 @@ export default function App() {
         addToast("Wishlisted", "Product pinned in your wishlist.", "success");
         loadUserWishlist();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleRemoveFromCart = async (cartItemId) => {
@@ -1926,7 +1926,7 @@ export default function App() {
         addToast("Item Removed", "Removed from cart.", "info");
         loadUserCart();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleRemoveFromWishlist = async (wishlistItemId) => {
@@ -1949,7 +1949,7 @@ export default function App() {
         addToast("Item Removed", "Removed from wishlist.", "info");
         loadUserWishlist();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Submit support ticket
@@ -1966,7 +1966,7 @@ export default function App() {
         setNewTicket({ shop_id: "", subject: "", message: "" });
         loadUserHelpTickets();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Submit product review
@@ -1976,9 +1976,9 @@ export default function App() {
       const res = await fetch(`${API_BASE}/user/reviews`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ 
-          product_id: productId, 
-          rating: newReview.rating, 
+        body: JSON.stringify({
+          product_id: productId,
+          rating: newReview.rating,
           comment: newReview.comment,
           image_url: newReview.image_url || null
         })
@@ -2002,7 +2002,7 @@ export default function App() {
       } else {
         addToast("Cannot Review", data.error || "Reviews allowed only for verified buyers.", "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Upload review image
@@ -2046,7 +2046,7 @@ export default function App() {
       } else {
         addToast("Error", data.error, "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Place Order Checkout
@@ -2194,27 +2194,27 @@ export default function App() {
 
                 const verifyBody = activeCustomizationCheckout
                   ? {
-                      ...checkoutData,
-                      shop_id: activeShopId,
-                      razorpay_order_id: paymentResponse.razorpay_order_id || null,
-                      razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                      razorpay_signature: paymentResponse.razorpay_signature || null
-                    }
+                    ...checkoutData,
+                    shop_id: activeShopId,
+                    razorpay_order_id: paymentResponse.razorpay_order_id || null,
+                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                    razorpay_signature: paymentResponse.razorpay_signature || null
+                  }
                   : {
-                      ...checkoutData,
-                      shop_id: activeShopId,
-                      order_id: data.order?.id || null,
-                      razorpay_order_id: paymentResponse.razorpay_order_id || null,
-                      razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                      razorpay_signature: paymentResponse.razorpay_signature || null
-                    };
+                    ...checkoutData,
+                    shop_id: activeShopId,
+                    order_id: data.order?.id || null,
+                    razorpay_order_id: paymentResponse.razorpay_order_id || null,
+                    razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                    razorpay_signature: paymentResponse.razorpay_signature || null
+                  };
 
                 const verifyRes = await fetch(verifyUrl, {
                   method: 'POST',
                   headers: getHeaders(),
                   body: JSON.stringify(verifyBody)
                 });
-                
+
                 const verifyData = await verifyRes.json();
                 if (verifyRes.ok) {
                   addToast("Payment Successful", "Your payment has been successfully verified! Order confirmed.", "success");
@@ -2310,7 +2310,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/shop`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminShop(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadBillingHeartbeat = async () => {
@@ -2342,7 +2342,7 @@ export default function App() {
         loadAdminShop();
         fetchShops();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSendTestEmail = async () => {
@@ -2494,7 +2494,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/categories`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCategories(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveCategory = async (e) => {
@@ -2520,7 +2520,7 @@ export default function App() {
         setCategoryForm({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "" });
         loadAdminCategories();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteCategory = async (catId) => {
@@ -2533,7 +2533,7 @@ export default function App() {
         addToast("Deleted", "Category deleted successfully.", "info");
         loadAdminCategories();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminCollections = async () => {
@@ -2541,7 +2541,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/collections`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCollections(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveCollection = async (e) => {
@@ -2565,7 +2565,7 @@ export default function App() {
         const err = await res.json();
         addToast("Collection Error", err.error, "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteCollection = async (colId) => {
@@ -2579,7 +2579,7 @@ export default function App() {
         loadAdminCollections();
         fetchCollections();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminProducts = async () => {
@@ -2587,7 +2587,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/products`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminProducts(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveProduct = async (e) => {
@@ -2598,8 +2598,8 @@ export default function App() {
       const endpoint = isEdit ? `/admin/products/${productForm.id}` : '/admin/products';
 
       // Clean images JSON list
-      const payload = { 
-        ...productForm, 
+      const payload = {
+        ...productForm,
         price: parseFloat(productForm.price),
         original_price: productForm.original_price ? parseFloat(productForm.original_price) : parseFloat(productForm.price),
         stock: parseInt(productForm.stock),
@@ -2624,7 +2624,7 @@ export default function App() {
         const err = await res.json();
         addToast("Error", err.error, "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteProduct = async (prodId) => {
@@ -2659,7 +2659,7 @@ export default function App() {
       "Bulk Price (INR)",
       "Min Bulk Qty"
     ];
-    
+
     const rows = filteredAdminProducts.map(p => [
       p.id,
       `"${p.name.replace(/"/g, '""')}"`,
@@ -2673,13 +2673,13 @@ export default function App() {
       p.bulk_sale_price || "",
       p.min_quantity || ""
     ]);
-    
+
     const csvString = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    
+
     const timestamp = new Date().toISOString().split('T')[0];
     link.setAttribute("download", `store_products_report_${timestamp}.csv`);
     document.body.appendChild(link);
@@ -2693,7 +2693,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/orders`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminOrders(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
@@ -2711,7 +2711,7 @@ export default function App() {
         addToast("Status Transition", `Order status set to '${newStatus}'.`, "success");
         loadAdminOrders();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleBookDtdcShipping = async (orderId, weight = 0.5) => {
@@ -2752,7 +2752,7 @@ export default function App() {
         addToast("Return Finalized", `Customer return request was ${decision}.`, "info");
         loadAdminOrders();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleShowCustomerHistory = (userId, userName) => {
@@ -2766,27 +2766,27 @@ export default function App() {
 
   const exportOrdersCSV = () => {
     const headers = [
-      "Order ID", 
-      "Customer Name", 
-      "Order Date", 
-      "Shipping Address", 
+      "Order ID",
+      "Customer Name",
+      "Order Date",
+      "Shipping Address",
       "Billing Phone",
-      "Gross Total (INR)", 
+      "Gross Total (INR)",
       "Delivery Charge (INR)",
       "Delivery GST (INR)",
       "Net Goods (INR)",
       "Goods GST (INR)",
       "Total GST Collected (INR)",
-      "Payment Method", 
-      "Ship Status", 
+      "Payment Method",
+      "Ship Status",
       "Items Ordered"
     ];
-    
+
     const rows = filteredAdminOrders.map(o => {
-      const itemsStr = o.items ? o.items.map(item => 
+      const itemsStr = o.items ? o.items.map(item =>
         `${item.product_name} (ID: ${item.product_id}, Qty: ${item.quantity}, Cat: ${item.category_name || 'Uncategorized'}, Price: INR ${item.price})`
       ).join(" | ") : "";
-      
+
       const orderDelivery = o.shipping_charge || 0;
       const orderDeliveryGst = o.shipping_gst || 0;
       const orderTotalGst = o.gst_amount || 0;
@@ -2816,7 +2816,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    
+
     const timestamp = new Date().toISOString().split('T')[0];
     link.setAttribute("download", `store_orders_report_${timestamp}.csv`);
     document.body.appendChild(link);
@@ -2830,7 +2830,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/inventory`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminInventory(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminRevenue = async (start = "", end = "") => {
@@ -2845,7 +2845,7 @@ export default function App() {
       const res = await fetch(url, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminRevenue(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminPopupAds = async () => {
@@ -2853,7 +2853,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/popup-ads`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminPopupAds(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSavePopupAd = async (e) => {
@@ -2873,7 +2873,7 @@ export default function App() {
         setAdForm({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
         loadAdminPopupAds();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeletePopupAd = async (adId) => {
@@ -2886,7 +2886,7 @@ export default function App() {
         addToast("Deleted", "Ad banner removed.", "info");
         loadAdminPopupAds();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminCoupons = async () => {
@@ -2894,7 +2894,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/coupons`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCoupons(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveCoupon = async (e) => {
@@ -2907,8 +2907,8 @@ export default function App() {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method,
         headers: getHeaders(),
-        body: JSON.stringify({ 
-          ...couponForm, 
+        body: JSON.stringify({
+          ...couponForm,
           discount_percentage: parseFloat(couponForm.discount_percentage),
           max_discount: parseFloat(couponForm.max_discount),
           min_purchase: parseFloat(couponForm.min_purchase)
@@ -2922,7 +2922,7 @@ export default function App() {
         const err = await res.json();
         addToast("Coupon Error", err.error, "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteCoupon = async (cpId) => {
@@ -2935,7 +2935,7 @@ export default function App() {
         addToast("Deleted", "Discount code deleted.", "info");
         loadAdminCoupons();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminHelpTickets = async () => {
@@ -2943,7 +2943,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/help-tickets`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminHelpTickets(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleResolveTicket = async (e) => {
@@ -2959,7 +2959,7 @@ export default function App() {
         setTicketReplyForm({ ticket_id: "", reply: "" });
         loadAdminHelpTickets();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminLogs = async () => {
@@ -2967,7 +2967,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/logs`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminLogs(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminSmsLogs = async () => {
@@ -2975,7 +2975,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/sms-whatsapp-logs`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminSmsLogs(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDispatchCampaign = async (e) => {
@@ -2992,7 +2992,7 @@ export default function App() {
         setMessagingForm({ platform: "SMS", recipient: "All Customers", message: "" });
         loadAdminSmsLogs();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadGstReport = async (dateVal = gstFilterDate, monthVal = gstFilterMonth, yearVal = gstFilterYear) => {
@@ -3005,7 +3005,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/gst-report${queryString}`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setGstReport(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const clearGstFilters = () => {
@@ -3022,20 +3022,20 @@ export default function App() {
       if (gstFilterMonth) queryParams.push(`month=${encodeURIComponent(gstFilterMonth)}`);
       if (gstFilterYear) queryParams.push(`year=${encodeURIComponent(gstFilterYear)}`);
       const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
-      
+
       const res = await fetch(`${API_BASE}/admin/gst-report/export${queryString}`, {
         headers: getHeaders()
       });
-      
+
       if (!res.ok) {
         throw new Error('Failed to generate export file');
       }
-      
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
+
       let filename = 'GST_Tax_Report';
       if (gstFilterDate) {
         filename += `_${gstFilterDate}`;
@@ -3050,7 +3050,7 @@ export default function App() {
         filename += '_AllTime';
       }
       filename += '.xlsx';
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -3067,7 +3067,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/customers`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCustomers(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadAdminCustomizations = async () => {
@@ -3075,7 +3075,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/admin/customizations`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setAdminCustomizations(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSendQuote = async (custId, price) => {
@@ -3130,7 +3130,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/super-admin/shops`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setSuperShops(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadSuperAdmins = async () => {
@@ -3138,7 +3138,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/super-admin/admins`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setSuperAdmins(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadSuperLogs = async () => {
@@ -3146,7 +3146,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/super-admin/logs`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setSuperLogs(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadSuperOrders = async () => {
@@ -3154,7 +3154,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/super-admin/orders`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setSuperOrders(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const loadSuperCustomers = async () => {
@@ -3162,7 +3162,7 @@ export default function App() {
       const res = await fetch(`${API_BASE}/super-admin/customers`, { headers: getHeaders() });
       const data = await res.json();
       if (res.ok) setSuperCustomers(data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteCustomer = async (userId) => {
@@ -3197,7 +3197,7 @@ export default function App() {
         setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
         loadSuperShops();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleUpdateShopConfig = async (e) => {
@@ -3213,7 +3213,7 @@ export default function App() {
         setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
         loadSuperShops();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteShop = async (shopId) => {
@@ -3227,15 +3227,15 @@ export default function App() {
         addToast("Wiped Shop", "Shop completely removed from ecosystem.", "info");
         loadSuperShops();
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     try {
       const isEdit = !!newAdminForm.id;
-      const url = isEdit 
-        ? `${API_BASE}/super-admin/admins/${newAdminForm.id}` 
+      const url = isEdit
+        ? `${API_BASE}/super-admin/admins/${newAdminForm.id}`
         : `${API_BASE}/super-admin/admins`;
       const method = isEdit ? 'PUT' : 'POST';
       const res = await fetch(url, {
@@ -3251,7 +3251,7 @@ export default function App() {
       } else {
         addToast(isEdit ? "Update Error" : "Creation Error", data.error, "danger");
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleDeleteAdmin = async (adminId) => {
@@ -3282,8 +3282,8 @@ export default function App() {
   const checkoutDiscountedAmount = Math.max(0, checkoutSubtotal - checkoutSuperCoinDiscount - checkoutCouponDiscount);
   const checkoutGstRate = currentShop?.gst_percentage ?? 18.0;
   const checkoutGstInclusive = currentShop?.gst_inclusive ?? false;
-  const checkoutGstAmount = checkoutGstInclusive 
-    ? (checkoutDiscountedAmount * (checkoutGstRate / 100.0)) / (1 + (checkoutGstRate / 100.0)) 
+  const checkoutGstAmount = checkoutGstInclusive
+    ? (checkoutDiscountedAmount * (checkoutGstRate / 100.0)) / (1 + (checkoutGstRate / 100.0))
     : checkoutDiscountedAmount * (checkoutGstRate / 100.0);
 
   const checkoutShippingCharge = useMemo(() => {
@@ -3313,48 +3313,48 @@ export default function App() {
     return 0;
   }, [currentShop, activeCustomizationCheckout, cart, categories]);
 
-  const checkoutFinalAmount = (checkoutGstInclusive 
-    ? checkoutDiscountedAmount 
+  const checkoutFinalAmount = (checkoutGstInclusive
+    ? checkoutDiscountedAmount
     : checkoutDiscountedAmount + checkoutGstAmount) + checkoutShippingCharge;
 
   return (
     <div className="app-container">
       {/* Dynamic Toast Alerts Container */}
-      <div style={{ 
-        position: 'fixed', 
-        top: isMobile ? '12px' : 'auto', 
-        bottom: isMobile ? 'auto' : '24px', 
+      <div style={{
+        position: 'fixed',
+        top: isMobile ? '12px' : 'auto',
+        bottom: isMobile ? 'auto' : '24px',
         left: isMobile ? '12px' : 'auto',
-        right: isMobile ? '12px' : '24px', 
-        zIndex: 10500, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '12px', 
-        maxWidth: isMobile ? 'none' : '380px', 
+        right: isMobile ? '12px' : '24px',
+        zIndex: 10500,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        maxWidth: isMobile ? 'none' : '380px',
         width: isMobile ? 'calc(100% - 24px)' : '90%',
         pointerEvents: 'none'
       }}>
         {toasts.map(t => (
-          <div 
-            key={t.id} 
-            className="glass-panel animate-fade-in" 
-            style={{ 
-              pointerEvents: 'auto', 
-              padding: '14px 18px', 
-              display: 'flex', 
-              gap: '12px', 
-              alignItems: 'center', 
-              background: t.type === 'danger' 
-                ? 'rgba(255, 239, 241, 0.98)' 
-                : t.type === 'success' 
-                  ? 'rgba(240, 253, 244, 0.98)' 
+          <div
+            key={t.id}
+            className="glass-panel animate-fade-in"
+            style={{
+              pointerEvents: 'auto',
+              padding: '14px 18px',
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+              background: t.type === 'danger'
+                ? 'rgba(255, 239, 241, 0.98)'
+                : t.type === 'success'
+                  ? 'rgba(240, 253, 244, 0.98)'
                   : t.type === 'warning'
                     ? 'rgba(255, 251, 235, 0.98)'
-                    : 'rgba(245, 243, 255, 0.98)', 
-              borderColor: t.type === 'danger' 
-                ? '#fca5a5' 
-                : t.type === 'success' 
-                  ? '#86efac' 
+                    : 'rgba(245, 243, 255, 0.98)',
+              borderColor: t.type === 'danger'
+                ? '#fca5a5'
+                : t.type === 'success'
+                  ? '#86efac'
                   : t.type === 'warning'
                     ? '#fde047'
                     : '#d8b4fe',
@@ -3417,10 +3417,10 @@ export default function App() {
         const shopAddress = activeShop ? activeShop.address : "Chennai, Tamil Nadu, India";
         return (
           <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowContactModal(false)}>
-            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-              background: '#ffffff', 
-              borderRadius: '24px', 
-              width: '720px', 
+            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              width: '720px',
               maxWidth: '90%',
               maxHeight: '85vh',
               padding: '32px',
@@ -3498,15 +3498,15 @@ export default function App() {
       {/* ABOUT NOBARAA MODAL */}
       {showAboutModal && (() => {
         const activeShop = shops.find(s => s.id === activeShopId);
-        const aboutContent = (activeShop && activeShop.privacy_policy) 
-          ? activeShop.privacy_policy 
+        const aboutContent = (activeShop && activeShop.privacy_policy)
+          ? activeShop.privacy_policy
           : "Nobaraa is a premium designer boutique specializing in bespoke customization and handcrafted ethnic luxury sarees, designed with timeless precision and unmatched elegance.";
         return (
           <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowAboutModal(false)}>
-            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-              background: '#ffffff', 
-              borderRadius: '24px', 
-              width: '720px', 
+            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              width: '720px',
               maxWidth: '90%',
               maxHeight: '85vh',
               padding: '32px',
@@ -3550,10 +3550,10 @@ export default function App() {
       {/* TERMS OF SERVICE MODAL */}
       {showTermsModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowTermsModal(false)}>
-          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            width: '720px', 
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '720px',
             maxWidth: '90%',
             maxHeight: '85vh',
             padding: '32px',
@@ -3630,10 +3630,10 @@ export default function App() {
       {/* SHIPPING POLICY MODAL */}
       {showShippingModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowShippingModal(false)}>
-          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            width: '720px', 
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '720px',
             maxWidth: '90%',
             maxHeight: '85vh',
             padding: '32px',
@@ -3709,10 +3709,10 @@ export default function App() {
       {/* PRIVACY POLICY MODAL */}
       {showPrivacyModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowPrivacyModal(false)}>
-          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            width: '720px', 
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '720px',
             maxWidth: '90%',
             maxHeight: '85vh',
             padding: '32px',
@@ -3784,10 +3784,10 @@ export default function App() {
       {/* RETURN & REFUND POLICY MODAL */}
       {showPolicyModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowPolicyModal(false)}>
-          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            width: '720px', 
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '720px',
             maxWidth: '90%',
             maxHeight: '85vh',
             padding: '32px',
@@ -3864,10 +3864,10 @@ export default function App() {
       {/* AUTHENTICATION POPUP MODAL (LOGIN & REGISTRATION) */}
       {showLoginModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 11000, backgroundColor: 'rgba(122, 78, 165, 0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }} onClick={() => setShowLoginModal(false)}>
-          <div className="login-modal-container" onClick={e => e.stopPropagation()} style={{ 
-            background: '#ffffff', 
-            borderRadius: '24px', 
-            width: '980px', 
+          <div className="login-modal-container" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '980px',
             maxWidth: '95%',
             display: 'flex',
             boxShadow: '0 30px 60px rgba(122, 78, 165, 0.15)',
@@ -3952,8 +3952,8 @@ export default function App() {
                     <form onSubmit={handleRequestForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ position: 'relative' }}>
                         <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="email" 
+                        <input
+                          type="email"
                           placeholder="Email Address"
                           value={forgotEmail}
                           onChange={e => setForgotEmail(e.target.value)}
@@ -3962,15 +3962,15 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{ 
-                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '12px', 
-                        borderRadius: '10px', 
-                        fontSize: '0.95rem', 
-                        fontWeight: 600, 
-                        cursor: 'pointer', 
+                      <button type="submit" style={{
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
@@ -3985,8 +3985,8 @@ export default function App() {
                     <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ position: 'relative' }}>
                         <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="email" 
+                        <input
+                          type="email"
                           placeholder="Email Address"
                           value={forgotEmail}
                           disabled
@@ -3997,8 +3997,8 @@ export default function App() {
                       </div>
                       <div style={{ position: 'relative' }}>
                         <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="6-digit Reset Code"
                           value={forgotResetCode}
                           onChange={e => setForgotResetCode(e.target.value)}
@@ -4008,8 +4008,8 @@ export default function App() {
                       </div>
                       <div style={{ position: 'relative' }}>
                         <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="password" 
+                        <input
+                          type="password"
                           placeholder="New Password"
                           value={forgotNewPassword}
                           onChange={e => setForgotNewPassword(e.target.value)}
@@ -4018,15 +4018,15 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{ 
-                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '12px', 
-                        borderRadius: '10px', 
-                        fontSize: '0.95rem', 
-                        fontWeight: 600, 
-                        cursor: 'pointer', 
+                      <button type="submit" style={{
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
@@ -4057,8 +4057,8 @@ export default function App() {
                     <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ position: 'relative' }}>
                         <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="email" 
+                        <input
+                          type="email"
                           placeholder="Email Address"
                           value={otpEmail}
                           onChange={e => setOtpEmail(e.target.value)}
@@ -4067,15 +4067,15 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" disabled={requestingOtp} style={{ 
-                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '12px', 
-                        borderRadius: '10px', 
-                        fontSize: '0.95rem', 
-                        fontWeight: 600, 
-                        cursor: 'pointer', 
+                      <button type="submit" disabled={requestingOtp} style={{
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
@@ -4091,8 +4091,8 @@ export default function App() {
                     <form onSubmit={handleVerifyOtpLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ position: 'relative' }}>
                         <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="email" 
+                        <input
+                          type="email"
                           placeholder="Email Address"
                           value={otpEmail}
                           disabled
@@ -4103,8 +4103,8 @@ export default function App() {
                       </div>
                       <div style={{ position: 'relative' }}>
                         <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="6-digit OTP Code"
                           value={otpCode}
                           onChange={e => setOtpCode(e.target.value)}
@@ -4113,15 +4113,15 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{ 
-                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                        color: 'white', 
-                        border: 'none', 
-                        padding: '12px', 
-                        borderRadius: '10px', 
-                        fontSize: '0.95rem', 
-                        fontWeight: 600, 
-                        cursor: 'pointer', 
+                      <button type="submit" style={{
+                        background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        fontSize: '0.95rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
@@ -4149,8 +4149,8 @@ export default function App() {
                   <form onSubmit={handleUserLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div style={{ position: 'relative' }}>
                       <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Email or Phone Number"
                         value={loginForm.username}
                         onChange={e => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
@@ -4160,8 +4160,8 @@ export default function App() {
                     </div>
                     <div style={{ position: 'relative' }}>
                       <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                      <input 
-                        type={showPassword ? "text" : "password"} 
+                      <input
+                        type={showPassword ? "text" : "password"}
                         placeholder="Password"
                         value={loginForm.password}
                         onChange={e => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
@@ -4169,7 +4169,7 @@ export default function App() {
                         style={{ paddingRight: '44px' }}
                         required
                       />
-                      <button 
+                      <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         style={{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 0 }}
@@ -4177,13 +4177,13 @@ export default function App() {
                         <Eye size={18} style={{ color: showPassword ? '#7a4ea5' : '#888' }} />
                       </button>
                     </div>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#555555', cursor: 'pointer' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={rememberMe} 
-                          onChange={e => setRememberMe(e.target.checked)} 
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={e => setRememberMe(e.target.checked)}
                           style={{ accentColor: '#7a4ea5' }}
                         />
                         Remember Me
@@ -4195,15 +4195,15 @@ export default function App() {
                       </div>
                     </div>
 
-                    <button type="submit" style={{ 
-                      background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                      color: 'white', 
-                      border: 'none', 
-                      padding: '12px', 
-                      borderRadius: '10px', 
-                      fontSize: '0.95rem', 
-                      fontWeight: 600, 
-                      cursor: 'pointer', 
+                    <button type="submit" style={{
+                      background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
                       transition: 'all 0.2s',
                       display: 'flex',
                       alignItems: 'center',
@@ -4258,19 +4258,19 @@ export default function App() {
                       <User size={16} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
                       <input type="text" placeholder="Phone Number (Optional)" value={registerForm.contact_phone} onChange={e => setRegisterForm(prev => ({ ...prev, contact_phone: e.target.value }))} className="nobaraa-login-input" />
                     </div>
-                    
-                    <button type="submit" style={{ 
-                       background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', 
-                       color: 'white', 
-                       border: 'none', 
-                       padding: '12px', 
-                       borderRadius: '10px', 
-                       fontSize: '0.95rem', 
-                       fontWeight: 600, 
-                       cursor: 'pointer', 
-                       transition: 'all 0.2s',
-                       marginTop: '6px',
-                       boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+
+                    <button type="submit" style={{
+                      background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '12px',
+                      borderRadius: '10px',
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      marginTop: '6px',
+                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
                     }}>
                       Sign Up
                     </button>
@@ -4312,11 +4312,11 @@ export default function App() {
               <X size={18} />
             </button>
 
-            <h3 style={{ 
-              fontFamily: "'Playfair Display', serif", 
-              fontSize: '1.8rem', 
-              fontWeight: 700, 
-              color: '#2b0b57', 
+            <h3 style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '1.8rem',
+              fontWeight: 700,
+              color: '#2b0b57',
               marginBottom: '16px',
               borderBottom: '2px solid rgba(154, 132, 200, 0.2)',
               paddingBottom: '12px'
@@ -4332,10 +4332,10 @@ export default function App() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'rgba(122, 78, 165, 0.03)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(122, 78, 165, 0.1)' }}>
                 {activeReturnOrder.items && activeReturnOrder.items.map(item => (
                   <div key={item.id} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <img 
-                      src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=100"} 
-                      alt={item.product_name} 
-                      style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-subtle)' }} 
+                    <img
+                      src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=100"}
+                      alt={item.product_name}
+                      style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
                     />
                     <div style={{ flex: 1 }}>
                       <h5 style={{ fontWeight: 700, margin: 0, fontSize: '0.9rem', color: 'var(--text-main)' }}>{item.product_name}</h5>
@@ -4373,18 +4373,18 @@ export default function App() {
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
                 Please upload a clear photo of the product showing the issue to verify the request.
               </p>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', border: '2px dashed rgba(122, 78, 165, 0.3)', borderRadius: '8px', background: 'rgba(122, 78, 165, 0.01)', alignItems: 'center', justifyContent: 'center' }}>
                 {returnImageUrl ? (
                   <div style={{ position: 'relative', display: 'inline-block' }}>
-                    <img 
-                      src={returnImageUrl} 
-                      alt="Verification preview" 
-                      style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} 
+                    <img
+                      src={returnImageUrl}
+                      alt="Verification preview"
+                      style={{ maxWidth: '150px', maxHeight: '150px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}
                     />
-                    <button 
-                      type="button" 
-                      onClick={() => setReturnImageUrl("")} 
+                    <button
+                      type="button"
+                      onClick={() => setReturnImageUrl("")}
                       style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'var(--accent-danger)', border: 'none', color: 'white', width: '24px', height: '24px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <X size={14} />
@@ -4392,8 +4392,8 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <input 
-                      type="file" 
+                    <input
+                      type="file"
                       accept="image/*"
                       id="return-image-file-input"
                       style={{ display: 'none' }}
@@ -4408,13 +4408,13 @@ export default function App() {
                         }
                       }}
                     />
-                    <label 
-                      htmlFor="return-image-file-input" 
-                      style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        gap: '8px', 
+                    <label
+                      htmlFor="return-image-file-input"
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '8px',
                         cursor: 'pointer',
                         color: 'var(--accent-secondary)',
                         fontWeight: 600,
@@ -4437,18 +4437,18 @@ export default function App() {
 
             {/* Action buttons */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 onClick={() => {
                   setActiveReturnOrder(null);
                   setReturnReason("");
                   setReturnImageUrl("");
-                }} 
-                className="btn-secondary" 
+                }}
+                className="btn-secondary"
                 style={{ padding: '10px 20px' }}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 disabled={!returnReason || !returnImageUrl || uploadingReturnImage}
                 onClick={async () => {
                   if (returnReason && returnImageUrl) {
@@ -4457,9 +4457,9 @@ export default function App() {
                     setReturnReason("");
                     setReturnImageUrl("");
                   }
-                }} 
-                className="btn-danger" 
-                style={{ 
+                }}
+                className="btn-danger"
+                style={{
                   padding: '10px 20px',
                   opacity: (!returnReason || !returnImageUrl || uploadingReturnImage) ? 0.6 : 1,
                   cursor: (!returnReason || !returnImageUrl || uploadingReturnImage) ? 'not-allowed' : 'pointer'
@@ -4474,22 +4474,22 @@ export default function App() {
 
       {/* LIGHTBOX MODAL */}
       {expandedImage && (
-        <div 
-          className="ad-modal-backdrop" 
-          style={{ zIndex: 12000, backgroundColor: 'rgba(0,0,0,0.85)' }} 
+        <div
+          className="ad-modal-backdrop"
+          style={{ zIndex: 12000, backgroundColor: 'rgba(0,0,0,0.85)' }}
           onClick={() => setExpandedImage(null)}
         >
           <div style={{ position: 'relative', maxWidth: '90%', maxHeight: '90vh' }}>
-            <button 
-              onClick={() => setExpandedImage(null)} 
+            <button
+              onClick={() => setExpandedImage(null)}
               style={{ position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <X size={20} /> Close
             </button>
-            <img 
-              src={expandedImage || null} 
-              alt="Verification full preview" 
-              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+            <img
+              src={expandedImage || null}
+              alt="Verification full preview"
+              style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
               onClick={e => e.stopPropagation()}
             />
           </div>
@@ -4503,7 +4503,7 @@ export default function App() {
             <button className="ad-modal-close" onClick={() => setInvoiceOrder(null)} style={{ background: '#475569' }}>
               <X size={18} />
             </button>
-            
+
             {/* Printable Frame starts */}
             <div id="print-invoice-area" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px' }}>
@@ -4518,10 +4518,10 @@ export default function App() {
                     return (
                       <>
                         {invoiceShopConfig?.logo_url && (
-                          <img 
-                            src={invoiceShopConfig.logo_url} 
-                            alt={`${invoiceOrder.shop_name} Logo`} 
-                            style={{ maxHeight: '50px', maxWidth: '150px', objectFit: 'contain', marginBottom: '6px' }} 
+                          <img
+                            src={invoiceShopConfig.logo_url}
+                            alt={`${invoiceOrder.shop_name} Logo`}
+                            style={{ maxHeight: '50px', maxWidth: '150px', objectFit: 'contain', marginBottom: '6px' }}
                           />
                         )}
                         <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#4f46e5', margin: 0 }}>{invoiceOrder.shop_name}</h3>
@@ -4629,12 +4629,12 @@ export default function App() {
                   <span>₹{invoiceOrder.final_amount.toFixed(2)}</span>
                 </div>
               </div>
-              
+
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
                 <p>Thank you for shopping with {invoiceOrder.shop_name}! This is a computer generated invoice and requires no physical signature.</p>
               </div>
             </div>
-            
+
             <button onClick={() => window.print()} className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '24px' }}>
               Print Tax Document <FileText size={18} />
             </button>
@@ -4644,13 +4644,13 @@ export default function App() {
 
       {/* ORDER PLACED SUCCESS MODAL */}
       {orderSuccessInfo && (
-        <div 
-          className="ad-modal-backdrop" 
-          style={{ 
-            zIndex: 12000, 
-            backdropFilter: 'blur(8px)', 
-            background: 'rgba(43, 11, 87, 0.4)' 
-          }} 
+        <div
+          className="ad-modal-backdrop"
+          style={{
+            zIndex: 12000,
+            backdropFilter: 'blur(8px)',
+            background: 'rgba(43, 11, 87, 0.4)'
+          }}
           onClick={() => {
             setOrderSuccessInfo(null);
             setCurrentView("opac");
@@ -4658,18 +4658,18 @@ export default function App() {
             setSelectedCategory("");
           }}
         >
-          <div 
-            className="glass-panel" 
-            onClick={e => e.stopPropagation()} 
-            style={{ 
+          <div
+            className="glass-panel"
+            onClick={e => e.stopPropagation()}
+            style={{
               background: 'rgba(245, 240, 255, 0.9)', // translucent lavender glassy
               backdropFilter: 'blur(16px)',
               border: '1px solid rgba(122, 78, 165, 0.3)',
-              color: '#2b0b57', 
-              width: '90%', 
-              maxWidth: '480px', 
-              padding: '40px 32px', 
-              borderRadius: '20px', 
+              color: '#2b0b57',
+              width: '90%',
+              maxWidth: '480px',
+              padding: '40px 32px',
+              borderRadius: '20px',
               textAlign: 'center',
               boxShadow: '0 10px 40px rgba(122, 78, 165, 0.25)',
               position: 'relative',
@@ -4687,14 +4687,14 @@ export default function App() {
             `}</style>
 
             {/* Close Button */}
-            <button 
+            <button
               onClick={() => {
                 setOrderSuccessInfo(null);
                 setCurrentView("opac");
                 setActiveCategoryPage(null);
                 setSelectedCategory("");
-              }} 
-              style={{ 
+              }}
+              style={{
                 position: 'absolute',
                 top: '16px',
                 right: '16px',
@@ -4734,12 +4734,12 @@ export default function App() {
             </div>
 
             {/* Main Header */}
-            <h2 style={{ 
-              fontFamily: "var(--font-serif, 'Playfair Display', serif)", 
-              fontSize: '2rem', 
-              fontWeight: 800, 
-              color: '#2b0b57', 
-              margin: '0 auto' 
+            <h2 style={{
+              fontFamily: "var(--font-serif, 'Playfair Display', serif)",
+              fontSize: '2rem',
+              fontWeight: 800,
+              color: '#2b0b57',
+              margin: '0 auto'
             }}>
               Your Order is placed
             </h2>
@@ -4771,18 +4771,18 @@ export default function App() {
             </p>
 
             {/* Button */}
-            <button 
+            <button
               onClick={() => {
                 setOrderSuccessInfo(null);
                 setCurrentView("opac");
                 setActiveCategoryPage(null);
                 setSelectedCategory("");
-              }} 
-              className="btn-primary" 
-              style={{ 
-                width: '100%', 
-                justifyContent: 'center', 
-                padding: '12px', 
+              }}
+              className="btn-primary"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '12px',
                 borderRadius: '8px',
                 fontSize: '1rem',
                 fontWeight: 600,
@@ -4800,35 +4800,35 @@ export default function App() {
 
       {/* TRANSACTION DETAILS MODAL POPUP */}
       {activeTransactionOrder && (
-        <div 
-          className="ad-modal-backdrop" 
-          style={{ zIndex: 11000 }} 
+        <div
+          className="ad-modal-backdrop"
+          style={{ zIndex: 11000 }}
           onClick={() => setActiveTransactionOrder(null)}
         >
-          <div 
-            className="ad-modal-body glass-panel" 
-            onClick={e => e.stopPropagation()} 
-            style={{ 
-              background: 'white', 
-              color: '#1e293b', 
-              width: '90%', 
-              maxWidth: '550px', 
-              padding: '30px', 
-              overflowY: 'auto', 
-              maxHeight: '90vh', 
+          <div
+            className="ad-modal-body glass-panel"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white',
+              color: '#1e293b',
+              width: '90%',
+              maxWidth: '550px',
+              padding: '30px',
+              overflowY: 'auto',
+              maxHeight: '90vh',
               border: 'none',
               borderRadius: '12px',
               boxShadow: '0 20px 40px rgba(43, 11, 87, 0.15)'
             }}
           >
-            <button 
-              className="ad-modal-close" 
-              onClick={() => setActiveTransactionOrder(null)} 
+            <button
+              className="ad-modal-close"
+              onClick={() => setActiveTransactionOrder(null)}
               style={{ background: '#7a4ea5' }}
             >
               <X size={18} />
             </button>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ textAlign: 'center', borderBottom: '2px solid #f3e6ff', paddingBottom: '16px' }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', borderRadius: '50%', background: '#f0fdf4', color: '#15803d', marginBottom: '10px' }}>
@@ -4841,7 +4841,7 @@ export default function App() {
                   Razorpay ID: {activeTransactionOrder.razorpay_payment_id}
                 </span>
               </div>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.9rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
                   <span style={{ color: '#64748b' }}>Store / Merchant:</span>
@@ -4880,7 +4880,7 @@ export default function App() {
                   <span style={{ fontWeight: 800, color: '#16a34a', fontSize: '1.1rem' }}>₹{activeTransactionOrder.final_amount.toFixed(2)}</span>
                 </div>
               </div>
-              
+
               <div>
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
                   Settled Items Summary
@@ -4898,7 +4898,7 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              
+
               <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'center', marginTop: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
                 Secured by Razorpay. Settlement status is verified.
               </div>
@@ -4914,49 +4914,49 @@ export default function App() {
             <button className="ad-modal-close" onClick={() => setDetailProduct(null)}>
               <X size={18} />
             </button>
-            
+
             {/* Left side: Images */}
             <div className="product-detail-modal-left">
-              <img 
-                src={detailProduct.images[activeDetailImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
+              <img
+                src={detailProduct.images[activeDetailImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"}
                 alt={detailProduct.name}
                 style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px', transition: 'all 0.3s ease' }}
               />
-              
+
               {/* Image gallery previews */}
               {detailProduct.images.length > 1 && (
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                   {detailProduct.images.map((img, i) => (
-                    <img 
-                      key={i} 
-                      src={img || null} 
-                      alt="" 
+                    <img
+                      key={i}
+                      src={img || null}
+                      alt=""
                       onClick={() => setActiveDetailImageIndex(i)}
-                      style={{ 
-                        width: '60px', 
-                        height: '60px', 
+                      style={{
+                        width: '60px',
+                        height: '60px',
                         flexShrink: 0,
-                        objectFit: 'cover', 
-                        borderRadius: '4px', 
-                        cursor: 'pointer', 
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
                         border: activeDetailImageIndex === i ? '2px solid #7a4ea5' : '1px solid #eeeeee',
                         transition: 'all 0.2s ease',
                         opacity: activeDetailImageIndex === i ? 1 : 0.7
                       }}
-                      onMouseEnter={(e) => { if(activeDetailImageIndex !== i) e.currentTarget.style.opacity = 1; }}
-                      onMouseLeave={(e) => { if(activeDetailImageIndex !== i) e.currentTarget.style.opacity = 0.7; }}
+                      onMouseEnter={(e) => { if (activeDetailImageIndex !== i) e.currentTarget.style.opacity = 1; }}
+                      onMouseLeave={(e) => { if (activeDetailImageIndex !== i) e.currentTarget.style.opacity = 0.7; }}
                     />
                   ))}
                 </div>
               )}
             </div>
-            
+
             {/* Right side: Information */}
             <div className="product-detail-modal-right">
               <span className="badge badge-info" style={{ width: 'fit-content' }}>{detailProduct.category_name}</span>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>{detailProduct.name}</h3>
-                <button 
+                <button
                   onClick={() => setSharingProduct(detailProduct)}
                   style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
                   title="Share Saree"
@@ -4966,34 +4966,34 @@ export default function App() {
                   <Share2 size={18} />
                 </button>
               </div>
-              
+
               <div className="price-row">
                 <span className="current-price" style={{ fontSize: '1.6rem' }}>₹{detailProduct.price.toFixed(2)}</span>
                 {detailProduct.original_price > detailProduct.price && (
                   <span className="original-price" style={{ fontSize: '1.1rem' }}>₹{detailProduct.original_price.toFixed(2)}</span>
                 )}
               </div>
-              
+
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{detailProduct.description}</p>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.8rem', background: '#fafafa', padding: '12px', borderRadius: '4px', border: '1px solid #eeeeee' }}>
                 <div>Stock Status: <span style={{ color: detailProduct.stock > 0 ? 'var(--accent-primary)' : 'var(--accent-secondary)', fontWeight: 'bold' }}>{detailProduct.stock > 0 ? `${detailProduct.stock} Available` : "Out of Stock"}</span></div>
                 {detailProduct.promo_code && <div style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>Coupon Active: {detailProduct.promo_code}</div>}
               </div>
-              
+
               {/* Order checkout buttons */}
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button 
+                <button
                   onClick={() => {
                     handleAddToCart(detailProduct.id);
                   }}
-                  className="btn-primary" 
+                  className="btn-primary"
                   style={{ flexGrow: 1, justifyContent: 'center' }}
                   disabled={detailProduct.stock <= 0}
                 >
                   <ShoppingCart size={18} /> Buy / Place Order
                 </button>
-                <button 
+                <button
                   onClick={() => handleAddToWishlist(detailProduct.id)}
                   className="btn-secondary"
                   style={{ padding: '12px' }}
@@ -5044,23 +5044,23 @@ export default function App() {
               {/* Reviews listing section */}
               <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
                 <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Customer Reviews</h4>
-                
+
                 {role === 'user' && (
                   <form onSubmit={(e) => handleCreateReview(e, detailProduct.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
                     <h5 style={{ fontWeight: 700, fontSize: '0.85rem' }}>Write a verified review</h5>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rating:</span>
-                      <select 
-                        value={newReview.rating} 
+                      <select
+                        value={newReview.rating}
                         onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
                         style={{ width: '80px', padding: '4px' }}
                       >
                         {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
                       </select>
                     </div>
-                    <textarea 
-                      placeholder="Comment text feedback..." 
-                      rows={2} 
+                    <textarea
+                      placeholder="Comment text feedback..."
+                      rows={2}
                       value={newReview.comment}
                       onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
                       required
@@ -5080,11 +5080,11 @@ export default function App() {
                         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.comment}</p>
                         {r.image_url && (
                           <div style={{ marginTop: '6px' }}>
-                            <img 
-                              src={r.image_url} 
-                              alt="Review attachment" 
+                            <img
+                              src={r.image_url}
+                              alt="Review attachment"
                               onClick={() => setActiveReviewImagePreview(r.image_url)}
-                              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'zoom-in' }} 
+                              style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', cursor: 'zoom-in' }}
                             />
                           </div>
                         )}
@@ -5103,8 +5103,8 @@ export default function App() {
       {/* CORE WEB NAVIGATION HEADER */}
       <header className="navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 60px', background: '#ffffff', borderBottom: '1px solid #eeeeee', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
         {/* Left Side: Logo & Brand Name */}
-        <div 
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} 
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
           onClick={() => { setCurrentView("opac"); setActiveCategoryPage(null); setSelectedCategory(""); }}
         >
           <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
@@ -5116,8 +5116,8 @@ export default function App() {
         {/* Center: Navigation Links */}
         <div className="desktop-nav-links" style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
           {['Home', 'Shop', 'About Us', 'Contact'].map((item) => (
-            <span 
-              key={item} 
+            <span
+              key={item}
               onClick={() => {
                 setCurrentView("opac");
                 setActiveCategoryPage(null);
@@ -5181,7 +5181,7 @@ export default function App() {
 
           {/* Account Icon */}
           <div style={{ position: 'relative' }}>
-            <div 
+            <div
               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               onClick={() => {
                 if (role === 'guest') {
@@ -5195,8 +5195,8 @@ export default function App() {
               }}
               title={role === 'guest' ? "Account Sign In" : "Account Menu"}
             >
-              <User 
-                size={22} 
+              <User
+                size={22}
                 style={{ transition: 'color 0.2s', color: role !== 'guest' ? '#7a4ea5' : '#222222' }}
                 onMouseEnter={e => { if (role === 'guest') e.currentTarget.style.color = '#7a4ea5'; }}
                 onMouseLeave={e => { if (role === 'guest') e.currentTarget.style.color = '#222222'; }}
@@ -5237,8 +5237,8 @@ export default function App() {
                 {/* Menu Options */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
 
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("cart");
@@ -5249,8 +5249,8 @@ export default function App() {
                     <span>My Active Cart ({cart.length})</span>
                   </div>
 
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("wishlist");
@@ -5261,8 +5261,8 @@ export default function App() {
                     <span>Wishlist ({wishlist.length})</span>
                   </div>
 
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("orders");
@@ -5273,8 +5273,8 @@ export default function App() {
                     <span>Order History</span>
                   </div>
 
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("notifications");
@@ -5285,8 +5285,8 @@ export default function App() {
                     <span>Notifications</span>
                   </div>
 
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("help_center");
@@ -5298,8 +5298,8 @@ export default function App() {
                   </div>
 
                   {/* Settings Link */}
-                  <div 
-                    className="dropdown-item" 
+                  <div
+                    className="dropdown-item"
                     onClick={() => {
                       setCurrentView("user_dashboard");
                       setActivePanel("settings");
@@ -5313,19 +5313,19 @@ export default function App() {
                 </div>
 
                 {/* Logout Button */}
-                <button 
+                <button
                   onClick={() => {
                     handleLogout();
                     setShowProfileDropdown(false);
                   }}
-                  className="btn-secondary" 
-                  style={{ 
-                    width: '100%', 
-                    padding: '6px 12px', 
-                    fontSize: '0.75rem', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
+                  className="btn-secondary"
+                  style={{
+                    width: '100%',
+                    padding: '6px 12px',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '6px',
                     borderColor: '#ff4d4f',
                     color: '#ff4d4f'
@@ -5338,18 +5338,18 @@ export default function App() {
           </div>
 
           {/* Wishlist Icon */}
-          <div 
-            style={{ position: 'relative', cursor: 'pointer' }} 
+          <div
+            style={{ position: 'relative', cursor: 'pointer' }}
             onClick={() => setShowWishlistDrawer(true)}
             title="My Wishlist"
           >
-            <Heart 
-              size={22} 
-              style={{ 
-                fill: wishlist.length > 0 ? '#ff4d4f' : 'none', 
+            <Heart
+              size={22}
+              style={{
+                fill: wishlist.length > 0 ? '#ff4d4f' : 'none',
                 color: wishlist.length > 0 ? '#ff4d4f' : '#222222',
-                transition: 'transform 0.2s' 
-              }} 
+                transition: 'transform 0.2s'
+              }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             />
@@ -5361,13 +5361,13 @@ export default function App() {
           </div>
 
           {/* Cart Icon */}
-          <div 
-            style={{ position: 'relative', cursor: 'pointer' }} 
+          <div
+            style={{ position: 'relative', cursor: 'pointer' }}
             onClick={() => setShowCartDrawer(true)}
             title="Shopping Cart"
           >
-            <ShoppingBag 
-              size={22} 
+            <ShoppingBag
+              size={22}
               style={{ transition: 'transform 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -5395,9 +5395,9 @@ export default function App() {
 
           {/* Logout Button (if logged in) */}
           {role !== 'guest' && (
-            <button 
-              className="btn-secondary" 
-              onClick={handleLogout} 
+            <button
+              className="btn-secondary"
+              onClick={handleLogout}
               style={{ padding: '6px 12px', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', marginLeft: '8px' }}
             >
               <LogOut size={12} /> Log Out
@@ -5406,8 +5406,8 @@ export default function App() {
         </div>
 
         {/* MOBILE HAMBURGER MENU BUTTON */}
-        <div 
-          className="mobile-menu-btn" 
+        <div
+          className="mobile-menu-btn"
           style={{ display: 'none', alignItems: 'center', cursor: 'pointer', color: '#222222' }}
           onClick={() => setMobileMenuOpen(true)}
         >
@@ -5440,7 +5440,7 @@ export default function App() {
             animation: 'slideRight 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
             padding: '50px 0 30px'
           }} onClick={e => e.stopPropagation()}>
-            
+
             {/* Drawer Close Button */}
             <button onClick={() => setMobileMenuOpen(false)} style={{ position: 'absolute', top: 20, right: 20, background: 'none', border: 'none', cursor: 'pointer', color: '#888888' }}>
               <X size={24} />
@@ -5457,8 +5457,8 @@ export default function App() {
             {/* Links Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', flexGrow: 1 }}>
               {['Home', 'Shop', 'About Us', 'Contact'].map((item) => (
-                <span 
-                  key={item} 
+                <span
+                  key={item}
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setCurrentView("opac");
@@ -5495,13 +5495,13 @@ export default function App() {
             {/* Bottom Icons Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', paddingBottom: '20px' }}>
               <Search size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowSmartSearch(true); }} />
-              <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if(role==='guest'){setLoginRoleTab("user");setShowLoginModal(true);}else{setCurrentView("user_dashboard"); setActivePanel("menu");} }} />
-              
+              <User size={26} color="#222222" style={{ cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); if (role === 'guest') { setLoginRoleTab("user"); setShowLoginModal(true); } else { setCurrentView("user_dashboard"); setActivePanel("menu"); } }} />
+
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowWishlistDrawer(true); }}>
                 <Heart size={26} color="#222222" />
                 {wishlist.length > 0 && <span style={{ position: 'absolute', top: -4, right: -6, background: '#7a4ea5', color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{wishlist.length}</span>}
               </div>
-              
+
               <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => { setMobileMenuOpen(false); setShowCartDrawer(true); }}>
                 <ShoppingBag size={26} color="#222222" />
                 {cart.reduce((sum, item) => sum + item.quantity, 0) > 0 && (
@@ -5532,10 +5532,10 @@ export default function App() {
           </header>
 
           <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 20px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: isMobile ? '24px' : '32px', alignItems: 'start', flex: 1 }}>
-            
+
             {/* Left Column: Checkout Steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
+
               {/* Step 1: Delivery Address */}
               <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
@@ -5551,7 +5551,7 @@ export default function App() {
                           const isSelected = checkoutData.address_id === addr.id;
                           const isLastUsed = user.last_used_address_id === addr.id;
                           return (
-                            <div 
+                            <div
                               key={addr.id}
                               onClick={() => {
                                 setCheckoutData(prev => ({
@@ -5594,7 +5594,7 @@ export default function App() {
                             </div>
                           );
                         })}
-                        <div 
+                        <div
                           onClick={() => {
                             setCheckoutData(prev => ({
                               ...prev,
@@ -5633,17 +5633,17 @@ export default function App() {
                         <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
                           Selected Address (Click 'Use a Custom Address' to edit)
                         </label>
-                        <textarea 
-                          rows={3} 
+                        <textarea
+                          rows={3}
                           value={checkoutData.shipping_address}
                           readOnly={true}
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '4px', 
-                            border: '1px solid #ccc', 
-                            outline: 'none', 
-                            resize: 'none', 
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            outline: 'none',
+                            resize: 'none',
                             fontSize: '0.95rem',
                             background: '#f5f5f5',
                             cursor: 'not-allowed'
@@ -5654,16 +5654,16 @@ export default function App() {
                         <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>
                           Selected Phone (Click 'Use a Custom Address' to edit)
                         </label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={checkoutData.billing_phone}
                           readOnly={true}
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '4px', 
-                            border: '1px solid #ccc', 
-                            outline: 'none', 
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            outline: 'none',
                             fontSize: '0.95rem',
                             background: '#f5f5f5',
                             cursor: 'not-allowed'
@@ -5677,34 +5677,34 @@ export default function App() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Billing Phone Number</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             placeholder="+91..."
                             value={checkoutData.billing_phone}
                             onChange={e => setCheckoutData(prev => ({ ...prev, billing_phone: e.target.value }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '12px', 
-                              borderRadius: '4px', 
-                              border: '1px solid #ccc', 
-                              outline: 'none', 
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc',
+                              outline: 'none',
                               fontSize: '0.95rem',
                             }}
                           />
                         </div>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Pin Code</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             placeholder="6-digit PIN code"
                             value={checkoutCustomAddress.pincode || ""}
                             onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, pincode: e.target.value }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '12px', 
-                              borderRadius: '4px', 
-                              border: '1px solid #ccc', 
-                              outline: 'none', 
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc',
+                              outline: 'none',
                               fontSize: '0.95rem',
                             }}
                           />
@@ -5714,17 +5714,17 @@ export default function App() {
                       {/* 2. Flat, House no., Building, Company, Apartment */}
                       <div>
                         <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Flat, House no., Building, Company, Apartment</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="e.g. Flat 3B, Sunshine Apartments"
                           value={checkoutCustomAddress.flat || ""}
                           onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, flat: e.target.value }))}
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '4px', 
-                            border: '1px solid #ccc', 
-                            outline: 'none', 
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            outline: 'none',
                             fontSize: '0.95rem',
                           }}
                         />
@@ -5733,17 +5733,17 @@ export default function App() {
                       {/* 3. Area, Street, Sector, Village */}
                       <div>
                         <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Area, Street, Sector, Village</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="e.g. MG Road, Sector 4"
                           value={checkoutCustomAddress.area || ""}
                           onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, area: e.target.value }))}
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '4px', 
-                            border: '1px solid #ccc', 
-                            outline: 'none', 
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            outline: 'none',
                             fontSize: '0.95rem',
                           }}
                         />
@@ -5752,17 +5752,17 @@ export default function App() {
                       {/* 4. Landmark (Optional) */}
                       <div>
                         <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Landmark (Optional)</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           placeholder="e.g. Near Apollo Hospital"
                           value={checkoutCustomAddress.landmark || ""}
                           onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, landmark: e.target.value }))}
-                          style={{ 
-                            width: '100%', 
-                            padding: '12px', 
-                            borderRadius: '4px', 
-                            border: '1px solid #ccc', 
-                            outline: 'none', 
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            border: '1px solid #ccc',
+                            outline: 'none',
                             fontSize: '0.95rem',
                           }}
                         />
@@ -5772,32 +5772,32 @@ export default function App() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Town/City</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             placeholder="e.g. Mumbai"
                             value={checkoutCustomAddress.city || ""}
                             onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, city: e.target.value }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '12px', 
-                              borderRadius: '4px', 
-                              border: '1px solid #ccc', 
-                              outline: 'none', 
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc',
+                              outline: 'none',
                               fontSize: '0.95rem',
                             }}
                           />
                         </div>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>State</label>
-                          <select 
+                          <select
                             value={checkoutCustomAddress.state || ""}
                             onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, state: e.target.value }))}
-                            style={{ 
-                              width: '100%', 
-                              padding: '12px', 
-                              borderRadius: '4px', 
-                              border: '1px solid #ccc', 
-                              outline: 'none', 
+                            style={{
+                              width: '100%',
+                              padding: '12px',
+                              borderRadius: '4px',
+                              border: '1px solid #ccc',
+                              outline: 'none',
                               fontSize: '0.95rem',
                               background: '#fff'
                             }}
@@ -5841,7 +5841,7 @@ export default function App() {
                       {/* 7. Save this address to my profile checkbox */}
                       <div style={{ marginTop: '4px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem', color: '#444' }}>
-                          <input 
+                          <input
                             type="checkbox"
                             checked={checkoutCustomAddress.is_default || false}
                             onChange={e => setCheckoutCustomAddress(prev => ({ ...prev, is_default: e.target.checked }))}
@@ -5907,14 +5907,14 @@ export default function App() {
                   <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Payment Method</h2>
                 </div>
                 <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  
+
                   {/* Payment Options */}
                   <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', overflow: 'hidden' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderBottom: '1px solid #e0e0e0', cursor: 'pointer', background: checkoutData.payment_method === 'COD' ? '#fcf9ff' : '#fff' }}>
-                      <input 
-                        type="radio" 
-                        name="payment_method" 
-                        value="COD" 
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="COD"
                         checked={checkoutData.payment_method === 'COD'}
                         onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
                         style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
@@ -5922,10 +5922,10 @@ export default function App() {
                       <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>Cash on Delivery (COD)</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', cursor: 'pointer', background: checkoutData.payment_method === 'UPI' ? '#fcf9ff' : '#fff' }}>
-                      <input 
-                        type="radio" 
-                        name="payment_method" 
-                        value="UPI" 
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="UPI"
                         checked={checkoutData.payment_method === 'UPI'}
                         onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
                         style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
@@ -5950,8 +5950,8 @@ export default function App() {
                           <span style={{ fontSize: '0.85rem', color: '#666' }}>Deduct up to 30% of your cart value immediately.</span>
                         </div>
                       </div>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         style={{ width: '22px', height: '22px', accentColor: 'var(--coin-gold)' }}
                         checked={checkoutData.use_super_coins}
                         onChange={e => setCheckoutData(prev => ({ ...prev, use_super_coins: e.target.checked }))}
@@ -5961,8 +5961,8 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Promo Coupon Code (Optional)</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Enter code..."
                       value={checkoutData.coupon_code}
                       onChange={e => setCheckoutData(prev => ({ ...prev, coupon_code: e.target.value.toUpperCase() }))}
@@ -5984,10 +5984,10 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       {activeCustomizationCheckout ? (
                         <div style={{ display: 'flex', gap: '16px' }}>
-                          <img 
-                            src={activeCustomizationCheckout.product_image || null} 
-                            alt={activeCustomizationCheckout.product_name} 
-                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} 
+                          <img
+                            src={activeCustomizationCheckout.product_image || null}
+                            alt={activeCustomizationCheckout.product_name}
+                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                             <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>
@@ -6035,8 +6035,8 @@ export default function App() {
             {/* Right Column: Order Summary (Amazon style sticky box) */}
             <div style={{ position: 'sticky', top: '24px' }}>
               <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <button 
-                  className="btn-primary" 
+                <button
+                  className="btn-primary"
                   onClick={handlePlaceOrder}
                   disabled={!checkoutData.shipping_address || !checkoutData.billing_phone}
                   style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: 600, justifyContent: 'center', background: '#f0c14b', color: '#111', border: '1px solid #a88734', textShadow: 'none', boxShadow: '0 1px 0 rgba(255,255,255,.4) inset' }}
@@ -6048,9 +6048,9 @@ export default function App() {
                 </div>
 
                 <div style={{ borderTop: '1px solid #e0e0e0', margin: '0' }}></div>
-                
+
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#222', margin: 0, fontFamily: 'var(--font-serif)' }}>Order Summary</h3>
-                
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.95rem', color: '#444' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>Items ({activeCustomizationCheckout ? activeCustomizationCheckout.quantity : cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
@@ -6081,7 +6081,7 @@ export default function App() {
                 </div>
 
                 <div style={{ borderTop: '1px solid #e0e0e0', margin: '0' }}></div>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#b12704' }}>
                   <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>Order Total:</span>
                   <span style={{ fontWeight: 700, fontSize: '1.4rem' }}>
@@ -6111,8 +6111,8 @@ export default function App() {
             {/* Left Column: Images & Actions */}
             <div className="product-detail-left-col" style={{ position: isMobile ? 'static' : 'sticky', top: '100px', minWidth: 0 }}>
               <div className="product-detail-img-wrapper" style={{ border: '1px solid #f0f0f0', borderRadius: '4px', padding: '16px', display: 'flex', justifyContent: 'center', background: '#fff', height: isMobile ? '300px' : '450px', overflow: 'hidden' }}>
-                <img 
-                  src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} 
+                <img
+                  src={activeProduct.images[activeProductImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"}
                   alt={activeProduct.name}
                   style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain', cursor: 'crosshair', transition: 'transform 0.3s' }}
                   onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
@@ -6121,27 +6121,27 @@ export default function App() {
               </div>
 
               {activeProduct.images.length > 1 && (
-                <div className="product-detail-thumbs" style={{ 
-                  display: 'flex', 
-                  gap: '10px', 
-                  marginTop: '16px', 
-                  overflowX: 'auto', 
+                <div className="product-detail-thumbs" style={{
+                  display: 'flex',
+                  gap: '10px',
+                  marginTop: '16px',
+                  overflowX: 'auto',
                   paddingBottom: '8px',
                   width: '100%',
                   maxWidth: '100%',
                   WebkitOverflowScrolling: 'touch'
                 }}>
                   {activeProduct.images.map((img, i) => (
-                    <div 
+                    <div
                       key={i}
                       onClick={() => setActiveProductImageIndex(i)}
-                      style={{ 
-                        width: '64px', 
-                        height: '64px', 
+                      style={{
+                        width: '64px',
+                        height: '64px',
                         flexShrink: 0,
                         border: activeProductImageIndex === i ? '2px solid #7a4ea5' : '1px solid #e0e0e0',
-                        padding: '4px', 
-                        cursor: 'pointer', 
+                        padding: '4px',
+                        cursor: 'pointer',
                         borderRadius: '8px',
                         background: '#fff',
                         display: 'flex',
@@ -6197,19 +6197,19 @@ export default function App() {
 
               {/* Action Buttons */}
               <div className="product-detail-actions" style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-                <button 
+                <button
                   onClick={() => {
                     const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
                     handleAddToCart(activeProduct.id, qty);
                   }}
                   disabled={activeProduct.stock <= 0}
-                  style={{ 
-                    flex: 1, 
-                    padding: isMobile ? '10px 12px' : '16px', 
-                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
-                    fontWeight: 700, 
-                    display: 'flex', 
-                    justifyContent: 'center', 
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '10px 12px' : '16px',
+                    fontSize: isMobile ? '0.85rem' : '1.1rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    justifyContent: 'center',
                     alignItems: 'center',
                     gap: '6px',
                     background: '#ffffff',
@@ -6222,7 +6222,7 @@ export default function App() {
                 >
                   <ShoppingCart size={isMobile ? 16 : 20} /> {purchaseMode === 'bulk' ? `ADD ${activeProduct.min_quantity || 1} TO CART` : 'ADD TO CART'}
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     const qty = purchaseMode === 'bulk' && activeProduct.min_quantity ? activeProduct.min_quantity : 1;
                     handleAddToCart(activeProduct.id, qty);
@@ -6230,13 +6230,13 @@ export default function App() {
                     setActivePanel('cart');
                   }}
                   disabled={activeProduct.stock <= 0}
-                  style={{ 
-                    flex: 1, 
-                    padding: isMobile ? '10px 12px' : '16px', 
-                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
-                    fontWeight: 700, 
-                    display: 'flex', 
-                    justifyContent: 'center', 
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '10px 12px' : '16px',
+                    fontSize: isMobile ? '0.85rem' : '1.1rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    justifyContent: 'center',
                     alignItems: 'center',
                     gap: '6px',
                     background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
@@ -6301,8 +6301,8 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {(() => {
                       const reviews = activeProduct.reviews || [];
-                      const avgRating = reviews.length > 0 
-                        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1) 
+                      const avgRating = reviews.length > 0
+                        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
                         : "0.0";
                       return (
                         <span style={{ background: 'var(--accent-primary)', color: '#fff', padding: '4px 10px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -6314,7 +6314,7 @@ export default function App() {
                     <span className="badge badge-info">{activeProduct.category_name}</span>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setSharingProduct(activeProduct)}
                   style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', padding: '12px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
                   title="Share Saree"
@@ -6364,7 +6364,7 @@ export default function App() {
               {(activeProduct.bulk_sale_price || activeProduct.customization_enabled || activeProduct.promo_code) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #f0e6fc', padding: '16px', borderRadius: '12px', background: '#fdfcff' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#2b0b57', margin: '0 0 4px 0', fontFamily: 'var(--font-serif)' }}>Available Offers</h3>
-                  
+
                   {activeProduct.promo_code && (
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '0.9rem', color: '#444' }}>
                       <Tag size={16} color="var(--accent-primary)" style={{ marginTop: '3px', flexShrink: 0 }} />
@@ -6390,12 +6390,12 @@ export default function App() {
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', fontSize: '0.95rem', color: '#444', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
                 <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Description</div>
                 <div style={{ lineHeight: '1.6' }}>{activeProduct.description}</div>
-                
+
                 <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Stock</div>
                 <div style={{ color: activeProduct.stock > 0 ? '#222' : '#ff6161', fontWeight: 600 }}>
                   {activeProduct.stock > 0 ? `In Stock (${activeProduct.stock} items left)` : 'Out of Stock'}
                 </div>
-                
+
                 <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Seller</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ color: '#2b0b57', fontWeight: 700 }}>{activeProduct.shop_name || "Kirubanithi Enterprises"}</span>
@@ -6407,19 +6407,19 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Ratings & Reviews</h2>
                   {role === 'user' && (
-                    <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({behavior: "smooth"})}>Rate Product</button>
+                    <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({ behavior: "smooth" })}>Rate Product</button>
                   )}
                 </div>
-                
+
                 {(() => {
                   const reviews = activeProduct.reviews || [];
                   const totalReviews = reviews.length;
-                  const avgRating = totalReviews > 0 
-                    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1) 
+                  const avgRating = totalReviews > 0
+                    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews).toFixed(1)
                     : "0.0";
                   const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
                   reviews.forEach(r => { if (counts[r.rating] !== undefined) counts[r.rating]++; });
-                  
+
                   return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                       {/* Summary Stats Grid */}
@@ -6429,11 +6429,11 @@ export default function App() {
                           <h1 style={{ fontSize: '3rem', fontWeight: 800, color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>{avgRating}</h1>
                           <div style={{ display: 'flex', gap: '4px', margin: '8px 0', color: '#ffc107' }}>
                             {[1, 2, 3, 4, 5].map(star => (
-                              <Star 
-                                key={star} 
-                                size={16} 
-                                fill={star <= Math.round(Number(avgRating)) ? "#ffc107" : "none"} 
-                                color={star <= Math.round(Number(avgRating)) ? "#ffc107" : "#e0e0e0"} 
+                              <Star
+                                key={star}
+                                size={16}
+                                fill={star <= Math.round(Number(avgRating)) ? "#ffc107" : "none"}
+                                color={star <= Math.round(Number(avgRating)) ? "#ffc107" : "#e0e0e0"}
                               />
                             ))}
                           </div>
@@ -6457,18 +6457,18 @@ export default function App() {
                           })}
                         </div>
                       </div>
-                      
+
                       {/* Review submit form */}
                       {role === 'user' && (
                         <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel product-detail-review-form" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: isMobile ? '16px' : '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
                           <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
-                          
+
                           {/* Interactive star selector */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                             <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 600 }}>Your Rating:</span>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               {[1, 2, 3, 4, 5].map(starIndex => (
-                                <Star 
+                                <Star
                                   key={starIndex}
                                   size={28}
                                   style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
@@ -6483,62 +6483,62 @@ export default function App() {
                             <span style={{ fontSize: '0.9rem', color: '#7a4ea5', fontWeight: 700 }}>
                               {newReview.rating} Stars ({
                                 newReview.rating === 5 ? 'Excellent' :
-                                newReview.rating === 4 ? 'Very Good' :
-                                newReview.rating === 3 ? 'Good' :
-                                newReview.rating === 2 ? 'Fair' : 'Poor'
+                                  newReview.rating === 4 ? 'Very Good' :
+                                    newReview.rating === 3 ? 'Good' :
+                                      newReview.rating === 2 ? 'Fair' : 'Poor'
                               })
                             </span>
                           </div>
 
-                          <textarea 
-                            placeholder="Tell us what you think about this product..." 
-                            rows={4} 
+                          <textarea
+                            placeholder="Tell us what you think about this product..."
+                            rows={4}
                             value={newReview.comment}
                             onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
                             style={{ width: '100%', padding: '16px', border: '1px solid #e2d9f0', borderRadius: '12px', outline: 'none', resize: 'vertical', marginBottom: '20px', fontSize: '0.95rem', fontFamily: 'inherit', transition: 'all 0.3s' }}
-                            onFocus={e => {e.target.style.borderColor = '#7a4ea5'; e.target.style.boxShadow = '0 0 0 3px rgba(122,78,165,0.1)'}}
-                            onBlur={e => {e.target.style.borderColor = '#e2d9f0'; e.target.style.boxShadow = 'none'}}
+                            onFocus={e => { e.target.style.borderColor = '#7a4ea5'; e.target.style.boxShadow = '0 0 0 3px rgba(122,78,165,0.1)' }}
+                            onBlur={e => { e.target.style.borderColor = '#e2d9f0'; e.target.style.boxShadow = 'none' }}
                             required
                           />
 
                           {/* File upload section */}
                           <div style={{ marginBottom: '24px' }}>
                             <span style={{ display: 'block', fontSize: '0.95rem', color: '#444', fontWeight: 600, marginBottom: '10px' }}>Add Photo to your Review:</span>
-                            
+
                             <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <label 
-                                style={{ 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center', 
-                                  gap: '8px', 
-                                  padding: '10px 20px', 
-                                  background: '#f8f5fc', 
-                                  color: '#7a4ea5', 
-                                  border: '1px dashed #7a4ea5', 
-                                  borderRadius: '12px', 
-                                  fontSize: '0.9rem', 
-                                  fontWeight: 700, 
+                              <label
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '10px 20px',
+                                  background: '#f8f5fc',
+                                  color: '#7a4ea5',
+                                  border: '1px dashed #7a4ea5',
+                                  borderRadius: '12px',
+                                  fontSize: '0.9rem',
+                                  fontWeight: 700,
                                   cursor: isUploadingReviewImage ? 'not-allowed' : 'pointer',
                                   transition: 'all 0.2s'
                                 }}
                               >
                                 <Camera size={18} />
                                 {isUploadingReviewImage ? 'Uploading...' : 'Attach Image'}
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  onChange={handleUploadReviewImage} 
-                                  disabled={isUploadingReviewImage} 
-                                  style={{ display: 'none' }} 
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleUploadReviewImage}
+                                  disabled={isUploadingReviewImage}
+                                  style={{ display: 'none' }}
                                 />
                               </label>
-                              
+
                               {newReview.image_url && (
                                 <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', border: '1px solid #e0d0f5', overflow: 'hidden' }}>
                                   <img src={newReview.image_url} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  <button 
+                                  <button
                                     type="button"
-                                    onClick={() => setNewReview(prev => ({ ...prev, image_url: "" }))} 
+                                    onClick={() => setNewReview(prev => ({ ...prev, image_url: "" }))}
                                     style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
                                   >
                                     <X size={10} />
@@ -6575,28 +6575,28 @@ export default function App() {
                                   {r.created_at ? new Date(r.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Recently'}
                                 </span>
                               </div>
-                              
+
                               {/* Rating Star Bar */}
                               <div style={{ display: 'flex', gap: '4px', color: '#ffc107' }}>
                                 {[1, 2, 3, 4, 5].map(star => (
-                                  <Star 
-                                    key={star} 
-                                    size={14} 
-                                    fill={star <= r.rating ? "#ffc107" : "none"} 
-                                    color={star <= r.rating ? "#ffc107" : "#e0e0e0"} 
+                                  <Star
+                                    key={star}
+                                    size={14}
+                                    fill={star <= r.rating ? "#ffc107" : "none"}
+                                    color={star <= r.rating ? "#ffc107" : "#e0e0e0"}
                                   />
                                 ))}
                               </div>
-                              
+
                               {/* Review comment */}
                               <p style={{ fontSize: '0.95rem', color: '#444', margin: 0, lineHeight: 1.6 }}>{r.comment}</p>
-                              
+
                               {/* Review Attachment Image */}
                               {r.image_url && (
                                 <div style={{ marginTop: '4px' }}>
-                                  <img 
-                                    src={r.image_url} 
-                                    alt="Review attachment" 
+                                  <img
+                                    src={r.image_url}
+                                    alt="Review attachment"
                                     onClick={() => setActiveReviewImagePreview(r.image_url)}
                                     style={{ width: '90px', height: '90px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #f0e6fc', cursor: 'zoom-in', transition: 'all 0.2s' }}
                                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
@@ -6627,7 +6627,7 @@ export default function App() {
                 .filter(p => p.category_id === activeProduct.category_id && p.id !== activeProduct.id)
                 .slice(0, 8)
                 .map(p => (
-                  <div key={p.id} onClick={() => {handleProductSelection(p.id); window.scrollTo(0,0);}} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)'}} onMouseLeave={e => {e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'}}>
+                  <div key={p.id} onClick={() => { handleProductSelection(p.id); window.scrollTo(0, 0); }} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)' }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none' }}>
                     <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}>
                       <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
@@ -6635,7 +6635,7 @@ export default function App() {
                     <div style={{ color: 'var(--coin-gold)', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 700 }}>{Math.round(Math.random() * 20 + 10)}% Special Discount</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</div>
                   </div>
-              ))}
+                ))}
               {products.filter(p => p.category_id === activeProduct.category_id && p.id !== activeProduct.id).length === 0 && (
                 <div style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>No similar products found in this category.</div>
               )}
@@ -6650,14 +6650,14 @@ export default function App() {
                 {recentlyViewed
                   .filter(p => p.id !== activeProduct.id)
                   .map(p => (
-                    <div key={p.id} onClick={() => {handleProductSelection(p.id); window.scrollTo(0,0);}} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)'}} onMouseLeave={e => {e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'}}>
+                    <div key={p.id} onClick={() => { handleProductSelection(p.id); window.scrollTo(0, 0); }} style={{ minWidth: '240px', width: '240px', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px', cursor: 'pointer', display: 'flex', flexDirection: 'column', background: '#fff', transition: 'all 0.3s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(122, 78, 165, 0.1)' }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none' }}>
                       <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '8px' }}>
                         <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ fontSize: '1rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px', fontWeight: 600, fontFamily: 'var(--font-serif)' }} title={p.name}>{p.name}</div>
                       <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</div>
                     </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}
@@ -6673,807 +6673,950 @@ export default function App() {
             </div>
           )}
           <main className="main-content" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '0' : '0 40px' }}>
-          
-          {activeCategoryPage ? (
-            <div className="animate-fade-in" style={{ width: '100%', padding: isMobile ? '10px 0' : '20px 0' }}>
-              
-              {/* Category Page Breadcrumb / Navigation bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '20px' : '30px', padding: isMobile ? '0 12px' : '0' }}>
-                <button 
-                  onClick={() => setActiveCategoryPage(null)} 
-                  className="btn-secondary"
-                  style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    gap: '8px', 
-                    padding: '8px 16px', 
-                    borderRadius: '0px', 
-                    border: '1px solid #222222',
-                    background: 'transparent',
-                    color: '#222222',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    fontSize: '0.75rem',
-                    letterSpacing: '1px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ← Back to Collections
-                </button>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>/</span>
-                <span style={{ fontSize: '0.8rem', color: '#222222', fontWeight: 600 }}>{activeCategoryPage.name}</span>
-              </div>
 
-              {/* Premium Luxury Jumbotron Cover for Category */}
-              <div style={{ 
-                position: 'relative', 
-                height: isMobile ? '200px' : '350px', 
-                background: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textAlign: 'center',
-                color: 'white',
-                padding: isMobile ? '20px 16px' : '40px',
-                marginBottom: isMobile ? '20px' : '40px'
-              }}>
-                <div>
-                  <h1 style={{ 
-                    fontFamily: 'var(--font-serif)', 
-                    fontSize: isMobile ? '1.8rem' : '3rem', 
-                    fontWeight: 700, 
-                    marginBottom: '12px',
-                    letterSpacing: '2px',
-                    textTransform: 'uppercase'
-                  }}>
-                    {activeCategoryPage.name}
-                  </h1>
-                  <p style={{ 
-                    fontSize: isMobile ? '0.85rem' : '1.1rem', 
-                    maxWidth: '650px', 
-                    margin: '0 auto',
-                    opacity: 0.9,
-                    fontWeight: 300,
-                    fontFamily: "'Jost', sans-serif"
-                  }}>
-                    {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
-                  </p>
-                </div>
-              </div>
+            {activeCategoryPage ? (
+              <div className="animate-fade-in" style={{ width: '100%', padding: isMobile ? '10px 0' : '20px 0' }}>
 
-              {/* Dedicated Category Product Catalog Grid */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', padding: isMobile ? '0 12px' : '0' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>
-                  Curated Catalog ({products.filter(p => p.category_id === activeCategoryPage.id).length} Items)
-                </h3>
-              </div>
-
-              <div className="category-product-grid">
-                {products.filter(p => p.category_id === activeCategoryPage.id).length > 0 ? (
-                  products.filter(p => p.category_id === activeCategoryPage.id).map(p => (
-                    <div key={p.id} className="product-card" onClick={() => handleProductSelection(p.id)}
-                    style={{ 
-                      background: '#ffffff', 
-                      borderRadius: '20px', 
-                      overflow: 'hidden', 
-                      boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
-                      border: '1px solid #f0e6fc',
-                      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
+                {/* Category Page Breadcrumb / Navigation bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '20px' : '30px', padding: isMobile ? '0 12px' : '0' }}>
+                  <button
+                    onClick={() => setActiveCategoryPage(null)}
+                    className="btn-secondary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '0px',
+                      border: '1px solid #222222',
+                      background: 'transparent',
+                      color: '#222222',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      fontSize: '0.75rem',
+                      letterSpacing: '1px',
                       cursor: 'pointer'
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-6px)';
-                      e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
-                    }}
-                    >
-                      <div className="product-image-container" style={{ position: 'relative', height: '440px', overflow: 'hidden' }}>
-                        <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
-                        {p.images[1] && (
-                          <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
-                        )}
-                        {p.original_price > p.price && (
-                          <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
-                            {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
-                          </div>
-                        )}
-                        <button 
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleAddToWishlist(p.id);
-                          }} 
-                          style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
-                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                        >
-                          <Heart size={18} />
-                        </button>
-                      </div>
-                      
-                      <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
-                        <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                          <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                            {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
-                          </span>
-                          <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
-                        </div>
+                  >
+                    ← Back to Collections
+                  </button>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>/</span>
+                  <span style={{ fontSize: '0.8rem', color: '#222222', fontWeight: 600 }}>{activeCategoryPage.name}</span>
+                </div>
 
-                        <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
-                        
-                        <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
-                          <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
-                          {p.original_price > p.price && (
-                            <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
-                          )}
-                        </div>
-                        
-                        <button 
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleAddToCart(p.id);
-                          }} 
-                          style={{ 
-                            background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
-                            border: 'none',
-                            borderRadius: '30px',
-                            padding: '12px',
-                            justifyContent: 'center', 
-                            width: '100%',
-                            fontFamily: "'Jost', sans-serif",
-                            fontWeight: 700,
-                            letterSpacing: '1px',
-                            boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            color: 'white',
-                            cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
-                            opacity: p.stock > 0 ? 1 : 0.6
-                          }}
-                          onMouseEnter={e => {
-                            if(p.stock > 0) {
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            if(p.stock > 0) {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
-                            }
-                          }}
-                          disabled={p.stock <= 0}
-                        >
-                          <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
-                    <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
-                    <p>No products currently available under this category. We are weaving new designs soon!</p>
+                {/* Premium Luxury Jumbotron Cover for Category */}
+                <div style={{
+                  position: 'relative',
+                  height: isMobile ? '200px' : '350px',
+                  background: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(${activeCategoryPage.image_url || 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=1600&q=80'})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  color: 'white',
+                  padding: isMobile ? '20px 16px' : '40px',
+                  marginBottom: isMobile ? '20px' : '40px'
+                }}>
+                  <div>
+                    <h1 style={{
+                      fontFamily: 'var(--font-serif)',
+                      fontSize: isMobile ? '1.8rem' : '3rem',
+                      fontWeight: 700,
+                      marginBottom: '12px',
+                      letterSpacing: '2px',
+                      textTransform: 'uppercase'
+                    }}>
+                      {activeCategoryPage.name}
+                    </h1>
+                    <p style={{
+                      fontSize: isMobile ? '0.85rem' : '1.1rem',
+                      maxWidth: '650px',
+                      margin: '0 auto',
+                      opacity: 0.9,
+                      fontWeight: 300,
+                      fontFamily: "'Jost', sans-serif"
+                    }}>
+                      {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
+                    </p>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Bottom Back Button */}
-              <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center' }}>
-                <button 
-                  onClick={() => { setActiveCategoryPage(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                  className="btn-primary"
-                  style={{ padding: '12px 28px' }}
-                >
-                  ← Back to Home Collections
-                </button>
-              </div>
+                {/* Dedicated Category Product Catalog Grid */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', padding: isMobile ? '0 12px' : '0' }}>
+                  <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>
+                    Curated Catalog ({products.filter(p => p.category_id === activeCategoryPage.id).length} Items)
+                  </h3>
+                </div>
 
-            </div>
-          ) : (
-            <>
-              {/* Dynamic Collections Sections */}
-              <div id="catalog-section" style={{ paddingTop: '20px' }}></div>
+                <div className="category-product-grid">
+                  {products.filter(p => p.category_id === activeCategoryPage.id).length > 0 ? (
+                    products.filter(p => p.category_id === activeCategoryPage.id).map(p => (
+                      <div key={p.id} className="product-card" onClick={() => handleProductSelection(p.id)}
+                        style={{
+                          background: '#ffffff',
+                          borderRadius: '20px',
+                          overflow: 'hidden',
+                          boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                          border: '1px solid #f0e6fc',
+                          transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'translateY(-6px)';
+                          e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                        }}
+                      >
+                        <div className="product-image-container" style={{ position: 'relative', height: '440px', overflow: 'hidden' }}>
+                          <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                          {p.images[1] && (
+                            <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                          )}
+                          {p.original_price > p.price && (
+                            <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                              {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                            </div>
+                          )}
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleAddToWishlist(p.id);
+                            }}
+                            style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                          >
+                            <Heart size={18} />
+                          </button>
+                        </div>
 
+                        <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                          <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
 
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                            <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                              {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                            </span>
+                            <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                          </div>
 
-              {/* Dynamic Collections Sections */}
-              {collections.length > 0 ? (
-                collections.map(col => {
-                  const colCategories = categories.filter(c => col.category_ids.includes(c.id));
-                  const colProducts = products.filter(p => col.category_ids.includes(p.category_id));
-                  const isCategoryFromThisCollectionSelected = col.category_ids.includes(parseInt(selectedCategory));
-                  const displayedProducts = isCategoryFromThisCollectionSelected 
-                    ? colProducts.filter(p => p.category_id === parseInt(selectedCategory))
-                    : colProducts;
-                  const showSeparateCategoriesMobile = col.separate_categories_mobile && isMobile;
+                          <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
 
-                  if (colCategories.length === 0) return null;
+                          <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                            <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                            {p.original_price > p.price && (
+                              <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                            )}
+                          </div>
 
-                  return (
-                    <div key={col.id} style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
-                      
-                      {/* Leafy Corner branches */}
-                      <img 
-                        src="/nobaraa_flowers.png" 
-                        style={{ 
-                          position: 'absolute', 
-                          top: '10px', 
-                          left: isMobile ? '-12px' : '-40px', 
-                          width: isMobile ? '120px' : '190px', 
-                          height: 'auto', 
-                          opacity: 0.6, 
-                          transform: 'rotate(-45deg)', 
-                          pointerEvents: 'none' 
-                        }} 
-                        alt="" 
-                      />
-                      <img 
-                        src="/nobaraa_flowers.png" 
-                        style={{ 
-                          position: 'absolute', 
-                          top: '10px', 
-                          right: isMobile ? '-12px' : '-40px', 
-                          width: isMobile ? '120px' : '190px', 
-                          height: 'auto', 
-                          opacity: 0.6, 
-                          transform: 'rotate(45deg) scaleX(-1)', 
-                          pointerEvents: 'none' 
-                        }} 
-                        alt="" 
-                      />
-
-                      {/* Header Ribbon Line & centered logo mark */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
-                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
-                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
-                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleAddToCart(p.id);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                              border: 'none',
+                              borderRadius: '30px',
+                              padding: '12px',
+                              justifyContent: 'center',
+                              width: '100%',
+                              fontFamily: "'Jost', sans-serif",
+                              fontWeight: 700,
+                              letterSpacing: '1px',
+                              boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                              transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              color: 'white',
+                              cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                              opacity: p.stock > 0 ? 1 : 0.6
+                            }}
+                            onMouseEnter={e => {
+                              if (p.stock > 0) {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                              }
+                            }}
+                            onMouseLeave={e => {
+                              if (p.stock > 0) {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                              }
+                            }}
+                            disabled={p.stock <= 0}
+                          >
+                            <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                          </button>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                      <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                      <p>No products currently available under this category. We are weaving new designs soon!</p>
+                    </div>
+                  )}
+                </div>
 
-                      {/* Collection Header Title */}
-                      {renderCollectionTitle(col.name)}
-                      
-                      {/* Subtitle */}
-                      <p style={{ 
-                        fontFamily: "'Jost', sans-serif", 
-                        fontSize: '0.95rem', 
-                        color: '#666666', 
-                        textAlign: 'center', 
-                        marginBottom: '40px',
-                        marginTop: '-5px'
-                      }}>
-                        Find everything you love, all in one place.
-                      </p>
+                {/* Bottom Back Button */}
+                <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center' }}>
+                  <button
+                    onClick={() => { setActiveCategoryPage(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="btn-primary"
+                    style={{ padding: '12px 28px' }}
+                  >
+                    ← Back to Home Collections
+                  </button>
+                </div>
 
-                      {showSeparateCategoriesMobile ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', padding: '0 8px' }}>
-                          {colCategories
-                            .filter(c => !selectedCategory || c.id === parseInt(selectedCategory))
-                            .map(c => {
-                              const catProducts = products.filter(p => p.category_id === c.id);
-                              return (
-                                <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                  {/* Category Banner */}
-                                  {col.show_category_banner !== false && col.show_category_banner !== 0 ? (
-                                    <div 
-                                      style={{
-                                        position: 'relative',
-                                        height: '110px',
-                                        borderRadius: '16px',
-                                        overflow: 'hidden',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '20px',
-                                        boxShadow: '0 4px 12px rgba(122, 78, 165, 0.08)',
-                                        background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
-                                        cursor: 'pointer'
-                                      }} 
-                                      onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                    >
-                                      {c.image_url && (
-                                        <img 
-                                          src={c.image_url} 
-                                          alt={c.name} 
-                                          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45, position: 'absolute', top: 0, left: 0 }}
-                                        />
-                                      )}
-                                      <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
-                                        <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
-                                        {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
-                                        <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
+              </div>
+            ) : (
+              <>
+                {/* Dynamic Collections Sections */}
+                <div id="catalog-section" style={{ paddingTop: '20px' }}></div>
+
+
+
+                {/* Dynamic Collections Sections */}
+                {collections.length > 0 ? (
+                  collections.map(col => {
+                    const colCategories = categories.filter(c => col.category_ids.includes(c.id));
+                    const colProducts = products.filter(p => col.category_ids.includes(p.category_id));
+                    const isCategoryFromThisCollectionSelected = col.category_ids.includes(parseInt(selectedCategory));
+                    const displayedProducts = isCategoryFromThisCollectionSelected
+                      ? colProducts.filter(p => p.category_id === parseInt(selectedCategory))
+                      : colProducts;
+                    const showSeparateCategoriesMobile = col.separate_categories_mobile && isMobile;
+
+                    if (colCategories.length === 0) return null;
+
+                    return (
+                      <div key={col.id} style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
+
+                        {/* Leafy Corner branches */}
+                        <img
+                          src="/nobaraa_flowers.png"
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: isMobile ? '-12px' : '-40px',
+                            width: isMobile ? '120px' : '190px',
+                            height: 'auto',
+                            opacity: 0.6,
+                            transform: 'rotate(-45deg)',
+                            pointerEvents: 'none'
+                          }}
+                          alt=""
+                        />
+                        <img
+                          src="/nobaraa_flowers.png"
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: isMobile ? '-12px' : '-40px',
+                            width: isMobile ? '120px' : '190px',
+                            height: 'auto',
+                            opacity: 0.6,
+                            transform: 'rotate(45deg) scaleX(-1)',
+                            pointerEvents: 'none'
+                          }}
+                          alt=""
+                        />
+
+                        {/* Header Ribbon Line & centered logo mark */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
+                          <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
+                          <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                        </div>
+
+                        {/* Collection Header Title */}
+                        {renderCollectionTitle(col.name)}
+
+                        {/* Subtitle */}
+                        <p style={{
+                          fontFamily: "'Jost', sans-serif",
+                          fontSize: '0.95rem',
+                          color: '#666666',
+                          textAlign: 'center',
+                          marginBottom: '40px',
+                          marginTop: '-5px'
+                        }}>
+                          Find everything you love, all in one place.
+                        </p>
+
+                        {showSeparateCategoriesMobile ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', padding: '0 8px' }}>
+                            {colCategories
+                              .filter(c => !selectedCategory || c.id === parseInt(selectedCategory))
+                              .map(c => {
+                                const catProducts = products.filter(p => p.category_id === c.id);
+                                return (
+                                  <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {/* Category Banner */}
+                                    {col.show_category_banner !== false && col.show_category_banner !== 0 ? (
+                                      <div
+                                        style={{
+                                          position: 'relative',
+                                          height: '110px',
+                                          borderRadius: '16px',
+                                          overflow: 'hidden',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          padding: '20px',
+                                          boxShadow: '0 4px 12px rgba(122, 78, 165, 0.08)',
+                                          background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
+                                          cursor: 'pointer'
+                                        }}
+                                        onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                      >
+                                        {c.image_url && (
+                                          <img
+                                            src={c.image_url}
+                                            alt={c.name}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.45, position: 'absolute', top: 0, left: 0 }}
+                                          />
+                                        )}
+                                        <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
+                                          <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
+                                          {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
+                                          <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ) : (
-                                    <div 
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '4px 6px',
-                                        borderBottom: '1px solid rgba(122, 78, 165, 0.1)',
-                                        marginBottom: '6px',
-                                        cursor: 'pointer'
-                                      }}
-                                      onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                    >
-                                      <h5 style={{ 
-                                        fontFamily: "'Playfair Display', serif", 
-                                        fontSize: '1.15rem', 
-                                        fontWeight: 700, 
-                                        color: '#2b0b57', 
-                                        margin: 0, 
-                                        textTransform: 'uppercase', 
-                                        letterSpacing: '0.5px' 
-                                      }}>
-                                        {c.name}
-                                      </h5>
-                                      <span style={{ 
-                                        fontSize: '0.75rem', 
-                                        color: '#7a4ea5', 
-                                        fontWeight: 600,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '2px'
-                                      }}>
-                                        View All <ChevronRight size={12} />
-                                      </span>
-                                    </div>
-                                  )}
+                                    ) : (
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          padding: '4px 6px',
+                                          borderBottom: '1px solid rgba(122, 78, 165, 0.1)',
+                                          marginBottom: '6px',
+                                          cursor: 'pointer'
+                                        }}
+                                        onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                      >
+                                        <h5 style={{
+                                          fontFamily: "'Playfair Display', serif",
+                                          fontSize: '1.15rem',
+                                          fontWeight: 700,
+                                          color: '#2b0b57',
+                                          margin: 0,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: '0.5px'
+                                        }}>
+                                          {c.name}
+                                        </h5>
+                                        <span style={{
+                                          fontSize: '0.75rem',
+                                          color: '#7a4ea5',
+                                          fontWeight: 600,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '2px'
+                                        }}>
+                                          View All <ChevronRight size={12} />
+                                        </span>
+                                      </div>
+                                    )}
 
-                                  {/* Category Products */}
-                                  <div className="product-grid animate-fade-in">
-                                    {catProducts.length > 0 ? (
-                                      catProducts.map((p, idx) => (
-                                        <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
-                                          <div className="product-card" onClick={() => handleProductSelection(p.id)}
-                                          style={{ 
-                                            background: '#ffffff', 
-                                            borderRadius: '20px', 
-                                            overflow: 'hidden', 
-                                            boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
-                                            border: '1px solid #f0e6fc',
-                                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            cursor: 'pointer',
-                                            height: '100%'
-                                          }}
-                                          >
-                                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '380px', overflow: 'hidden' }}>
-                                              <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
-                                              {p.images[1] && (
-                                                <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
-                                              )}
-                                              {p.original_price > p.price && (
-                                                <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
-                                                  {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
-                                                </div>
-                                              )}
-                                              <button 
-                                                onClick={e => {
-                                                  e.stopPropagation();
-                                                  handleAddToWishlist(p.id);
-                                                }} 
-                                                style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
-                                              >
-                                                <Heart size={18} />
-                                              </button>
-                                            </div>
-                                            
-                                            <div className="product-info" style={{ padding: '16px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                                              <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
-                                              <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
-                                              
-                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                                                <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                                  {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
-                                                </span>
-                                                <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)})</span>
-                                              </div>
-
-                                              <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
-                                                <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.2rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
-                                                {p.original_price > p.price && (
-                                                  <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                    {/* Category Products */}
+                                    <div className="product-grid animate-fade-in">
+                                      {catProducts.length > 0 ? (
+                                        catProducts.map((p, idx) => (
+                                          <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                                            <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                                              style={{
+                                                background: '#ffffff',
+                                                borderRadius: '20px',
+                                                overflow: 'hidden',
+                                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                                border: '1px solid #f0e6fc',
+                                                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                cursor: 'pointer',
+                                                height: '100%'
+                                              }}
+                                            >
+                                              <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '380px', overflow: 'hidden' }}>
+                                                <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                                {p.images[1] && (
+                                                  <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
                                                 )}
+                                                {p.original_price > p.price && (
+                                                  <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                                    {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                                  </div>
+                                                )}
+                                                <button
+                                                  onClick={e => {
+                                                    e.stopPropagation();
+                                                    handleAddToWishlist(p.id);
+                                                  }}
+                                                  style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                                >
+                                                  <Heart size={18} />
+                                                </button>
                                               </div>
 
-                                              <button 
-                                                onClick={e => {
-                                                  e.stopPropagation();
-                                                  handleAddToCart(p.id);
-                                                }}
-                                                style={{ 
-                                                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
-                                                  border: 'none',
-                                                  borderRadius: '30px',
-                                                  padding: '10px',
-                                                  justifyContent: 'center', 
-                                                  width: '100%',
-                                                  fontFamily: "'Jost', sans-serif",
-                                                  fontWeight: 700,
-                                                  letterSpacing: '1px',
-                                                  boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
-                                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: '8px',
-                                                  color: 'white',
-                                                  cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
-                                                  opacity: p.stock > 0 ? 1 : 0.6
-                                                }}
-                                                disabled={p.stock <= 0}
-                                              >
-                                                <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
-                                              </button>
+                                              <div className="product-info" style={{ padding: '16px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                                <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.05rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                                  <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                                    {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                                  </span>
+                                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)})</span>
+                                                </div>
+
+                                                <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                                  <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.2rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                                  {p.original_price > p.price && (
+                                                    <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                                  )}
+                                                </div>
+
+                                                <button
+                                                  onClick={e => {
+                                                    e.stopPropagation();
+                                                    handleAddToCart(p.id);
+                                                  }}
+                                                  style={{
+                                                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                                    border: 'none',
+                                                    borderRadius: '30px',
+                                                    padding: '10px',
+                                                    justifyContent: 'center',
+                                                    width: '100%',
+                                                    fontFamily: "'Jost', sans-serif",
+                                                    fontWeight: 700,
+                                                    letterSpacing: '1px',
+                                                    boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    color: 'white',
+                                                    cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                                    opacity: p.stock > 0 ? 1 : 0.6
+                                                  }}
+                                                  disabled={p.stock <= 0}
+                                                >
+                                                  <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                                </button>
+                                              </div>
                                             </div>
                                           </div>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <div style={{ padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No products in this category yet.</div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      ) : (
-                        <>
-                          {col.show_category_banner !== false && col.show_category_banner !== 0 && !(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
-                            <div className="nobaraa-category-grid" style={{ 
-                              display: 'grid', 
-                              gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', 
-                              justifyContent: 'center',
-                              gap: '24px',
-                              width: '100%',
-                              margin: '0 auto 50px'
-                            }}>
-                              {colCategories.map(c => {
-                                const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
-                                const coverImg = c.image_url || defaultImg;
-                                return (
-                                  <div 
-                                    key={c.id}
-                                    className="nobaraa-category-card"
-                                    onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                                    style={{ 
-                                      position: 'relative', 
-                                      background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
-                                      borderRadius: '20px',
-                                      padding: '16px 16px 24px',
-                                      cursor: 'pointer',
-                                      boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
-                                      transition: 'all 0.3s ease',
-                                      border: '1px solid rgba(122, 78, 165, 0.05)',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      maxWidth: '400px',
-                                      width: '100%',
-                                      margin: '0 auto'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.transform = 'translateY(-6px)';
-                                      e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.transform = 'translateY(0)';
-                                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
-                                    }}
-                                  >
-                                    {/* Inner image container */}
-                                    <div className="nobaraa-category-image-container" style={{
-                                      width: '100%',
-                                      height: '480px',
-                                      borderRadius: '16px',
-                                      overflow: 'hidden',
-                                      position: 'relative'
-                                    }}>
-                                      <img 
-                                        src={coverImg} 
-                                        alt={c.name}
-                                        style={{ 
-                                          width: '100%', 
-                                          height: '100%', 
-                                          objectFit: 'cover',
-                                          transition: 'transform 0.5s ease'
-                                        }}
-                                      />
-                                      
-                                      {/* White Circle Overlapping Icon Button */}
-                                      <div style={{
-                                        position: 'absolute',
-                                        bottom: '0',
-                                        left: '50%',
-                                        transform: 'translate(-50%, 50%)',
-                                        width: '44px',
-                                        height: '44px',
-                                        borderRadius: '50%',
-                                        background: '#ffffff',
-                                        boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        zIndex: 5
-                                      }}>
-                                        {getCategoryIcon(c.name)}
-                                      </div>
-                                    </div>
-
-                                    {/* Label and Link details below the overlap */}
-                                    <div style={{
-                                      paddingTop: '28px',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}>
-                                      <span style={{ 
-                                        fontFamily: "'Playfair Display', serif", 
-                                        fontWeight: 700, 
-                                        fontSize: '1.05rem', 
-                                        color: '#2b0b57',
-                                        textAlign: 'center',
-                                        display: 'block'
-                                      }}>
-                                        {c.name}
-                                      </span>
-                                      <span style={{ 
-                                        fontFamily: "'Jost', sans-serif", 
-                                        fontWeight: 800, 
-                                        fontSize: '0.72rem', 
-                                        color: '#7a4ea5', 
-                                        letterSpacing: '1px', 
-                                        marginTop: '8px', 
-                                        display: 'inline-flex', 
-                                        alignItems: 'center', 
-                                        gap: '4px', 
-                                        textTransform: 'uppercase' 
-                                      }}>
-                                        Shop Now <ChevronRight size={12} />
-                                      </span>
+                                        ))
+                                      ) : (
+                                        <div style={{ padding: '20px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No products in this category yet.</div>
+                                      )}
                                     </div>
                                   </div>
                                 );
                               })}
-                            </div>
-                          )}
+                          </div>
+                        ) : (
+                          <>
+                            {col.show_category_banner !== false && col.show_category_banner !== 0 && !(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
+                              <div className="nobaraa-category-grid" style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
+                                justifyContent: 'center',
+                                gap: '24px',
+                                width: '100%',
+                                margin: '0 auto 50px'
+                              }}>
+                                {colCategories.map(c => {
+                                  const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
+                                  const coverImg = c.image_url || defaultImg;
+                                  return (
+                                    <div
+                                      key={c.id}
+                                      className="nobaraa-category-card"
+                                      onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                      style={{
+                                        position: 'relative',
+                                        background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                                        borderRadius: '20px',
+                                        padding: '16px 16px 24px',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
+                                        transition: 'all 0.3s ease',
+                                        border: '1px solid rgba(122, 78, 165, 0.05)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        maxWidth: '400px',
+                                        width: '100%',
+                                        margin: '0 auto'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-6px)';
+                                        e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                                      }}
+                                    >
+                                      {/* Inner image container */}
+                                      <div className="nobaraa-category-image-container" style={{
+                                        width: '100%',
+                                        height: '480px',
+                                        borderRadius: '16px',
+                                        overflow: 'hidden',
+                                        position: 'relative'
+                                      }}>
+                                        <img
+                                          src={coverImg}
+                                          alt={c.name}
+                                          style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            objectFit: 'cover',
+                                            transition: 'transform 0.5s ease'
+                                          }}
+                                        />
 
-                          {/* Saree products in this collection */}
-                          <div className="product-grid animate-fade-in">
-                            {displayedProducts.length > 0 ? (
-                              displayedProducts.map((p, idx) => (
-                                <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
-                                  <div className="product-card" onClick={() => handleProductSelection(p.id)}
-                                  style={{ 
-                                    background: '#ffffff', 
-                                    borderRadius: '20px', 
-                                    overflow: 'hidden', 
-                                    boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
-                                    border: '1px solid #f0e6fc',
-                                    transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    cursor: 'pointer',
-                                    height: '100%'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-6px)';
-                                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
-                                  }}
-                                  >
-                                    <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
-                                      <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
-                                      {p.images[1] && (
-                                        <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
-                                      )}
-                                      {p.original_price > p.price && (
-                                        <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
-                                          {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
-                                        </div>
-                                      )}
-                                      <button 
-                                        onClick={e => {
-                                          e.stopPropagation();
-                                          handleAddToWishlist(p.id);
-                                        }} 
-                                        style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
-                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                                      >
-                                        <Heart size={18} />
-                                      </button>
-                                    </div>
-                                    
-                                    <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                                      <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
-                                      <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
-                                      
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                                        <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                          {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
-                                        </span>
-                                        <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
-                                      </div>
-
-                                      <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
-                                      
-                                      <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
-                                        <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
-                                        {p.original_price > p.price && (
-                                          <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
-                                        )}
-                                      </div>
-                                      
-                                      <button 
-                                        onClick={e => {
-                                          e.stopPropagation();
-                                          handleAddToCart(p.id);
-                                        }} 
-                                        style={{ 
-                                          background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
-                                          border: 'none',
-                                          borderRadius: '30px',
-                                          padding: '12px',
-                                          justifyContent: 'center', 
-                                          width: '100%',
-                                          fontFamily: "'Jost', sans-serif",
-                                          fontWeight: 700,
-                                          letterSpacing: '1px',
-                                          boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
-                                          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                        {/* White Circle Overlapping Icon Button */}
+                                        <div style={{
+                                          position: 'absolute',
+                                          bottom: '0',
+                                          left: '50%',
+                                          transform: 'translate(-50%, 50%)',
+                                          width: '44px',
+                                          height: '44px',
+                                          borderRadius: '50%',
+                                          background: '#ffffff',
+                                          boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
                                           display: 'flex',
                                           alignItems: 'center',
-                                          gap: '8px',
-                                          color: 'white',
-                                          cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
-                                          opacity: p.stock > 0 ? 1 : 0.6
-                                        }}
-                                        onMouseEnter={e => {
-                                          if(p.stock > 0) {
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
-                                          }
-                                        }}
-                                        onMouseLeave={e => {
-                                          if(p.stock > 0) {
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
-                                          }
-                                        }}
-                                        disabled={p.stock <= 0}
-                                      >
-                                        <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
-                                      </button>
+                                          justifyContent: 'center',
+                                          zIndex: 5
+                                        }}>
+                                          {getCategoryIcon(c.name)}
+                                        </div>
+                                      </div>
+
+                                      {/* Label and Link details below the overlap */}
+                                      <div style={{
+                                        paddingTop: '28px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}>
+                                        <span style={{
+                                          fontFamily: "'Playfair Display', serif",
+                                          fontWeight: 700,
+                                          fontSize: '1.05rem',
+                                          color: '#2b0b57',
+                                          textAlign: 'center',
+                                          display: 'block'
+                                        }}>
+                                          {c.name}
+                                        </span>
+                                        <span style={{
+                                          fontFamily: "'Jost', sans-serif",
+                                          fontWeight: 800,
+                                          fontSize: '0.72rem',
+                                          color: '#7a4ea5',
+                                          letterSpacing: '1px',
+                                          marginTop: '8px',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '4px',
+                                          textTransform: 'uppercase'
+                                        }}>
+                                          Shop Now <ChevronRight size={12} />
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
-                                <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
-                                <p>No products match your current filters in this collection.</p>
+                                  );
+                                })}
                               </div>
                             )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <>
-                  {/* Shop by Categories Section */}
-                  {categories.length > 0 && (
-                    <div style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
-                      
-                      {/* Leafy Corner branches */}
-                      <img 
-                        src="/nobaraa_flowers.png" 
-                        style={{ 
-                          position: 'absolute', 
-                          top: '10px', 
-                          left: isMobile ? '-12px' : '-40px', 
-                          width: isMobile ? '120px' : '190px', 
-                          height: 'auto', 
-                          opacity: 0.6, 
-                          transform: 'rotate(-45deg)', 
-                          pointerEvents: 'none' 
-                        }} 
-                        alt="" 
-                      />
-                      <img 
-                        src="/nobaraa_flowers.png" 
-                        style={{ 
-                          position: 'absolute', 
-                          top: '10px', 
-                          right: isMobile ? '-12px' : '-40px', 
-                          width: isMobile ? '120px' : '190px', 
-                          height: 'auto', 
-                          opacity: 0.6, 
-                          transform: 'rotate(45deg) scaleX(-1)', 
-                          pointerEvents: 'none' 
-                        }} 
-                        alt="" 
-                      />
 
-                      {/* Header Ribbon Line & centered logo mark */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
-                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
-                        <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
-                        <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                            {/* Saree products in this collection */}
+                            <div className="product-grid animate-fade-in">
+                              {displayedProducts.length > 0 ? (
+                                displayedProducts.map((p, idx) => (
+                                  <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                                    <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                                      style={{
+                                        background: '#ffffff',
+                                        borderRadius: '20px',
+                                        overflow: 'hidden',
+                                        boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                        border: '1px solid #f0e6fc',
+                                        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        cursor: 'pointer',
+                                        height: '100%'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-6px)';
+                                        e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
+                                      }}
+                                    >
+                                      <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
+                                        <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                        {p.images[1] && (
+                                          <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
+                                        )}
+                                        {p.original_price > p.price && (
+                                          <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                            {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                          </div>
+                                        )}
+                                        <button
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            handleAddToWishlist(p.id);
+                                          }}
+                                          style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                        >
+                                          <Heart size={18} />
+                                        </button>
+                                      </div>
+
+                                      <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                        <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                          <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                            {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                          </span>
+                                          <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                        </div>
+
+                                        <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+
+                                        <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                          <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                          {p.original_price > p.price && (
+                                            <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                          )}
+                                        </div>
+
+                                        <button
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            handleAddToCart(p.id);
+                                          }}
+                                          style={{
+                                            background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                            border: 'none',
+                                            borderRadius: '30px',
+                                            padding: '12px',
+                                            justifyContent: 'center',
+                                            width: '100%',
+                                            fontFamily: "'Jost', sans-serif",
+                                            fontWeight: 700,
+                                            letterSpacing: '1px',
+                                            boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            color: 'white',
+                                            cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                            opacity: p.stock > 0 ? 1 : 0.6
+                                          }}
+                                          onMouseEnter={e => {
+                                            if (p.stock > 0) {
+                                              e.currentTarget.style.transform = 'translateY(-2px)';
+                                              e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                                            }
+                                          }}
+                                          onMouseLeave={e => {
+                                            if (p.stock > 0) {
+                                              e.currentTarget.style.transform = 'translateY(0)';
+                                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                                            }
+                                          }}
+                                          disabled={p.stock <= 0}
+                                        >
+                                          <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                                  <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                                  <p>No products match your current filters in this collection.</p>
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
+                    );
+                  })
+                ) : (
+                  <>
+                    {/* Shop by Categories Section */}
+                    {categories.length > 0 && (
+                      <div style={{ marginBottom: '80px', width: '100%', position: 'relative', padding: '40px 0', overflow: 'hidden' }} className="animate-fade-in">
 
-                      {/* Collection Header Title */}
-                      <h2 style={{ 
-                        fontFamily: "'Playfair Display', serif", 
-                        fontSize: '2.5rem', 
-                        fontWeight: 700, 
-                        color: '#2b0b57', 
-                        textAlign: 'center', 
-                        margin: '0 auto 10px',
-                        lineHeight: 1.2
-                      }}>
-                        Shop by <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'inline-block', transform: 'translateY(5px)', textTransform: 'none' }}>Category</span>
-                      </h2>
-                      
-                      {/* Subtitle */}
-                      <p style={{ 
-                        fontFamily: "'Jost', sans-serif", 
-                        fontSize: '0.95rem', 
-                        color: '#666666', 
-                        textAlign: 'center', 
-                        marginBottom: '40px',
-                        marginTop: '-5px'
-                      }}>
-                        Find everything you love, all in one place.
-                      </p>
+                        {/* Leafy Corner branches */}
+                        <img
+                          src="/nobaraa_flowers.png"
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: isMobile ? '-12px' : '-40px',
+                            width: isMobile ? '120px' : '190px',
+                            height: 'auto',
+                            opacity: 0.6,
+                            transform: 'rotate(-45deg)',
+                            pointerEvents: 'none'
+                          }}
+                          alt=""
+                        />
+                        <img
+                          src="/nobaraa_flowers.png"
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: isMobile ? '-12px' : '-40px',
+                            width: isMobile ? '120px' : '190px',
+                            height: 'auto',
+                            opacity: 0.6,
+                            transform: 'rotate(45deg) scaleX(-1)',
+                            pointerEvents: 'none'
+                          }}
+                          alt=""
+                        />
 
-                      {/* Category Grid Section styled like mockup card list */}
-                      <div className="nobaraa-category-grid" style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', 
-                        justifyContent: 'center',
-                        gap: '24px',
-                        width: '100%',
-                        margin: '0 auto 50px'
-                      }}>
-                        {categories.map(c => {
-                          const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
-                          const coverImg = c.image_url || defaultImg;
-                          return (
-                            <div 
-                              key={c.id}
-                              className="nobaraa-category-card"
-                              onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                              style={{ 
-                                position: 'relative', 
-                                background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                        {/* Header Ribbon Line & centered logo mark */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginBottom: '8px' }}>
+                          <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                          <span style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: '#7a4ea5', fontWeight: 'bold', fontStyle: 'italic' }}>n</span>
+                          <div style={{ width: '40px', height: '1px', background: '#7a4ea5', opacity: 0.4 }}></div>
+                        </div>
+
+                        {/* Collection Header Title */}
+                        <h2 style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: '2.5rem',
+                          fontWeight: 700,
+                          color: '#2b0b57',
+                          textAlign: 'center',
+                          margin: '0 auto 10px',
+                          lineHeight: 1.2
+                        }}>
+                          Shop by <span style={{ fontFamily: "'Great Vibes', cursive", color: '#7a4ea5', fontSize: '3.2rem', display: 'inline-block', transform: 'translateY(5px)', textTransform: 'none' }}>Category</span>
+                        </h2>
+
+                        {/* Subtitle */}
+                        <p style={{
+                          fontFamily: "'Jost', sans-serif",
+                          fontSize: '0.95rem',
+                          color: '#666666',
+                          textAlign: 'center',
+                          marginBottom: '40px',
+                          marginTop: '-5px'
+                        }}>
+                          Find everything you love, all in one place.
+                        </p>
+
+                        {/* Category Grid Section styled like mockup card list */}
+                        <div className="nobaraa-category-grid" style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
+                          justifyContent: 'center',
+                          gap: '24px',
+                          width: '100%',
+                          margin: '0 auto 50px'
+                        }}>
+                          {categories.map(c => {
+                            const defaultImg = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=800&q=80";
+                            const coverImg = c.image_url || defaultImg;
+                            return (
+                              <div
+                                key={c.id}
+                                className="nobaraa-category-card"
+                                onClick={() => { setActiveCategoryPage(c); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                style={{
+                                  position: 'relative',
+                                  background: 'linear-gradient(to bottom, #f5edff 0%, #ecdffa 100%)',
+                                  borderRadius: '20px',
+                                  padding: '16px 16px 24px',
+                                  cursor: 'pointer',
+                                  boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
+                                  transition: 'all 0.3s ease',
+                                  border: '1px solid rgba(122, 78, 165, 0.05)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  maxWidth: '400px',
+                                  width: '100%',
+                                  margin: '0 auto'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(-6px)';
+                                  e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(0)';
+                                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                                }}
+                              >
+                                {/* Inner image container */}
+                                <div className="nobaraa-category-image-container" style={{
+                                  width: '100%',
+                                  height: '480px',
+                                  borderRadius: '16px',
+                                  overflow: 'hidden',
+                                  position: 'relative'
+                                }}>
+                                  <img
+                                    src={coverImg}
+                                    alt={c.name}
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      objectFit: 'cover',
+                                      transition: 'transform 0.5s ease'
+                                    }}
+                                  />
+
+                                  {/* White Circle Overlapping Icon Button */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    bottom: '0',
+                                    left: '50%',
+                                    transform: 'translate(-50%, 50%)',
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '50%',
+                                    background: '#ffffff',
+                                    boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 5
+                                  }}>
+                                    {getCategoryIcon(c.name)}
+                                  </div>
+                                </div>
+
+                                {/* Label and Link details below the overlap */}
+                                <div style={{
+                                  paddingTop: '28px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}>
+                                  <span style={{
+                                    fontFamily: "'Playfair Display', serif",
+                                    fontWeight: 700,
+                                    fontSize: '1.05rem',
+                                    color: '#2b0b57',
+                                    textAlign: 'center',
+                                    display: 'block'
+                                  }}>
+                                    {c.name}
+                                  </span>
+                                  <span style={{
+                                    fontFamily: "'Jost', sans-serif",
+                                    fontWeight: 800,
+                                    fontSize: '0.72rem',
+                                    color: '#7a4ea5',
+                                    letterSpacing: '1px',
+                                    marginTop: '8px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    textTransform: 'uppercase'
+                                  }}>
+                                    Shop Now <ChevronRight size={12} />
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Product list grid */}
+                    <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', marginBottom: '20px', color: '#222222' }}>The Saree & Ethnic Collection</h3>
+                    <div className="product-grid animate-fade-in">
+                      {loadingProducts ? (
+                        Array.from({ length: 8 }).map((_, idx) => (
+                          <div key={`skeleton-${idx}`} className="product-card" style={{
+                            background: '#ffffff',
+                            borderRadius: '20px',
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 24px rgba(122, 78, 165, 0.05)',
+                            border: '1px solid #f0e6fc',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: '620px',
+                            position: 'relative'
+                          }}>
+                            {/* Image Placeholder */}
+                            <div className="shim-bar" style={{ height: '400px', background: '#f6efff', position: 'relative' }}></div>
+                            {/* Details Placeholder */}
+                            <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                              {/* Category tag */}
+                              <div className="shim-bar" style={{ width: '35%', height: '12px', borderRadius: '4px' }}></div>
+                              {/* Title */}
+                              <div className="shim-bar" style={{ width: '85%', height: '22px', borderRadius: '6px' }}></div>
+                              {/* Rating */}
+                              <div className="shim-bar" style={{ width: '25%', height: '16px', borderRadius: '12px' }}></div>
+                              {/* Description lines */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0' }}>
+                                <div className="shim-bar" style={{ width: '100%', height: '12px', borderRadius: '4px' }}></div>
+                                <div className="shim-bar" style={{ width: '90%', height: '12px', borderRadius: '4px' }}></div>
+                              </div>
+                              {/* Bottom row */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                                <div className="shim-bar" style={{ width: '45%', height: '24px', borderRadius: '6px' }}></div>
+                                <div className="shim-bar" style={{ width: '100px', height: '36px', borderRadius: '20px' }}></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : products.length > 0 ? (
+                        products.map((p, idx) => (
+                          <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
+                            <div className="product-card" onClick={() => handleProductSelection(p.id)}
+                              style={{
+                                background: '#ffffff',
                                 borderRadius: '20px',
-                                padding: '16px 16px 24px',
-                                cursor: 'pointer',
-                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.06)',
-                                transition: 'all 0.3s ease',
-                                border: '1px solid rgba(122, 78, 165, 0.05)',
+                                overflow: 'hidden',
+                                boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
+                                border: '1px solid #f0e6fc',
+                                transition: 'transform 0.3s ease, box-shadow 0.3s ease',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                maxWidth: '400px',
-                                width: '100%',
-                                margin: '0 auto'
+                                cursor: 'pointer',
+                                height: '100%'
                               }}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = 'translateY(-6px)';
@@ -7481,533 +7624,390 @@ export default function App() {
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.06)';
+                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
                               }}
                             >
-                              {/* Inner image container */}
-                              <div className="nobaraa-category-image-container" style={{
-                                width: '100%',
-                                height: '480px',
-                                borderRadius: '16px',
-                                overflow: 'hidden',
-                                position: 'relative'
-                              }}>
-                                <img 
-                                  src={coverImg} 
-                                  alt={c.name}
-                                  style={{ 
-                                    width: '100%', 
-                                    height: '100%', 
-                                    objectFit: 'cover',
-                                    transition: 'transform 0.5s ease'
-                                  }}
-                                />
-                                
-                                {/* White Circle Overlapping Icon Button */}
-                                <div style={{
-                                  position: 'absolute',
-                                  bottom: '0',
-                                  left: '50%',
-                                  transform: 'translate(-50%, 50%)',
-                                  width: '44px',
-                                  height: '44px',
-                                  borderRadius: '50%',
-                                  background: '#ffffff',
-                                  boxShadow: '0 4px 10px rgba(122, 78, 165, 0.15)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  zIndex: 5
-                                }}>
-                                  {getCategoryIcon(c.name)}
-                                </div>
-                              </div>
-
-                              {/* Label and Link details below the overlap */}
-                              <div style={{
-                                paddingTop: '28px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}>
-                                <span style={{ 
-                                  fontFamily: "'Playfair Display', serif", 
-                                  fontWeight: 700, 
-                                  fontSize: '1.05rem', 
-                                  color: '#2b0b57',
-                                  textAlign: 'center',
-                                  display: 'block'
-                                }}>
-                                  {c.name}
-                                </span>
-                                <span style={{ 
-                                  fontFamily: "'Jost', sans-serif", 
-                                  fontWeight: 800, 
-                                  fontSize: '0.72rem', 
-                                  color: '#7a4ea5', 
-                                  letterSpacing: '1px', 
-                                  marginTop: '8px', 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center', 
-                                  gap: '4px', 
-                                  textTransform: 'uppercase' 
-                                }}>
-                                  Shop Now <ChevronRight size={12} />
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Product list grid */}
-                  <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', marginBottom: '20px', color: '#222222' }}>The Saree & Ethnic Collection</h3>
-                  <div className="product-grid animate-fade-in">
-                    {loadingProducts ? (
-                      Array.from({ length: 8 }).map((_, idx) => (
-                        <div key={`skeleton-${idx}`} className="product-card" style={{
-                          background: '#ffffff',
-                          borderRadius: '20px',
-                          overflow: 'hidden',
-                          boxShadow: '0 8px 24px rgba(122, 78, 165, 0.05)',
-                          border: '1px solid #f0e6fc',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          height: '620px',
-                          position: 'relative'
-                        }}>
-                          {/* Image Placeholder */}
-                          <div className="shim-bar" style={{ height: '400px', background: '#f6efff', position: 'relative' }}></div>
-                          {/* Details Placeholder */}
-                          <div style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            {/* Category tag */}
-                            <div className="shim-bar" style={{ width: '35%', height: '12px', borderRadius: '4px' }}></div>
-                            {/* Title */}
-                            <div className="shim-bar" style={{ width: '85%', height: '22px', borderRadius: '6px' }}></div>
-                            {/* Rating */}
-                            <div className="shim-bar" style={{ width: '25%', height: '16px', borderRadius: '12px' }}></div>
-                            {/* Description lines */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', margin: '8px 0' }}>
-                              <div className="shim-bar" style={{ width: '100%', height: '12px', borderRadius: '4px' }}></div>
-                              <div className="shim-bar" style={{ width: '90%', height: '12px', borderRadius: '4px' }}></div>
-                            </div>
-                            {/* Bottom row */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                              <div className="shim-bar" style={{ width: '45%', height: '24px', borderRadius: '6px' }}></div>
-                              <div className="shim-bar" style={{ width: '100px', height: '36px', borderRadius: '20px' }}></div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : products.length > 0 ? (
-                      products.map((p, idx) => (
-                        <div key={p.id} className="scroll-reveal" style={{ transitionDelay: `${(idx % 4) * 0.12}s` }}>
-                          <div className="product-card" onClick={() => handleProductSelection(p.id)}
-                          style={{ 
-                            background: '#ffffff', 
-                            borderRadius: '20px', 
-                            overflow: 'hidden', 
-                            boxShadow: '0 8px 24px rgba(122, 78, 165, 0.08)',
-                            border: '1px solid #f0e6fc',
-                            transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            cursor: 'pointer',
-                            height: '100%'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-6px)';
-                            e.currentTarget.style.boxShadow = '0 15px 35px rgba(122, 78, 165, 0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 8px 24px rgba(122, 78, 165, 0.08)';
-                          }}
-                          >
-                            <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
-                              <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
-                              {p.images[1] && (
-                                <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
-                              )}
-                              {p.original_price > p.price && (
-                                <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
-                                  {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
-                                </div>
-                              )}
-                              <button 
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleAddToWishlist(p.id);
-                                }} 
-                                style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                              >
-                                <Heart size={18} />
-                              </button>
-                            </div>
-                            
-                            <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                              <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
-                              <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
-                              
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                                <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                  {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
-                                </span>
-                                <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
-                              </div>
-
-                              <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
-                              
-                              <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
-                                <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
-                                {p.original_price > p.price && (
-                                  <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                              <div className={`product-image-container ${p.images[1] ? 'has-secondary' : ''}`} style={{ position: 'relative', height: '420px', overflow: 'hidden' }}>
+                                <img className="product-img primary-image" src={p.images[0] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'opacity 0.6s ease, transform 0.6s ease' }} />
+                                {p.images[1] && (
+                                  <img className="product-img secondary-image" src={p.images[1]} alt="" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0, transition: 'opacity 0.6s ease, transform 0.6s ease', pointerEvents: 'none' }} />
                                 )}
+                                {p.original_price > p.price && (
+                                  <div className="product-discount-tag" style={{ position: 'absolute', top: '16px', left: '16px', background: 'linear-gradient(135deg, #e84e7e 0%, #c12b5b 100%)', color: 'white', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, letterSpacing: '1px', boxShadow: '0 4px 10px rgba(232, 78, 126, 0.3)', zIndex: 2 }}>
+                                    {Math.round(((p.original_price - p.price) / p.original_price) * 100)}% OFF
+                                  </div>
+                                )}
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleAddToWishlist(p.id);
+                                  }}
+                                  style={{ position: 'absolute', top: '16px', right: '16px', background: '#ffffff', border: 'none', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e84e7e', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', cursor: 'pointer', transition: 'transform 0.2s ease', zIndex: 2 }}
+                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                  <Heart size={18} />
+                                </button>
                               </div>
-                              
-                              <button 
-                                onClick={e => {
-                                  e.stopPropagation();
-                                  handleAddToCart(p.id);
-                                }} 
-                                style={{ 
-                                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
-                                  border: 'none',
-                                  borderRadius: '30px',
-                                  padding: '12px',
-                                  justifyContent: 'center', 
-                                  width: '100%',
-                                  fontFamily: "'Jost', sans-serif",
-                                  fontWeight: 700,
-                                  letterSpacing: '1px',
-                                  boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
-                                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  color: 'white',
-                                  cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
-                                  opacity: p.stock > 0 ? 1 : 0.6
-                                }}
-                                onMouseEnter={e => {
-                                  if(p.stock > 0) {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
-                                  }
-                                }}
-                                onMouseLeave={e => {
-                                  if(p.stock > 0) {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
-                                  }
-                                }}
-                                disabled={p.stock <= 0}
-                              >
-                                <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
-                              </button>
+
+                              <div className="product-info" style={{ padding: '24px', flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontFamily: "'Jost', sans-serif", fontSize: '0.75rem', color: '#7a4ea5', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '1px', marginBottom: '8px' }}>{p.category_name}</span>
+                                <h4 className="product-name" style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 700, color: '#2b0b57', marginBottom: '8px', lineHeight: 1.3 }}>{p.name}</h4>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
+                                  <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
+                                    {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                  </span>
+                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                </div>
+
+                                <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
+
+                                <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '20px' }}>
+                                  <span className="current-price" style={{ fontFamily: "'Jost', sans-serif", color: '#2b0b57', fontSize: '1.4rem', fontWeight: 800 }}>₹{p.price.toFixed(2)}</span>
+                                  {p.original_price > p.price && (
+                                    <span className="original-price" style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: '#999999' }}>₹{p.original_price.toFixed(2)}</span>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    handleAddToCart(p.id);
+                                  }}
+                                  style={{
+                                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                                    border: 'none',
+                                    borderRadius: '30px',
+                                    padding: '12px',
+                                    justifyContent: 'center',
+                                    width: '100%',
+                                    fontFamily: "'Jost', sans-serif",
+                                    fontWeight: 700,
+                                    letterSpacing: '1px',
+                                    boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: 'white',
+                                    cursor: p.stock > 0 ? 'pointer' : 'not-allowed',
+                                    opacity: p.stock > 0 ? 1 : 0.6
+                                  }}
+                                  onMouseEnter={e => {
+                                    if (p.stock > 0) {
+                                      e.currentTarget.style.transform = 'translateY(-2px)';
+                                      e.currentTarget.style.boxShadow = '0 8px 20px rgba(122, 78, 165, 0.3)';
+                                    }
+                                  }}
+                                  onMouseLeave={e => {
+                                    if (p.stock > 0) {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(122, 78, 165, 0.25)';
+                                    }
+                                  }}
+                                  disabled={p.stock <= 0}
+                                >
+                                  <ShoppingCart size={16} /> {p.stock > 0 ? "ADD TO CART" : "OUT OF STOCK"}
+                                </button>
+                              </div>
                             </div>
                           </div>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
+                          <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
+                          <p>No products match your current filters. Adjust search query or range.</p>
                         </div>
-                      ))
-                    ) : (
-                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '4px' }}>
-                        <AlertCircle size={48} style={{ margin: '0 auto 12px', color: 'var(--accent-primary)' }} />
-                        <p>No products match your current filters. Adjust search query or range.</p>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
+                      )}
+                    </div>
+                  </>
+                )}
 
-              {/* Flipkart-style Hero Banner Carousel */}
-              {opacBanners && opacBanners.length > 0 && (
-                <div className="glass-panel animate-fade-in" style={{ height: '280px', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginTop: '40px', marginBottom: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                  <img 
-                    src={opacBanners[currentSlide]?.image} 
-                    alt="" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)', cursor: 'pointer' }}
-                    onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }}
+                {/* Flipkart-style Hero Banner Carousel */}
+                {opacBanners && opacBanners.length > 0 && (
+                  <div className="glass-panel animate-fade-in" style={{ height: '280px', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginTop: '40px', marginBottom: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                    <img
+                      src={opacBanners[currentSlide]?.image}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)', cursor: 'pointer' }}
+                      onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }}
+                    />
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px', color: '#ffffff' }}>
+                      <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, marginBottom: '12px' }}>BOUTIQUE SPECIALS</span>
+                      <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.title}</h2>
+                      <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem', maxWidth: '500px', marginBottom: '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.subtitle}</p>
+                      <button className="btn-primary" onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }} style={{ width: 'fit-content', padding: '10px 24px' }}>
+                        {opacBanners[currentSlide]?.actionText} <ChevronRight size={18} />
+                      </button>
+                    </div>
+
+                    {/* Slider Dots */}
+                    <div style={{ position: 'absolute', bottom: '16px', right: '24px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                      {opacBanners.map((_, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setCurrentSlide(idx)}
+                          style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSlide === idx ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', transition: 'background 0.3s' }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+
+
+          {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
+          {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} />}
+
+          {/* PREMIUM DEEP LUXURY NOBARAA FOOTER */}
+          <footer style={{ background: '#130525', padding: '80px 80px 40px', borderTop: 'none', fontFamily: "'Jost', sans-serif", color: '#e0d1f5', position: 'relative', marginTop: '60px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1fr', gap: '40px', marginBottom: '60px', flexWrap: 'wrap' }}>
+
+              {/* COLUMN 1: LET'S GET IN TOUCH */}
+              <div>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.2rem', fontWeight: '400', marginBottom: '16px', color: '#ffffff' }}>Stay Connected</h3>
+                <p style={{ color: '#bba1d8', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6', maxWidth: '300px' }}>
+                  Join the Nobaraa family to receive exclusive luxury offers, early access to new collections, and 10% off your first ethnic wear order.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '300px' }}>
+                  <input
+                    type="email"
+                    placeholder="Enter your email address"
+                    style={{ width: '100%', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', borderRadius: '30px', color: '#ffffff', fontSize: '0.85rem', fontFamily: "'Jost', sans-serif", outline: 'none' }}
                   />
-                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px', color: '#ffffff' }}>
-                    <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, marginBottom: '12px' }}>BOUTIQUE SPECIALS</span>
-                    <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.title}</h2>
-                    <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem', maxWidth: '500px', marginBottom: '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.subtitle}</p>
-                    <button className="btn-primary" onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }} style={{ width: 'fit-content', padding: '10px 24px' }}>
-                      {opacBanners[currentSlide]?.actionText} <ChevronRight size={18} />
-                    </button>
-                  </div>
-                  
-                  {/* Slider Dots */}
-                  <div style={{ position: 'absolute', bottom: '16px', right: '24px', display: 'flex', gap: '8px', zIndex: 10 }}>
-                    {opacBanners.map((_, idx) => (
-                      <div 
-                        key={idx} 
-                        onClick={() => setCurrentSlide(idx)}
-                        style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSlide === idx ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', transition: 'background 0.3s' }}
-                      />
-                    ))}
-                  </div>
+                  <button
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', padding: '14px 20px', border: 'none', borderRadius: '30px', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)', transition: 'transform 0.2s' }}
+                    onClick={() => alert("Thank you for subscribing to our boutique newsletter! Your 10% coupon code is: NOBARAA10")}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    Subscribe now
+                  </button>
                 </div>
-              )}
-            </>
-          )}
-        </main>
-
-
-        {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
-        {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} />}
-
-        {/* PREMIUM DEEP LUXURY NOBARAA FOOTER */}
-        <footer style={{ background: '#130525', padding: '80px 80px 40px', borderTop: 'none', fontFamily: "'Jost', sans-serif", color: '#e0d1f5', position: 'relative', marginTop: '60px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr 1fr', gap: '40px', marginBottom: '60px', flexWrap: 'wrap' }}>
-            
-            {/* COLUMN 1: LET'S GET IN TOUCH */}
-            <div>
-              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.2rem', fontWeight: '400', marginBottom: '16px', color: '#ffffff' }}>Stay Connected</h3>
-              <p style={{ color: '#bba1d8', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6', maxWidth: '300px' }}>
-                Join the Nobaraa family to receive exclusive luxury offers, early access to new collections, and 10% off your first ethnic wear order.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '300px' }}>
-                <input 
-                  type="email" 
-                  placeholder="Enter your email address" 
-                  style={{ width: '100%', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', borderRadius: '30px', color: '#ffffff', fontSize: '0.85rem', fontFamily: "'Jost', sans-serif", outline: 'none' }} 
-                />
-                <button 
-                  style={{ width: '100%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', padding: '14px 20px', border: 'none', borderRadius: '30px', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)', transition: 'transform 0.2s' }}
-                  onClick={() => alert("Thank you for subscribing to our boutique newsletter! Your 10% coupon code is: NOBARAA10")}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                >
-                  Subscribe now
-                </button>
               </div>
+
+              {/* COLUMN 2: QUICK LINK */}
+              <div>
+                <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Quick Links</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {['Return and Refund Policy', 'Privacy Policy', 'Shipping Policy', 'Terms of Service', 'Contact'].map(link => (
+                    <a
+                      key={link}
+                      href="#"
+                      onClick={e => {
+                        e.preventDefault();
+                        if (link === 'Return and Refund Policy') {
+                          setShowPolicyModal(true);
+                        } else if (link === 'Privacy Policy') {
+                          setShowPrivacyModal(true);
+                        } else if (link === 'Shipping Policy') {
+                          setShowShippingModal(true);
+                        } else if (link === 'Terms of Service') {
+                          setShowTermsModal(true);
+                        } else if (link === 'Contact') {
+                          setShowContactModal(true);
+                        }
+                      }}
+                      style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
+                    >
+                      {link}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* COLUMN 3: COMPANY */}
+              <div>
+                <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Company</h5>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {['Home', 'Shop Collections', 'Store Locator', 'About Nobaraa'].map(link => (
+                    <a
+                      key={link}
+                      href="#"
+                      onClick={e => {
+                        e.preventDefault();
+                        if (link === 'About Nobaraa') {
+                          setShowAboutModal(true);
+                        }
+                      }}
+                      style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
+                      onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
+                    >
+                      {link}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              {/* COLUMN 4: OUR STORE & SOCIALS */}
+              <div>
+                <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Experience Nobaraa</h5>
+
+                {/* Circular Social Buttons */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
+                  {[
+                    { name: 'pinterest', icon: 'P' },
+                    { name: 'facebook', icon: 'f' },
+                    { name: 'instagram', icon: '📸' },
+                    { name: 'twitter', icon: '𝕏' },
+                    { name: 'youtube', icon: '▶' }
+                  ].map(soc => (
+                    <a
+                      key={soc.name}
+                      href="#"
+                      onClick={e => e.preventDefault()}
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', textDecoration: 'none', fontWeight: 'bold', transition: 'all 0.3s ease', border: '1px solid rgba(255,255,255,0.1)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#e84e7e'; e.currentTarget.style.borderColor = '#e84e7e'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {soc.icon}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
             </div>
 
-            {/* COLUMN 2: QUICK LINK */}
-            <div>
-              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Quick Links</h5>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {['Return and Refund Policy', 'Privacy Policy', 'Shipping Policy', 'Terms of Service', 'Contact'].map(link => (
-                  <a 
-                    key={link} 
-                    href="#" 
-                    onClick={e => {
-                      e.preventDefault();
-                      if (link === 'Return and Refund Policy') {
-                        setShowPolicyModal(true);
-                      } else if (link === 'Privacy Policy') {
-                        setShowPrivacyModal(true);
-                      } else if (link === 'Shipping Policy') {
-                        setShowShippingModal(true);
-                      } else if (link === 'Terms of Service') {
-                        setShowTermsModal(true);
-                      } else if (link === 'Contact') {
-                        setShowContactModal(true);
-                      }
-                    }}
-                    style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
-                    onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
-                  >
-                    {link}
-                  </a>
-                ))}
-              </div>
-            </div>
+            {/* BOTTOM ROW: COPYRIGHT & SCROLL TO TOP */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: '#886d9e', letterSpacing: '1px' }}>© NOBARAA FASHION 2026. ALL RIGHTS RESERVED.</span>
 
-            {/* COLUMN 3: COMPANY */}
-            <div>
-              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Company</h5>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {['Home', 'Shop Collections', 'Store Locator', 'About Nobaraa'].map(link => (
-                  <a 
-                    key={link} 
-                    href="#" 
-                    onClick={e => {
-                      e.preventDefault();
-                      if (link === 'About Nobaraa') {
-                        setShowAboutModal(true);
-                      }
-                    }}
-                    style={{ color: '#bba1d8', fontSize: '0.9rem', textDecoration: 'none', transition: 'color 0.2s' }}
-                    onMouseEnter={e => e.currentTarget.style.color = '#e84e7e'}
-                    onMouseLeave={e => e.currentTarget.style.color = '#bba1d8'}
-                  >
-                    {link}
-                  </a>
-                ))}
-              </div>
+              {/* SCROLL TO TOP BUTTON */}
+              <button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(122, 78, 165, 0.4)' }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                ↑
+              </button>
             </div>
+          </footer>
+        </>
+      )}
 
-            {/* COLUMN 4: OUR STORE & SOCIALS */}
-            <div>
-              <h5 style={{ fontFamily: "'Jost', sans-serif", fontWeight: '700', fontSize: '1rem', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '24px', color: '#ffffff' }}>Experience Nobaraa</h5>
-              
-              {/* Circular Social Buttons */}
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '24px' }}>
-                {[
-                  { name: 'pinterest', icon: 'P' },
-                  { name: 'facebook', icon: 'f' },
-                  { name: 'instagram', icon: '📸' },
-                  { name: 'twitter', icon: '𝕏' },
-                  { name: 'youtube', icon: '▶' }
-                ].map(soc => (
-                  <a 
-                    key={soc.name}
-                    href="#"
-                    onClick={e => e.preventDefault()}
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', textDecoration: 'none', fontWeight: 'bold', transition: 'all 0.3s ease', border: '1px solid rgba(255,255,255,0.1)' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#e84e7e'; e.currentTarget.style.borderColor = '#e84e7e'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                  >
-                    {soc.icon}
-                  </a>
-                ))}
-              </div>
-            </div>
-
+      {/* RENDER VIEW: CUSTOMIZATION PAGE */}
+      {currentView === 'customization' && (
+        <main className="main-content animate-fade-in" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 40px', minHeight: '80vh' }}>
+          {/* Breadcrumb / Back Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
+            <span>/</span>
+            <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Bespoke Customization</span>
           </div>
 
-          {/* BOTTOM ROW: COPYRIGHT & SCROLL TO TOP */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.85rem', color: '#886d9e', letterSpacing: '1px' }}>© NOBARAA FASHION 2026. ALL RIGHTS RESERVED.</span>
-            
-            {/* SCROLL TO TOP BUTTON */}
-            <button 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(122, 78, 165, 0.4)' }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-4px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.5rem', color: '#2b0b57', fontWeight: 700, marginBottom: '12px' }}>Custom Tailoring & Design</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '600px', margin: '0 auto' }}>
+              Select a category and browse our exclusive designs. Pick a product and specify your custom color and tailoring measurements to place a bespoke order.
+            </p>
+          </div>
+
+          {/* Category Tabs */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSelectedCustomCategory("")}
+              style={{
+                background: selectedCustomCategory === "" ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
+                color: selectedCustomCategory === "" ? '#ffffff' : '#222222',
+                border: '1px solid ' + (selectedCustomCategory === "" ? '#7a4ea5' : 'var(--border-subtle)'),
+                padding: '10px 24px',
+                borderRadius: '30px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                boxShadow: selectedCustomCategory === "" ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
+                transition: 'all 0.3s ease'
+              }}
             >
-              ↑
+              All Designs
             </button>
-          </div>
-        </footer>
-      </>
-    )}
-
-        {/* RENDER VIEW: CUSTOMIZATION PAGE */}
-        {currentView === 'customization' && (
-          <main className="main-content animate-fade-in" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 40px', minHeight: '80vh' }}>
-            {/* Breadcrumb / Back Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              <span style={{ cursor: 'pointer', color: '#7a4ea5' }} onClick={() => setCurrentView('opac')}>Home</span>
-              <span>/</span>
-              <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>Bespoke Customization</span>
-            </div>
-
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h1 style={{ fontFamily: 'var(--font-serif)', fontSize: '2.5rem', color: '#2b0b57', fontWeight: 700, marginBottom: '12px' }}>Custom Tailoring & Design</h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-                Select a category and browse our exclusive designs. Pick a product and specify your custom color and tailoring measurements to place a bespoke order.
-              </p>
-            </div>
-
-            {/* Category Tabs */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginBottom: '32px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => setSelectedCustomCategory("")}
+            {(currentShop?.categories || categories).filter(cat => cat.customization_enabled).map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCustomCategory(cat.id)}
                 style={{
-                  background: selectedCustomCategory === "" ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
-                  color: selectedCustomCategory === "" ? '#ffffff' : '#222222',
-                  border: '1px solid ' + (selectedCustomCategory === "" ? '#7a4ea5' : 'var(--border-subtle)'),
+                  background: selectedCustomCategory === cat.id ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
+                  color: selectedCustomCategory === cat.id ? '#ffffff' : '#222222',
+                  border: '1px solid ' + (selectedCustomCategory === cat.id ? '#7a4ea5' : 'var(--border-subtle)'),
                   padding: '10px 24px',
                   borderRadius: '30px',
                   cursor: 'pointer',
                   fontWeight: 600,
                   fontSize: '0.9rem',
-                  boxShadow: selectedCustomCategory === "" ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
+                  boxShadow: selectedCustomCategory === cat.id ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
                   transition: 'all 0.3s ease'
                 }}
               >
-                All Designs
+                {cat.name}
               </button>
-              {(currentShop?.categories || categories).filter(cat => cat.customization_enabled).map(cat => (
-                <button 
-                  key={cat.id}
-                  onClick={() => setSelectedCustomCategory(cat.id)}
-                  style={{
-                    background: selectedCustomCategory === cat.id ? 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)' : '#ffffff',
-                    color: selectedCustomCategory === cat.id ? '#ffffff' : '#222222',
-                    border: '1px solid ' + (selectedCustomCategory === cat.id ? '#7a4ea5' : 'var(--border-subtle)'),
-                    padding: '10px 24px',
-                    borderRadius: '30px',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    boxShadow: selectedCustomCategory === cat.id ? '0 4px 15px rgba(122, 78, 165, 0.2)' : 'none',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {cat.name}
-                </button>
-              ))}
-            </div>
+            ))}
+          </div>
 
-            {/* Product Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
-              {products.filter(p => p.customization_enabled).length > 0 ? (
-                products
-                  .filter(p => p.customization_enabled)
-                  .filter(p => selectedCustomCategory === "" ? true : p.category_id === selectedCustomCategory)
-                  .map(p => (
-                    <div 
-                      key={p.id} 
-                      className="glass-panel"
-                      onClick={() => {
-                        if (role === 'guest') {
-                          setLoginRoleTab("user");
-                          setShowLoginModal(true);
-                          addToast("Authentication Required", "Please login to place a customization order.", "info");
-                        } else {
-                          setCustomizingProduct(p);
-                          const palette = currentShop?.color_palette || [];
-                          setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
-                          setCustomSizingNotes("");
-                          setCustomQuantity(currentShop?.customization_min_quantity || 1);
-                        }
-                      }}
-                      style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column', background: '#ffffff', transition: 'all 0.3s ease' }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-6px)';
-                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(122, 78, 165, 0.12)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '12px', background: '#fcfaff' }}>
-                        <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      <div style={{ padding: '0 4px 8px' }}>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>{p.category_name}</div>
-                        <h3 style={{ fontSize: '1.15rem', color: 'var(--text-main)', fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '12px', height: '36px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.description}</p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</span>
-                          <span className="badge badge-success" style={{ background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '20px', fontWeight: 600 }}>Customize</span>
-                        </div>
+          {/* Product Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
+            {products.filter(p => p.customization_enabled).length > 0 ? (
+              products
+                .filter(p => p.customization_enabled)
+                .filter(p => selectedCustomCategory === "" ? true : p.category_id === selectedCustomCategory)
+                .map(p => (
+                  <div
+                    key={p.id}
+                    className="glass-panel"
+                    onClick={() => {
+                      if (role === 'guest') {
+                        setLoginRoleTab("user");
+                        setShowLoginModal(true);
+                        addToast("Authentication Required", "Please login to place a customization order.", "info");
+                      } else {
+                        setCustomizingProduct(p);
+                        const palette = currentShop?.color_palette || [];
+                        setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
+                        setCustomSizingNotes("");
+                        setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                      }
+                    }}
+                    style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column', background: '#ffffff', transition: 'all 0.3s ease' }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-6px)';
+                      e.currentTarget.style.boxShadow = '0 12px 30px rgba(122, 78, 165, 0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', overflow: 'hidden', borderRadius: '12px', background: '#fcfaff' }}>
+                      <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ padding: '0 4px 8px' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--accent-primary)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '6px' }}>{p.category_name}</div>
+                      <h3 style={{ fontSize: '1.15rem', color: 'var(--text-main)', fontWeight: 700, fontFamily: 'var(--font-serif)', marginBottom: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '12px', height: '36px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.description}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</span>
+                        <span className="badge badge-success" style={{ background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', fontSize: '0.75rem', padding: '6px 12px', borderRadius: '20px', fontWeight: 600 }}>Customize</span>
                       </div>
                     </div>
+                  </div>
                 ))
-              ) : (
-                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px' }}>
-                  <AlertCircle size={48} style={{ margin: '0 auto 12px', color: '#7a4ea5' }} />
-                  <p>No products are currently enabled for customization by the shop administrator. Please check back later!</p>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)', background: '#ffffff', border: '1px solid var(--border-subtle)', borderRadius: '16px' }}>
+                <AlertCircle size={48} style={{ margin: '0 auto 12px', color: '#7a4ea5' }} />
+                <p>No products are currently enabled for customization by the shop administrator. Please check back later!</p>
+              </div>
+            )}
+          </div>
 
-            {/* Modals moved to root level */}
-          </main>
-        )}
+          {/* Modals moved to root level */}
+        </main>
+      )}
 
 
       {/* RENDER VIEW 2: CUSTOMER / USER VIEW */}
@@ -8033,7 +8033,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              
+
               <span className={`sidebar-link ${activePanel === 'cart' ? 'active' : ''}`} onClick={() => setActivePanel("cart")}>
                 <ShoppingCart size={18} /> My Active Cart ({cart.length})
               </span>
@@ -8055,21 +8055,21 @@ export default function App() {
               <span className={`sidebar-link ${activePanel === 'customizations' ? 'active' : ''}`} onClick={() => setActivePanel("customizations")}>
                 <Sparkles size={18} /> Customization Requests
               </span>
-              
+
               <div style={{ borderTop: '1px solid #eeeeee', marginTop: '16px', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <span className="sidebar-link" onClick={() => setCurrentView("opac")} style={{ padding: '10px 16px' }}>
                   ← Return to Storefront
                 </span>
-                <button 
+                <button
                   onClick={handleLogout}
-                  className="btn-secondary" 
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px 16px', 
-                    fontSize: '0.85rem', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
+                  className="btn-secondary"
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '8px',
                     borderColor: '#ff4d4f',
                     color: '#ff4d4f',
@@ -8084,17 +8084,17 @@ export default function App() {
               </div>
             </aside>
           )}
-          
+
           {(!isMobile || (activePanel && activePanel !== 'menu')) && (
             <main className="main-content">
               {isMobile && activePanel && activePanel !== 'menu' && (
-                <button 
-                  onClick={() => setActivePanel("menu")} 
-                  className="btn-secondary" 
-                  style={{ 
-                    marginBottom: '20px', 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
+                <button
+                  onClick={() => setActivePanel("menu")}
+                  className="btn-secondary"
+                  style={{
+                    marginBottom: '20px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
                     gap: '8px',
                     padding: '8px 16px',
                     fontSize: '0.85rem',
@@ -8106,1114 +8106,1113 @@ export default function App() {
                 </button>
               )}
 
-            {/* Shopping Cart panel */}
-            {activePanel === 'cart' && (
-              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Shopping Cart</h2>
-                
-                {cart.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
-                    
-                    {/* Cart Items list */}
-                    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {cart.map(ci => (
-                        <div 
-                          key={ci.id} 
-                          style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            padding: '20px', 
-                            borderBottom: '1px solid #f0e6fc',
-                            gap: '20px',
-                            flexWrap: 'wrap',
-                            transition: 'all 0.2s',
-                            background: '#ffffff',
-                            borderRadius: '16px',
-                            boxShadow: '0 4px 12px rgba(122, 78, 165, 0.03)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '240px' }}>
-                            <div style={{ 
-                              width: '74px', 
-                              height: '74px', 
-                              borderRadius: '12px', 
-                              overflow: 'hidden', 
-                              background: '#fcfbfe', 
-                              border: '1px solid #f0e6fc',
+              {/* Shopping Cart panel */}
+              {activePanel === 'cart' && (
+                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Shopping Cart</h2>
+
+                  {cart.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px', alignItems: 'start' }}>
+
+                      {/* Cart Items list */}
+                      <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {cart.map(ci => (
+                          <div
+                            key={ci.id}
+                            style={{
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0
-                            }}>
-                              {ci.product.images && ci.product.images.length > 0 ? (
-                                <img src={ci.product.images[0]} alt={ci.product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                <ShoppingBag size={24} style={{ color: '#d0bdf4' }} />
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <h4 style={{ 
-                                fontWeight: 700, 
-                                color: '#2b0b57', 
-                                margin: 0,
-                                fontSize: '1.05rem',
-                                fontFamily: "'Jost', sans-serif"
-                              }}>{ci.product.name}</h4>
-                              <span style={{ 
-                                fontSize: '0.75rem', 
-                                color: '#7a4ea5',
-                                background: '#f5edff',
-                                padding: '3px 10px',
+                              justifyContent: 'space-between',
+                              padding: '20px',
+                              borderBottom: '1px solid #f0e6fc',
+                              gap: '20px',
+                              flexWrap: 'wrap',
+                              transition: 'all 0.2s',
+                              background: '#ffffff',
+                              borderRadius: '16px',
+                              boxShadow: '0 4px 12px rgba(122, 78, 165, 0.03)'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '240px' }}>
+                              <div style={{
+                                width: '74px',
+                                height: '74px',
                                 borderRadius: '12px',
-                                width: 'fit-content',
-                                fontWeight: 600
-                              }}>Product ID: #{ci.product.id}</span>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-                            <div style={{ minWidth: '80px', textAlign: 'right' }}>
-                              <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2b0b57' }}>₹{ci.product.price}</span>
-                            </div>
-
-                            {/* MODERN QTY SELECTOR PILL */}
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '12px', 
-                              background: '#f5edff', 
-                              borderRadius: '24px', 
-                              padding: '6px 14px', 
-                              border: '1px solid #e9dbf7'
-                            }}>
-                              <button 
-                                disabled={ci.quantity <= 1}
-                                onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}
-                                style={{ 
-                                  border: 'none', 
-                                  background: 'none', 
-                                  color: ci.quantity <= 1 ? '#cdafe9' : '#7a4ea5', 
-                                  cursor: ci.quantity <= 1 ? 'not-allowed' : 'pointer', 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'center', 
-                                  padding: '4px',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <Minus size={14} strokeWidth={3} />
-                              </button>
-                              <span style={{ 
-                                fontWeight: 700, 
-                                minWidth: '24px', 
-                                textAlign: 'center', 
-                                fontSize: '0.95rem', 
-                                color: '#2b0b57' 
-                              }}>{ci.quantity}</span>
-                              <button 
-                                disabled={ci.quantity >= ci.product.stock}
-                                onClick={() => handleAddToCart(ci.product_id, Math.min(ci.product.stock, ci.quantity + 1), false)}
-                                style={{ 
-                                  border: 'none', 
-                                  background: 'none', 
-                                  color: ci.quantity >= ci.product.stock ? '#cdafe9' : '#7a4ea5', 
-                                  cursor: ci.quantity >= ci.product.stock ? 'not-allowed' : 'pointer', 
-                                  display: 'flex', 
-                                  alignItems: 'center', 
-                                  justifyContent: 'center', 
-                                  padding: '4px',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <Plus size={14} strokeWidth={3} />
-                              </button>
-                            </div>
-
-                            <button 
-                              onClick={() => handleRemoveFromCart(ci.id)} 
-                              style={{ 
-                                background: '#ffeef2', 
-                                border: 'none', 
-                                color: '#e84e7e', 
-                                cursor: 'pointer',
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                background: '#fcfbfe',
+                                border: '1px solid #f0e6fc',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Cart Order Summary */}
-                    <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', height: 'fit-content', position: 'sticky', top: '20px' }}>
-                      <h3 style={{ fontWeight: 700, fontSize: '1.4rem', color: '#2b0b57', fontFamily: 'var(--font-serif)', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>Order Summary</h3>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
-                        <span>Items ({cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
-                        <span style={{ fontWeight: 600 }}>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
-                        <span>Delivery:</span>
-                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Free</span>
-                      </div>
-                      
-                      <div style={{ borderTop: '1px dashed #e0e0e0', margin: '8px 0' }}></div>
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '1.2rem', color: '#222' }}>Order Total:</span>
-                        <span style={{ fontWeight: 800, fontSize: '1.6rem', color: '#2b0b57' }}>
-                          ₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}
-                        </span>
-                      </div>
-                      
-                      <button 
-                        className="btn-primary" 
-                        onClick={() => setCurrentView('checkout')}
-                        style={{ padding: '16px', fontSize: '1.1rem', fontWeight: 700, justifyContent: 'center', marginTop: '16px' }}
-                      >
-                        Proceed to Checkout
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-                    <ShoppingCart size={48} style={{ margin: '0 auto 12px' }} />
-                    <p>Your shopping cart is currently empty. Visit the OPAC catalog page to select items.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Wishlist panel */}
-            {activePanel === 'wishlist' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Wishlist</h2>
-                <div className="product-grid">
-                  {wishlist.length > 0 ? (
-                    wishlist.map(wi => (
-                      <div key={wi.id} className="glass-panel product-card">
-                        <div className="product-image-container">
-                          <img className="product-img" src={wi.product.images[0] || null} alt="" />
-                          <button onClick={() => handleRemoveFromWishlist(wi.id)} className="wishlist-btn-overlay active">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                        <div className="product-info">
-                          <h4 className="product-name">{wi.product.name}</h4>
-                          <span className="current-price">₹{wi.product.price}</span>
-                          <button onClick={() => handleAddToCart(wi.product.id)} className="btn-primary" style={{ marginTop: '12px', justifyContent: 'center' }}>
-                            Move to Cart
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-                      <Heart size={48} style={{ margin: '0 auto 12px' }} />
-                      <p>Your wishlist is currently empty. Tap the heart icons on products to add them here.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Orders list panel */}
-            {activePanel === 'orders' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(154, 132, 200, 0.15)', paddingBottom: '16px', marginBottom: '12px' }}>
-                  <div>
-                    <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 700, fontSize: '2rem', color: '#2b0b57', margin: 0 }}>Order History</h2>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage your purchases, view invoices, and track return requests.</p>
-                  </div>
-                  <div style={{ borderRadius: '12px', padding: '6px 16px', background: 'rgba(154, 132, 200, 0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(154, 132, 200, 0.15)', fontWeight: 600, fontSize: '0.85rem' }}>
-                    {myOrders.length} {myOrders.length === 1 ? 'Order' : 'Orders'}
-                  </div>
-                </div>
-                
-                {myOrders.length > 0 ? (
-                  myOrders.map(o => (
-                    <div key={o.id} className="glass-panel" style={{ 
-                      borderRadius: '16px', 
-                      border: '1px solid rgba(154, 132, 200, 0.15)', 
-                      overflow: 'hidden', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      background: '#ffffff',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
-                      transition: 'all 0.3s ease'
-                    }}>
-                      {/* Card Header Info */}
-                      <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
-                        background: 'linear-gradient(135deg, rgba(245, 237, 255, 0.3) 0%, rgba(255, 255, 255, 0.8) 100%)',
-                        borderBottom: '1px solid #f0e6fc', 
-                        padding: '18px 24px', 
-                        gap: '16px', 
-                        alignItems: 'center' 
-                      }}>
-                        <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Order Reference</span>
-                          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>{getDisplayOrderNumber(o)}</span>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Date Placed</span>
-                          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                            {o.created_at && !isNaN(new Date(o.created_at).getTime()) 
-                              ? new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) 
-                              : 'N/A'}
-                          </span>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Mode</span>
-                          <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: o.payment_method === 'COD' ? '#f59e0b' : '#10b981', display: 'inline-block' }} />
-                            {o.payment_method || 'Online / Card'}
-                          </span>
-                        </div>
-                        <div>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Paid Total</span>
-                          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent-secondary)' }}>₹{Number(o.final_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <span className={`badge ${
-                            o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                          }`} style={{ padding: '6px 12px', borderRadius: '20px', letterSpacing: '0.5px', fontSize: '0.75rem', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
-                            {o.status}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Card Content */}
-                      <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {/* Items */}
-                        <div>
-                          <h6 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px' }}>Items Summary</h6>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {o.items && o.items.map(item => (
-                              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#faf8ff', borderRadius: '10px', border: '1px solid #f3ecfb' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(154, 132, 200, 0.1)', color: 'var(--accent-primary)', overflow: 'hidden', border: '1px solid #f0e6fc' }}>
-                                    {item.product_image ? (
-                                      <img src={item.product_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                      <ShoppingBag size={18} />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', display: 'block' }}>{item.product_name}</span>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price: ₹{Number(item.price).toFixed(2)}</span>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                                  <span style={{ background: 'rgba(154, 132, 200, 0.12)', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 700, padding: '4px 8px', borderRadius: '6px' }}>
-                                    x{item.quantity}
-                                  </span>
-                                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', minWidth: '85px', textAlign: 'right' }}>
-                                    ₹{(item.price * item.quantity).toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Return Filing Clause */}
-                        {o.status === 'Customer Received' && o.return_request_status === 'None' && (() => {
-                          const orderReturnWindow = o.items && o.items.length > 0 
-                            ? Math.max(...o.items.map(item => item.return_window_days ?? 7)) 
-                            : 7;
-                          const deliveryDateVal = o.delivered_at || o.created_at;
-                          const deliveryDate = deliveryDateVal ? new Date(deliveryDateVal) : null;
-                          const hasValidDeliveryDate = deliveryDate && !isNaN(deliveryDate.getTime());
-                          const currentDate = new Date();
-                          const elapsedDays = hasValidDeliveryDate 
-                            ? Math.floor((currentDate - deliveryDate) / (1000 * 60 * 60 * 24))
-                            : 0;
-                          const isExpired = hasValidDeliveryDate ? elapsedDays > orderReturnWindow : true;
-                          const expiryDateStr = hasValidDeliveryDate
-                            ? new Date(deliveryDate.getTime() + orderReturnWindow * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              })
-                            : 'N/A';
-
-                          if (isExpired) {
-                            return (
-                              <div style={{ margin: 0, padding: '14px 20px', background: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <AlertCircle size={18} style={{ color: '#9ca3af' }} />
-                                  <div>
-                                    <h5 style={{ fontWeight: 700, color: '#4b5563', marginBottom: '2px', fontSize: '0.85rem' }}>Return Window Closed</h5>
-                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
-                                      The {orderReturnWindow}-day return policy expired on {expiryDateStr}.
-                                    </p>
-                                  </div>
-                                </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: '20px' }}>Expired</span>
-                              </div>
-                            );
-                          } else {
-                            return (
-                              <div style={{ margin: 0, padding: '16px 20px', background: 'rgba(232, 78, 126, 0.03)', borderRadius: '12px', border: '1px dashed rgba(232, 78, 126, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <RotateCcw size={18} style={{ color: 'var(--accent-danger)' }} />
-                                  <div>
-                                    <h5 style={{ fontWeight: 700, color: '#222222', marginBottom: '2px', fontSize: '0.85rem' }}>Easy Returns Available</h5>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                                      Policy window: <strong>{orderReturnWindow} days</strong>. You have <strong>{Math.max(0, orderReturnWindow - elapsedDays)} days</strong> left to file a return request (valid until {expiryDateStr}).
-                                    </p>
-                                  </div>
-                                </div>
-                                <button 
-                                  onClick={() => setActiveReturnOrder(o)} 
-                                  className="btn-danger" 
-                                  style={{ padding: '8px 16px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px' }}
-                                >
-                                  File Return Request
-                                </button>
-                              </div>
-                            );
-                          }
-                        })()}
-
-                        {/* Active Return Status Details */}
-                        {o.return_request_status !== 'None' && (
-                          <div style={{ 
-                            padding: '16px 20px', 
-                            background: o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.04)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(245, 158, 11, 0.04)', 
-                            borderRadius: '12px', 
-                            fontSize: '0.8rem', 
-                            border: `1px solid ${o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`, 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center', 
-                            flexWrap: 'wrap', 
-                            gap: '12px' 
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              {o.return_request_status === 'Approved' ? (
-                                <ShieldCheck size={18} style={{ color: '#10b981' }} />
-                              ) : (
-                                <AlertCircle size={18} style={{ color: o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }} />
-                              )}
-                              <div>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Return Request Status</span>
-                                <strong style={{ textTransform: 'uppercase', fontSize: '0.85rem', color: o.return_request_status === 'Approved' ? '#10b981' : o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }}>
-                                  {o.return_request_status}
-                                </strong>
-                                {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', marginBottom: 0 }}>Reason: "{o.return_reason}"</p>}
-                              </div>
-                            </div>
-                            {o.return_image_url && (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verification Photo</span>
-                                <img 
-                                  src={o.return_image_url} 
-                                  alt="Verification" 
-                                  style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(0,0,0,0.1)' }}
-                                  onClick={() => setExpandedImage(o.return_image_url)}
-                                  title="Click to expand"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Logistics info */}
-                        {o.tracking_info && (
-                          <div style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '10px', 
-                            padding: '12px 16px', 
-                            background: 'rgba(154, 132, 200, 0.05)', 
-                            borderRadius: '10px', 
-                            border: '1px solid rgba(154, 132, 200, 0.15)',
-                            fontSize: '0.8rem',
-                            color: 'var(--accent-primary)'
-                          }}>
-                            <Truck size={16} />
-                            <span>Logistics Tracking: <strong style={{ fontWeight: 700 }}>{o.tracking_info}</strong></span>
-                          </div>
-                        )}
-
-                        {/* Actions block */}
-                        <div style={{ 
-                          display: 'flex', 
-                          justifyContent: 'flex-end', 
-                          alignItems: 'center', 
-                          borderTop: '1px solid #f0e6fc', 
-                          paddingTop: '16px', 
-                          marginTop: '8px' 
-                        }}>
-                          {o.payment_method === 'COD' && o.status === 'Pending' ? (
-                            <span style={{ fontSize: '0.8rem', color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.2)', fontWeight: 600 }}>
-                              <Clock size={14} /> Invoice pending admin acceptance
-                            </span>
-                          ) : o.payment_method === 'COD' && o.status === 'Rejected' ? (
-                            <span style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)', fontWeight: 600 }}>
-                              <X size={14} /> Order Rejected
-                            </span>
-                          ) : (
-                            <button 
-                              onClick={() => setInvoiceOrder(o)} 
-                              className="btn-secondary" 
-                              style={{ 
-                                padding: '8px 20px', 
-                                fontSize: '0.75rem', 
-                                borderRadius: '6px', 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '6px',
-                                borderColor: 'rgba(154, 132, 200, 0.4)',
-                                color: 'var(--accent-primary)'
-                              }}
-                            >
-                              <FileText size={14} /> View Tax Invoice
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '64px 24px', background: '#fafafa', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                    <ShoppingBag size={48} style={{ margin: '0 auto 16px', color: 'var(--accent-primary)', opacity: 0.6 }} />
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>No Orders Found</h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto' }}>You haven't placed any orders yet. Visit the catalog to explore our latest fashion collections.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Notifications Feed */}
-            {activePanel === 'notifications' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h2>
-                  <button 
-                    onClick={async () => {
-                      const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
-                      if (res.ok) {
-                        addToast("Marked Read", "All notifications cleared.", "info");
-                        loadUserNotifications();
-                      }
-                    }} 
-                    className="btn-secondary" 
-                    style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                  >
-                    Clear Unread Bullets
-                  </button>
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {userNotifications.length > 0 ? (
-                    userNotifications.map(n => (
-                      <div key={n.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', background: n.is_read ? 'var(--bg-card)' : 'rgba(99,102,241,0.06)' }}>
-                        <Bell style={{ color: n.is_read ? 'var(--text-muted)' : 'var(--accent-primary)' }} />
-                        <div>
-                          <h5 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{n.title}</h5>
-                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{n.message}</p>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Your notification center feed is currently clean.</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Help Center panel */}
-            {activePanel === 'help_center' && (
-              <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-                
-                {/* File Ticket Form */}
-                <form onSubmit={handleCreateTicket} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
-                  <h3 style={{ fontWeight: 800 }}>Submit Support Case</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Your help request is dispatched directly to the active shop admins.</p>
-                  
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Related Shop</label>
-                    <select 
-                      value={activeShopId} 
-                      onChange={e => setActiveShopId(e.target.value)}
-                    >
-                      {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Subject Topic</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g., Delay in order delivery" 
-                      value={newTicket.subject}
-                      onChange={e => setNewTicket(prev => ({ ...prev, subject: e.target.value }))}
-                      required 
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Help Message Context</label>
-                    <textarea 
-                      placeholder="Please write details..." 
-                      rows={3} 
-                      value={newTicket.message}
-                      onChange={e => setNewTicket(prev => ({ ...prev, message: e.target.value }))}
-                      required 
-                    />
-                  </div>
-                  
-                  <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
-                    Open Support Ticket <Send size={16} />
-                  </button>
-                </form>
-
-                {/* Submitted Tickets list */}
-                <div>
-                  <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Your Opened Cases</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {userHelpTickets.length > 0 ? (
-                      userHelpTickets.map(t => (
-                        <div key={t.id} className="glass-panel" style={{ padding: '20px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <h4 style={{ fontWeight: 800, fontSize: '1rem' }}>{t.subject}</h4>
-                            <span className={`badge ${t.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>{t.status}</span>
-                          </div>
-                          <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '12px' }}>{t.message}</p>
-                          
-                          {t.reply && (
-                            <div style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--accent-success)', padding: '12px', borderRadius: '0 8px 8px 0', fontSize: '0.8rem' }}>
-                              <strong>Admin reply:</strong> "{t.reply}"
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>You have no open support cases currently.</p>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* Account Settings Panel */}
-            {activePanel === 'settings' && (
-              <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
-                <form onSubmit={handleUpdateProfile} className="glass-panel settings-form-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div>
-                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem', fontFamily: "'Playfair Display', serif", marginBottom: '6px' }}>Account Settings</h2>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Update your personal profile details and security credentials.</p>
-                  </div>
-                  
-                  <div className="settings-grid-2col">
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Full Name</label>
-                      <input 
-                        type="text" 
-                        value={profileForm.name} 
-                        onChange={e => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                        required 
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Username</label>
-                      <input 
-                        type="text" 
-                        value={user?.username || ""} 
-                        disabled 
-                        style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.05)' }} 
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Address</label>
-                    <input 
-                      type="email" 
-                      value={profileForm.email} 
-                      onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
-                      required 
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
-                    <input 
-                      type="text" 
-                      value={profileForm.contact_phone} 
-                      onChange={e => setProfileForm(prev => ({ ...prev, contact_phone: e.target.value }))}
-                    />
-                  </div>
-
-                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57', fontFamily: "'Playfair Display', serif" }}>Saved Shipping Addresses</h3>
-                      <button 
-                        type="button" 
-                        onClick={handleAddAddress}
-                        style={{
-                          background: '#f3e8ff',
-                          border: '1px solid #d8b4fe',
-                          color: '#6b21a8',
-                          padding: '8px 16px',
-                          borderRadius: '6px',
-                          fontSize: '0.85rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s ease-in-out'
-                        }}
-                        onMouseEnter={e => {
-                          e.target.style.background = '#e9d5ff';
-                        }}
-                        onMouseLeave={e => {
-                          e.target.style.background = '#f3e8ff';
-                        }}
-                      >
-                        + Add Address
-                      </button>
-                    </div>
-
-                    {(!profileForm.addresses || profileForm.addresses.length === 0) ? (
-                      <p style={{ fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic', margin: '8px 0 0 0' }}>
-                        No shipping addresses saved yet. Click "+ Add Address" to save one.
-                      </p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
-                        {profileForm.addresses.map((addr, index) => (
-                          <div 
-                            key={addr.id} 
-                            style={{ 
-                              padding: '16px', 
-                              background: '#f8fafc', 
-                              border: '1px solid #e2e8f0', 
-                              borderRadius: '8px',
-                              position: 'relative',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '12px'
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2b0b57' }}>Address #{index + 1}</span>
-                                {addr.is_default && (
-                                  <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Default Address</span>
+                                flexShrink: 0
+                              }}>
+                                {ci.product.images && ci.product.images.length > 0 ? (
+                                  <img src={ci.product.images[0]} alt={ci.product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                  <ShoppingBag size={24} style={{ color: '#d0bdf4' }} />
                                 )}
                               </div>
-                              <button 
-                                type="button" 
-                                onClick={() => handleDeleteAddress(addr.id)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: '#dc2626',
-                                  fontSize: '0.85rem',
-                                  fontWeight: '600',
-                                  cursor: 'pointer',
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                  transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={e => e.target.style.background = 'rgba(220, 38, 38, 0.08)'}
-                                onMouseLeave={e => e.target.style.background = 'none'}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                            
-                            {/* Row 1: Contact Phone & Pin Code */}
-                            <div className="settings-grid-2col" style={{ gap: '12px' }}>
-                              <div>
-                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Contact Phone</label>
-                                <input 
-                                  type="text" 
-                                  value={addr.phone || ""} 
-                                  placeholder="+91..."
-                                  onChange={e => handleAddressFieldChange(addr.id, 'phone', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: '#fff',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#0f172a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.9rem'
-                                  }}
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Pin Code</label>
-                                <input 
-                                  type="text" 
-                                  value={addr.pincode || ""} 
-                                  placeholder="6-digit PIN code"
-                                  onChange={e => handleAddressFieldChange(addr.id, 'pincode', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: '#fff',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#0f172a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.9rem'
-                                  }}
-                                  required
-                                />
-                              </div>
-                            </div>
-
-                            {/* Row 2: Flat, House no., Building, Company, Apartment */}
-                            <div>
-                              <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Flat, House no., Building, Company, Apartment</label>
-                              <input 
-                                type="text" 
-                                value={addr.flat || ""} 
-                                placeholder="e.g. Flat 3B, Sunshine Apartments"
-                                onChange={e => handleAddressFieldChange(addr.id, 'flat', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '10px 12px',
-                                  background: '#fff',
-                                  border: '1px solid #cbd5e1',
-                                  color: '#0f172a',
-                                  borderRadius: '6px',
-                                  fontSize: '0.9rem'
-                                }}
-                                required
-                              />
-                            </div>
-
-                            {/* Row 3: Area, Street, Sector, Village */}
-                            <div>
-                              <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Area, Street, Sector, Village</label>
-                              <input 
-                                type="text" 
-                                value={addr.area || ""} 
-                                placeholder="e.g. MG Road, Sector 4"
-                                onChange={e => handleAddressFieldChange(addr.id, 'area', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '10px 12px',
-                                  background: '#fff',
-                                  border: '1px solid #cbd5e1',
-                                  color: '#0f172a',
-                                  borderRadius: '6px',
-                                  fontSize: '0.9rem'
-                                }}
-                                required
-                              />
-                            </div>
-
-                            {/* Row 4: Landmark (Optional) */}
-                            <div>
-                              <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Landmark (Optional)</label>
-                              <input 
-                                type="text" 
-                                value={addr.landmark || ""} 
-                                placeholder="e.g. Near Apollo Hospital"
-                                onChange={e => handleAddressFieldChange(addr.id, 'landmark', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '10px 12px',
-                                  background: '#fff',
-                                  border: '1px solid #cbd5e1',
-                                  color: '#0f172a',
-                                  borderRadius: '6px',
-                                  fontSize: '0.9rem'
-                                }}
-                              />
-                            </div>
-
-                            {/* Row 5: Town/City & State */}
-                            <div className="settings-grid-2col" style={{ gap: '12px' }}>
-                              <div>
-                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Town/City</label>
-                                <input 
-                                  type="text" 
-                                  value={addr.city || ""} 
-                                  placeholder="e.g. Mumbai"
-                                  onChange={e => handleAddressFieldChange(addr.id, 'city', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: '#fff',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#0f172a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.9rem'
-                                  }}
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>State</label>
-                                <select 
-                                  value={addr.state || ""} 
-                                  onChange={e => handleAddressFieldChange(addr.id, 'state', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: '#fff',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#0f172a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.9rem'
-                                  }}
-                                  required
-                                >
-                                  <option value="">Select State</option>
-                                  {INDIAN_STATES.map(st => (
-                                    <option key={st} value={st}>{st}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-
-                            {/* Row 6: Address Type Buttons */}
-                            <div>
-                              <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Address Type</label>
-                              <div className="address-type-container" style={{ marginTop: '4px' }}>
-                                {['House', 'Apartment', 'Business', 'Other'].map(type => (
-                                  <button
-                                    type="button"
-                                    key={type}
-                                    onClick={() => {
-                                      handleAddressFieldChange(addr.id, 'address_type', type);
-                                      handleAddressFieldChange(addr.id, 'label', type);
-                                    }}
-                                    style={{
-                                      flex: 1,
-                                      padding: '8px 12px',
-                                      borderRadius: '6px',
-                                      border: addr.address_type === type ? '2px solid #7a4ea5' : '1px solid #cbd5e1',
-                                      background: addr.address_type === type ? '#f5eefb' : '#fff',
-                                      color: addr.address_type === type ? '#7a4ea5' : '#475569',
-                                      fontWeight: '600',
-                                      fontSize: '0.85rem',
-                                      cursor: 'pointer',
-                                      transition: 'all 0.2s'
-                                    }}
-                                  >
-                                    {type}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Row 7: Set as default address */}
-                            {!addr.is_default && (
-                              <div style={{ marginTop: '4px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#475569' }}>
-                                  <input 
-                                    type="checkbox"
-                                    checked={addr.is_default || false}
-                                    onChange={e => handleAddressFieldChange(addr.id, 'is_default', e.target.checked)}
-                                  />
-                                  Set as default address
-                                </label>
-                              </div>
-                            )}
-
-                            {/* Row 8: Optional Delivery Instructions */}
-                            <div>
-                              <button
-                                type="button"
-                                onClick={() => handleAddressFieldChange(addr.id, 'deliveryInstructionsExpanded', !addr.deliveryInstructionsExpanded)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <h4 style={{
+                                  fontWeight: 700,
+                                  color: '#2b0b57',
+                                  margin: 0,
+                                  fontSize: '1.05rem',
+                                  fontFamily: "'Jost', sans-serif"
+                                }}>{ci.product.name}</h4>
+                                <span style={{
+                                  fontSize: '0.75rem',
                                   color: '#7a4ea5',
-                                  fontSize: '0.85rem',
-                                  fontWeight: '600',
+                                  background: '#f5edff',
+                                  padding: '3px 10px',
+                                  borderRadius: '12px',
+                                  width: 'fit-content',
+                                  fontWeight: 600
+                                }}>Product ID: #{ci.product.id}</span>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+                              <div style={{ minWidth: '80px', textAlign: 'right' }}>
+                                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#2b0b57' }}>₹{ci.product.price}</span>
+                              </div>
+
+                              {/* MODERN QTY SELECTOR PILL */}
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                background: '#f5edff',
+                                borderRadius: '24px',
+                                padding: '6px 14px',
+                                border: '1px solid #e9dbf7'
+                              }}>
+                                <button
+                                  disabled={ci.quantity <= 1}
+                                  onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}
+                                  style={{
+                                    border: 'none',
+                                    background: 'none',
+                                    color: ci.quantity <= 1 ? '#cdafe9' : '#7a4ea5',
+                                    cursor: ci.quantity <= 1 ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '4px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  <Minus size={14} strokeWidth={3} />
+                                </button>
+                                <span style={{
+                                  fontWeight: 700,
+                                  minWidth: '24px',
+                                  textAlign: 'center',
+                                  fontSize: '0.95rem',
+                                  color: '#2b0b57'
+                                }}>{ci.quantity}</span>
+                                <button
+                                  disabled={ci.quantity >= ci.product.stock}
+                                  onClick={() => handleAddToCart(ci.product_id, Math.min(ci.product.stock, ci.quantity + 1), false)}
+                                  style={{
+                                    border: 'none',
+                                    background: 'none',
+                                    color: ci.quantity >= ci.product.stock ? '#cdafe9' : '#7a4ea5',
+                                    cursor: ci.quantity >= ci.product.stock ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '4px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  <Plus size={14} strokeWidth={3} />
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={() => handleRemoveFromCart(ci.id)}
+                                style={{
+                                  background: '#ffeef2',
+                                  border: 'none',
+                                  color: '#e84e7e',
                                   cursor: 'pointer',
-                                  padding: '4px 0',
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '50%',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px'
+                                  justifyContent: 'center',
+                                  transition: 'all 0.2s'
                                 }}
                               >
-                                {addr.deliveryInstructionsExpanded ? 'Hide Delivery Instructions' : '+ Add Delivery Instructions'}
+                                <Trash2 size={16} />
                               </button>
-                              {addr.deliveryInstructionsExpanded && (
-                                <textarea
-                                  rows={2}
-                                  placeholder="e.g. Leave with security, ring bell, deliver after 4 PM..."
-                                  value={addr.delivery_instructions || ""}
-                                  onChange={e => handleAddressFieldChange(addr.id, 'delivery_instructions', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '10px 12px',
-                                    background: '#fff',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#0f172a',
-                                    borderRadius: '6px',
-                                    fontSize: '0.9rem',
-                                    marginTop: '6px',
-                                    resize: 'vertical'
-                                  }}
-                                />
-                              )}
-                            </div>
-
-                            {/* Hidden full concatenated address preview for development/debugging */}
-                            <div style={{ fontSize: '0.75rem', color: '#94a3b8', borderTop: '1px dashed #e2e8f0', paddingTop: '8px', marginTop: '4px' }}>
-                              <strong>Address Preview:</strong> {addr.address || "(empty)"}
                             </div>
                           </div>
                         ))}
                       </div>
+
+                      {/* Cart Order Summary */}
+                      <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px', height: 'fit-content', position: 'sticky', top: '20px' }}>
+                        <h3 style={{ fontWeight: 700, fontSize: '1.4rem', color: '#2b0b57', fontFamily: 'var(--font-serif)', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>Order Summary</h3>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
+                          <span>Items ({cart.reduce((sum, item) => sum + item.quantity, 0)}):</span>
+                          <span style={{ fontWeight: 600 }}>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '1.05rem' }}>
+                          <span>Delivery:</span>
+                          <span style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>Free</span>
+                        </div>
+
+                        <div style={{ borderTop: '1px dashed #e0e0e0', margin: '8px 0' }}></div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: '1.2rem', color: '#222' }}>Order Total:</span>
+                          <span style={{ fontWeight: 800, fontSize: '1.6rem', color: '#2b0b57' }}>
+                            ₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toFixed(2)}
+                          </span>
+                        </div>
+
+                        <button
+                          className="btn-primary"
+                          onClick={() => setCurrentView('checkout')}
+                          style={{ padding: '16px', fontSize: '1.1rem', fontWeight: 700, justifyContent: 'center', marginTop: '16px' }}
+                        >
+                          Proceed to Checkout
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                      <ShoppingCart size={48} style={{ margin: '0 auto 12px' }} />
+                      <p>Your shopping cart is currently empty. Visit the OPAC catalog page to select items.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Wishlist panel */}
+              {activePanel === 'wishlist' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Your Wishlist</h2>
+                  <div className="product-grid">
+                    {wishlist.length > 0 ? (
+                      wishlist.map(wi => (
+                        <div key={wi.id} className="glass-panel product-card">
+                          <div className="product-image-container">
+                            <img className="product-img" src={wi.product.images[0] || null} alt="" />
+                            <button onClick={() => handleRemoveFromWishlist(wi.id)} className="wishlist-btn-overlay active">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <div className="product-info">
+                            <h4 className="product-name">{wi.product.name}</h4>
+                            <span className="current-price">₹{wi.product.price}</span>
+                            <button onClick={() => handleAddToCart(wi.product.id)} className="btn-primary" style={{ marginTop: '12px', justifyContent: 'center' }}>
+                              Move to Cart
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                        <Heart size={48} style={{ margin: '0 auto 12px' }} />
+                        <p>Your wishlist is currently empty. Tap the heart icons on products to add them here.</p>
+                      </div>
                     )}
                   </div>
+                </div>
+              )}
 
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Change Password (leave empty to keep current)</label>
-                    <input 
-                      type="password" 
-                      placeholder="New Secure Password" 
-                      value={profileForm.password} 
-                      onChange={e => setProfileForm(prev => ({ ...prev, password: e.target.value }))}
-                    />
+              {/* Orders list panel */}
+              {activePanel === 'orders' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid rgba(154, 132, 200, 0.15)', paddingBottom: '16px', marginBottom: '12px' }}>
+                    <div>
+                      <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 700, fontSize: '2rem', color: '#2b0b57', margin: 0 }}>Order History</h2>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>Manage your purchases, view invoices, and track return requests.</p>
+                    </div>
+                    <div style={{ borderRadius: '12px', padding: '6px 16px', background: 'rgba(154, 132, 200, 0.08)', color: 'var(--accent-primary)', border: '1px solid rgba(154, 132, 200, 0.15)', fontWeight: 600, fontSize: '0.85rem' }}>
+                      {myOrders.length} {myOrders.length === 1 ? 'Order' : 'Orders'}
+                    </div>
                   </div>
 
-                  <button type="submit" className="btn-primary" style={{ marginTop: '10px', justifyContent: 'center' }}>
-                    Save Account Settings
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {activePanel === 'customizations' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Bespoke Customizations</h2>
-                
-                <div className="responsive-table-container glass-panel">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Request ID</th>
-                        <th>Product Info</th>
-                        <th>Selected Color</th>
-                        <th>Measurements / Sizing Notes</th>
-                        <th>Quantity</th>
-                        <th>Pricing / Quote</th>
-                        <th>Status</th>
-                        <th>Date Submitted</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {userCustomizations.map(cust => (
-                        <tr key={cust.id}>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{getDisplayCustomizationNumber(cust)}</td>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <img src={cust.product_image || null} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
-                              <span style={{ fontWeight: 600 }}>{cust.product_name}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', background: '#f5edff', fontSize: '0.75rem', fontWeight: 600 }}>
-                              <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: cust.selected_color_hex }} />
-                              {cust.selected_color_name}
+                  {myOrders.length > 0 ? (
+                    myOrders.map(o => (
+                      <div key={o.id} className="glass-panel" style={{
+                        borderRadius: '16px',
+                        border: '1px solid rgba(154, 132, 200, 0.15)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: '#ffffff',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        {/* Card Header Info */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                          background: 'linear-gradient(135deg, rgba(245, 237, 255, 0.3) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                          borderBottom: '1px solid #f0e6fc',
+                          padding: '18px 24px',
+                          gap: '16px',
+                          alignItems: 'center'
+                        }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Order Reference</span>
+                            <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>{getDisplayOrderNumber(o)}</span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Date Placed</span>
+                            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                              {o.created_at && !isNaN(new Date(o.created_at).getTime())
+                                ? new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                                : 'N/A'}
                             </span>
-                          </td>
-                          <td>
-                            <pre style={{ margin: 0, fontSize: '0.8rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{cust.customization_notes}</pre>
-                          </td>
-                          <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                            {cust.quantity || 1}
-                          </td>
-                          <td>
-                            {(!cust.quote_status || cust.quote_status === 'Pending') && (
-                              <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Awaiting Quote</span>
-                            )}
-                            {cust.quote_status === 'Quoted' && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 800, color: '#7a4ea5', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
-                                <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Payment Mode</span>
+                            <span style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: o.payment_method === 'COD' ? '#f59e0b' : '#10b981', display: 'inline-block' }} />
+                              {o.payment_method || 'Online / Card'}
+                            </span>
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Paid Total</span>
+                            <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--accent-secondary)' }}>₹{Number(o.final_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <span className={`badge ${o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                              }`} style={{ padding: '6px 12px', borderRadius: '20px', letterSpacing: '0.5px', fontSize: '0.75rem', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}>
+                              {o.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Content */}
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          {/* Items */}
+                          <div>
+                            <h6 style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px' }}>Items Summary</h6>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {o.items && o.items.map(item => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#faf8ff', borderRadius: '10px', border: '1px solid #f3ecfb' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(154, 132, 200, 0.1)', color: 'var(--accent-primary)', overflow: 'hidden', border: '1px solid #f0e6fc' }}>
+                                      {item.product_image ? (
+                                        <img src={item.product_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      ) : (
+                                        <ShoppingBag size={18} />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-main)', display: 'block' }}>{item.product_name}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Price: ₹{Number(item.price).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                                    <span style={{ background: 'rgba(154, 132, 200, 0.12)', color: 'var(--accent-primary)', fontSize: '0.75rem', fontWeight: 700, padding: '4px 8px', borderRadius: '6px' }}>
+                                      x{item.quantity}
+                                    </span>
+                                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)', minWidth: '85px', textAlign: 'right' }}>
+                                      ₹{(item.price * item.quantity).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Return Filing Clause */}
+                          {o.status === 'Customer Received' && o.return_request_status === 'None' && (() => {
+                            const orderReturnWindow = o.items && o.items.length > 0
+                              ? Math.max(...o.items.map(item => item.return_window_days ?? 7))
+                              : 7;
+                            const deliveryDateVal = o.delivered_at || o.created_at;
+                            const deliveryDate = deliveryDateVal ? new Date(deliveryDateVal) : null;
+                            const hasValidDeliveryDate = deliveryDate && !isNaN(deliveryDate.getTime());
+                            const currentDate = new Date();
+                            const elapsedDays = hasValidDeliveryDate
+                              ? Math.floor((currentDate - deliveryDate) / (1000 * 60 * 60 * 24))
+                              : 0;
+                            const isExpired = hasValidDeliveryDate ? elapsedDays > orderReturnWindow : true;
+                            const expiryDateStr = hasValidDeliveryDate
+                              ? new Date(deliveryDate.getTime() + orderReturnWindow * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                              : 'N/A';
+
+                            if (isExpired) {
+                              return (
+                                <div style={{ margin: 0, padding: '14px 20px', background: '#f9fafb', borderRadius: '12px', border: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <AlertCircle size={18} style={{ color: '#9ca3af' }} />
+                                    <div>
+                                      <h5 style={{ fontWeight: 700, color: '#4b5563', marginBottom: '2px', fontSize: '0.85rem' }}>Return Window Closed</h5>
+                                      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
+                                        The {orderReturnWindow}-day return policy expired on {expiryDateStr}.
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', border: '1px solid #e5e7eb', padding: '6px 12px', borderRadius: '20px' }}>Expired</span>
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div style={{ margin: 0, padding: '16px 20px', background: 'rgba(232, 78, 126, 0.03)', borderRadius: '12px', border: '1px dashed rgba(232, 78, 126, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <RotateCcw size={18} style={{ color: 'var(--accent-danger)' }} />
+                                    <div>
+                                      <h5 style={{ fontWeight: 700, color: '#222222', marginBottom: '2px', fontSize: '0.85rem' }}>Easy Returns Available</h5>
+                                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                                        Policy window: <strong>{orderReturnWindow} days</strong>. You have <strong>{Math.max(0, orderReturnWindow - elapsedDays)} days</strong> left to file a return request (valid until {expiryDateStr}).
+                                      </p>
+                                    </div>
+                                  </div>
                                   <button
-                                    onClick={() => {
-                                      setActiveCustomizationCheckout(cust);
-                                      setCurrentView('checkout');
-                                    }}
-                                    className="btn-primary"
-                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', fontWeight: 600 }}
+                                    onClick={() => setActiveReturnOrder(o)}
+                                    className="btn-danger"
+                                    style={{ padding: '8px 16px', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.5px' }}
                                   >
-                                    Accept
-                                  </button>
-                                  <button
-                                    onClick={() => handleQuoteAction(cust.id, 'reject')}
-                                    className="btn-secondary"
-                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ef4444', color: '#fff', fontWeight: 600 }}
-                                  >
-                                    Reject
+                                    File Return Request
                                   </button>
                                 </div>
-                              </div>
-                            )}
-                            {cust.quote_status === 'Accepted' && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
-                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
-                                <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✓ Accepted</span>
-                              </div>
-                            )}
-                            {cust.quote_status === 'Rejected' && (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.95rem', textDecoration: 'line-through' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
-                                <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, textDecoration: 'line-through' }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
-                                <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✗ Rejected</span>
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <span style={{ 
-                              padding: '4px 8px', 
-                              borderRadius: '4px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: 'bold', 
-                              background: cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.15)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.15)' : 'rgba(251, 191, 36, 0.15)',
-                              color: cust.status === 'Completed' ? '#7a4ea5' : cust.status === 'Rejected' ? '#e84e7e' : '#b45309',
-                              border: '1px solid ' + (cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.3)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.25)' : 'rgba(251, 191, 36, 0.25)')
-                            }}>
-                              {cust.status}
-                            </span>
-                          </td>
-                          <td>{new Date(cust.created_at).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                      {userCustomizations.length === 0 && (
-                        <tr>
-                          <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                              );
+                            }
+                          })()}
 
-          </main>
+                          {/* Active Return Status Details */}
+                          {o.return_request_status !== 'None' && (
+                            <div style={{
+                              padding: '16px 20px',
+                              background: o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.04)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(245, 158, 11, 0.04)',
+                              borderRadius: '12px',
+                              fontSize: '0.8rem',
+                              border: `1px solid ${o.return_request_status === 'Approved' ? 'rgba(16, 185, 129, 0.2)' : o.return_request_status === 'Rejected' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: '12px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {o.return_request_status === 'Approved' ? (
+                                  <ShieldCheck size={18} style={{ color: '#10b981' }} />
+                                ) : (
+                                  <AlertCircle size={18} style={{ color: o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }} />
+                                )}
+                                <div>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Return Request Status</span>
+                                  <strong style={{ textTransform: 'uppercase', fontSize: '0.85rem', color: o.return_request_status === 'Approved' ? '#10b981' : o.return_request_status === 'Rejected' ? 'var(--accent-danger)' : '#f59e0b' }}>
+                                    {o.return_request_status}
+                                  </strong>
+                                  {o.return_reason && <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', marginBottom: 0 }}>Reason: "{o.return_reason}"</p>}
+                                </div>
+                              </div>
+                              {o.return_image_url && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Verification Photo</span>
+                                  <img
+                                    src={o.return_image_url}
+                                    alt="Verification"
+                                    style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid rgba(0,0,0,0.1)' }}
+                                    onClick={() => setExpandedImage(o.return_image_url)}
+                                    title="Click to expand"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Logistics info */}
+                          {o.tracking_info && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '12px 16px',
+                              background: 'rgba(154, 132, 200, 0.05)',
+                              borderRadius: '10px',
+                              border: '1px solid rgba(154, 132, 200, 0.15)',
+                              fontSize: '0.8rem',
+                              color: 'var(--accent-primary)'
+                            }}>
+                              <Truck size={16} />
+                              <span>Logistics Tracking: <strong style={{ fontWeight: 700 }}>{o.tracking_info}</strong></span>
+                            </div>
+                          )}
+
+                          {/* Actions block */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            alignItems: 'center',
+                            borderTop: '1px solid #f0e6fc',
+                            paddingTop: '16px',
+                            marginTop: '8px'
+                          }}>
+                            {o.payment_method === 'COD' && o.status === 'Pending' ? (
+                              <span style={{ fontSize: '0.8rem', color: '#f59e0b', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(245, 158, 11, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.2)', fontWeight: 600 }}>
+                                <Clock size={14} /> Invoice pending admin acceptance
+                              </span>
+                            ) : o.payment_method === 'COD' && o.status === 'Rejected' ? (
+                              <span style={{ fontSize: '0.8rem', color: 'var(--accent-danger)', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(239, 68, 68, 0.05)', padding: '6px 12px', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)', fontWeight: 600 }}>
+                                <X size={14} /> Order Rejected
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => setInvoiceOrder(o)}
+                                className="btn-secondary"
+                                style={{
+                                  padding: '8px 20px',
+                                  fontSize: '0.75rem',
+                                  borderRadius: '6px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  borderColor: 'rgba(154, 132, 200, 0.4)',
+                                  color: 'var(--accent-primary)'
+                                }}
+                              >
+                                <FileText size={14} /> View Tax Invoice
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '64px 24px', background: '#fafafa', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
+                      <ShoppingBag size={48} style={{ margin: '0 auto 16px', color: 'var(--accent-primary)', opacity: 0.6 }} />
+                      <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>No Orders Found</h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', margin: '0 auto' }}>You haven't placed any orders yet. Visit the catalog to explore our latest fashion collections.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notifications Feed */}
+              {activePanel === 'notifications' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h2>
+                    <button
+                      onClick={async () => {
+                        const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
+                        if (res.ok) {
+                          addToast("Marked Read", "All notifications cleared.", "info");
+                          loadUserNotifications();
+                        }
+                      }}
+                      className="btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                    >
+                      Clear Unread Bullets
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {userNotifications.length > 0 ? (
+                      userNotifications.map(n => (
+                        <div key={n.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', background: n.is_read ? 'var(--bg-card)' : 'rgba(99,102,241,0.06)' }}>
+                          <Bell style={{ color: n.is_read ? 'var(--text-muted)' : 'var(--accent-primary)' }} />
+                          <div>
+                            <h5 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{n.title}</h5>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{n.message}</p>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Your notification center feed is currently clean.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Help Center panel */}
+              {activePanel === 'help_center' && (
+                <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
+
+                  {/* File Ticket Form */}
+                  <form onSubmit={handleCreateTicket} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
+                    <h3 style={{ fontWeight: 800 }}>Submit Support Case</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Your help request is dispatched directly to the active shop admins.</p>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Related Shop</label>
+                      <select
+                        value={activeShopId}
+                        onChange={e => setActiveShopId(e.target.value)}
+                      >
+                        {shops.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Subject Topic</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Delay in order delivery"
+                        value={newTicket.subject}
+                        onChange={e => setNewTicket(prev => ({ ...prev, subject: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Help Message Context</label>
+                      <textarea
+                        placeholder="Please write details..."
+                        rows={3}
+                        value={newTicket.message}
+                        onChange={e => setNewTicket(prev => ({ ...prev, message: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
+                      Open Support Ticket <Send size={16} />
+                    </button>
+                  </form>
+
+                  {/* Submitted Tickets list */}
+                  <div>
+                    <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Your Opened Cases</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {userHelpTickets.length > 0 ? (
+                        userHelpTickets.map(t => (
+                          <div key={t.id} className="glass-panel" style={{ padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <h4 style={{ fontWeight: 800, fontSize: '1rem' }}>{t.subject}</h4>
+                              <span className={`badge ${t.status === 'Resolved' ? 'badge-success' : 'badge-warning'}`}>{t.status}</span>
+                            </div>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-main)', marginBottom: '12px' }}>{t.message}</p>
+
+                            {t.reply && (
+                              <div style={{ background: 'rgba(255,255,255,0.03)', borderLeft: '3px solid var(--accent-success)', padding: '12px', borderRadius: '0 8px 8px 0', fontSize: '0.8rem' }}>
+                                <strong>Admin reply:</strong> "{t.reply}"
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>You have no open support cases currently.</p>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* Account Settings Panel */}
+              {activePanel === 'settings' && (
+                <div className="animate-fade-in" style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
+                  <form onSubmit={handleUpdateProfile} className="glass-panel settings-form-panel" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <h2 style={{ fontWeight: 800, fontSize: '1.8rem', fontFamily: "'Playfair Display', serif", marginBottom: '6px' }}>Account Settings</h2>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Update your personal profile details and security credentials.</p>
+                    </div>
+
+                    <div className="settings-grid-2col">
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Full Name</label>
+                        <input
+                          type="text"
+                          value={profileForm.name}
+                          onChange={e => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Username</label>
+                        <input
+                          type="text"
+                          value={user?.username || ""}
+                          disabled
+                          style={{ opacity: 0.6, cursor: 'not-allowed', background: 'rgba(255,255,255,0.05)' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Address</label>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={e => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
+                      <input
+                        type="text"
+                        value={profileForm.contact_phone}
+                        onChange={e => setProfileForm(prev => ({ ...prev, contact_phone: e.target.value }))}
+                      />
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57', fontFamily: "'Playfair Display', serif" }}>Saved Shipping Addresses</h3>
+                        <button
+                          type="button"
+                          onClick={handleAddAddress}
+                          style={{
+                            background: '#f3e8ff',
+                            border: '1px solid #d8b4fe',
+                            color: '#6b21a8',
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease-in-out'
+                          }}
+                          onMouseEnter={e => {
+                            e.target.style.background = '#e9d5ff';
+                          }}
+                          onMouseLeave={e => {
+                            e.target.style.background = '#f3e8ff';
+                          }}
+                        >
+                          + Add Address
+                        </button>
+                      </div>
+
+                      {(!profileForm.addresses || profileForm.addresses.length === 0) ? (
+                        <p style={{ fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic', margin: '8px 0 0 0' }}>
+                          No shipping addresses saved yet. Click "+ Add Address" to save one.
+                        </p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                          {profileForm.addresses.map((addr, index) => (
+                            <div
+                              key={addr.id}
+                              style={{
+                                padding: '16px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                position: 'relative',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2b0b57' }}>Address #{index + 1}</span>
+                                  {addr.is_default && (
+                                    <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>Default Address</span>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAddress(addr.id)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#dc2626',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={e => e.target.style.background = 'rgba(220, 38, 38, 0.08)'}
+                                  onMouseLeave={e => e.target.style.background = 'none'}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+
+                              {/* Row 1: Contact Phone & Pin Code */}
+                              <div className="settings-grid-2col" style={{ gap: '12px' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Contact Phone</label>
+                                  <input
+                                    type="text"
+                                    value={addr.phone || ""}
+                                    placeholder="+91..."
+                                    onChange={e => handleAddressFieldChange(addr.id, 'phone', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px',
+                                      background: '#fff',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      borderRadius: '6px',
+                                      fontSize: '0.9rem'
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Pin Code</label>
+                                  <input
+                                    type="text"
+                                    value={addr.pincode || ""}
+                                    placeholder="6-digit PIN code"
+                                    onChange={e => handleAddressFieldChange(addr.id, 'pincode', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px',
+                                      background: '#fff',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      borderRadius: '6px',
+                                      fontSize: '0.9rem'
+                                    }}
+                                    required
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Row 2: Flat, House no., Building, Company, Apartment */}
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Flat, House no., Building, Company, Apartment</label>
+                                <input
+                                  type="text"
+                                  value={addr.flat || ""}
+                                  placeholder="e.g. Flat 3B, Sunshine Apartments"
+                                  onChange={e => handleAddressFieldChange(addr.id, 'flat', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    borderRadius: '6px',
+                                    fontSize: '0.9rem'
+                                  }}
+                                  required
+                                />
+                              </div>
+
+                              {/* Row 3: Area, Street, Sector, Village */}
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Area, Street, Sector, Village</label>
+                                <input
+                                  type="text"
+                                  value={addr.area || ""}
+                                  placeholder="e.g. MG Road, Sector 4"
+                                  onChange={e => handleAddressFieldChange(addr.id, 'area', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    borderRadius: '6px',
+                                    fontSize: '0.9rem'
+                                  }}
+                                  required
+                                />
+                              </div>
+
+                              {/* Row 4: Landmark (Optional) */}
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Landmark (Optional)</label>
+                                <input
+                                  type="text"
+                                  value={addr.landmark || ""}
+                                  placeholder="e.g. Near Apollo Hospital"
+                                  onChange={e => handleAddressFieldChange(addr.id, 'landmark', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    background: '#fff',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#0f172a',
+                                    borderRadius: '6px',
+                                    fontSize: '0.9rem'
+                                  }}
+                                />
+                              </div>
+
+                              {/* Row 5: Town/City & State */}
+                              <div className="settings-grid-2col" style={{ gap: '12px' }}>
+                                <div>
+                                  <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Town/City</label>
+                                  <input
+                                    type="text"
+                                    value={addr.city || ""}
+                                    placeholder="e.g. Mumbai"
+                                    onChange={e => handleAddressFieldChange(addr.id, 'city', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px',
+                                      background: '#fff',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      borderRadius: '6px',
+                                      fontSize: '0.9rem'
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>State</label>
+                                  <select
+                                    value={addr.state || ""}
+                                    onChange={e => handleAddressFieldChange(addr.id, 'state', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px',
+                                      background: '#fff',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      borderRadius: '6px',
+                                      fontSize: '0.9rem'
+                                    }}
+                                    required
+                                  >
+                                    <option value="">Select State</option>
+                                    {INDIAN_STATES.map(st => (
+                                      <option key={st} value={st}>{st}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Row 6: Address Type Buttons */}
+                              <div>
+                                <label style={{ fontSize: '0.8rem', color: '#475569', display: 'block', marginBottom: '4px', fontWeight: 500 }}>Address Type</label>
+                                <div className="address-type-container" style={{ marginTop: '4px' }}>
+                                  {['House', 'Apartment', 'Business', 'Other'].map(type => (
+                                    <button
+                                      type="button"
+                                      key={type}
+                                      onClick={() => {
+                                        handleAddressFieldChange(addr.id, 'address_type', type);
+                                        handleAddressFieldChange(addr.id, 'label', type);
+                                      }}
+                                      style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        borderRadius: '6px',
+                                        border: addr.address_type === type ? '2px solid #7a4ea5' : '1px solid #cbd5e1',
+                                        background: addr.address_type === type ? '#f5eefb' : '#fff',
+                                        color: addr.address_type === type ? '#7a4ea5' : '#475569',
+                                        fontWeight: '600',
+                                        fontSize: '0.85rem',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                      }}
+                                    >
+                                      {type}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Row 7: Set as default address */}
+                              {!addr.is_default && (
+                                <div style={{ marginTop: '4px' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.85rem', color: '#475569' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={addr.is_default || false}
+                                      onChange={e => handleAddressFieldChange(addr.id, 'is_default', e.target.checked)}
+                                    />
+                                    Set as default address
+                                  </label>
+                                </div>
+                              )}
+
+                              {/* Row 8: Optional Delivery Instructions */}
+                              <div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddressFieldChange(addr.id, 'deliveryInstructionsExpanded', !addr.deliveryInstructionsExpanded)}
+                                  style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#7a4ea5',
+                                    fontSize: '0.85rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    padding: '4px 0',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  {addr.deliveryInstructionsExpanded ? 'Hide Delivery Instructions' : '+ Add Delivery Instructions'}
+                                </button>
+                                {addr.deliveryInstructionsExpanded && (
+                                  <textarea
+                                    rows={2}
+                                    placeholder="e.g. Leave with security, ring bell, deliver after 4 PM..."
+                                    value={addr.delivery_instructions || ""}
+                                    onChange={e => handleAddressFieldChange(addr.id, 'delivery_instructions', e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      padding: '10px 12px',
+                                      background: '#fff',
+                                      border: '1px solid #cbd5e1',
+                                      color: '#0f172a',
+                                      borderRadius: '6px',
+                                      fontSize: '0.9rem',
+                                      marginTop: '6px',
+                                      resize: 'vertical'
+                                    }}
+                                  />
+                                )}
+                              </div>
+
+                              {/* Hidden full concatenated address preview for development/debugging */}
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8', borderTop: '1px dashed #e2e8f0', paddingTop: '8px', marginTop: '4px' }}>
+                                <strong>Address Preview:</strong> {addr.address || "(empty)"}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Change Password (leave empty to keep current)</label>
+                      <input
+                        type="password"
+                        placeholder="New Secure Password"
+                        value={profileForm.password}
+                        onChange={e => setProfileForm(prev => ({ ...prev, password: e.target.value }))}
+                      />
+                    </div>
+
+                    <button type="submit" className="btn-primary" style={{ marginTop: '10px', justifyContent: 'center' }}>
+                      Save Account Settings
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {activePanel === 'customizations' && (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Bespoke Customizations</h2>
+
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Request ID</th>
+                          <th>Product Info</th>
+                          <th>Selected Color</th>
+                          <th>Measurements / Sizing Notes</th>
+                          <th>Quantity</th>
+                          <th>Pricing / Quote</th>
+                          <th>Status</th>
+                          <th>Date Submitted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {userCustomizations.map(cust => (
+                          <tr key={cust.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>{getDisplayCustomizationNumber(cust)}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <img src={cust.product_image || null} alt="" style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
+                                <span style={{ fontWeight: 600 }}>{cust.product_name}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '12px', background: '#f5edff', fontSize: '0.75rem', fontWeight: 600 }}>
+                                <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: cust.selected_color_hex }} />
+                                {cust.selected_color_name}
+                              </span>
+                            </td>
+                            <td>
+                              <pre style={{ margin: 0, fontSize: '0.8rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{cust.customization_notes}</pre>
+                            </td>
+                            <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                              {cust.quantity || 1}
+                            </td>
+                            <td>
+                              {(!cust.quote_status || cust.quote_status === 'Pending') && (
+                                <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Awaiting Quote</span>
+                              )}
+                              {cust.quote_status === 'Quoted' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: 800, color: '#7a4ea5', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
+                                    <button
+                                      onClick={() => {
+                                        setActiveCustomizationCheckout(cust);
+                                        setCurrentView('checkout');
+                                      }}
+                                      className="btn-primary"
+                                      style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#10b981', color: '#fff', fontWeight: 600 }}
+                                    >
+                                      Accept
+                                    </button>
+                                    <button
+                                      onClick={() => handleQuoteAction(cust.id, 'reject')}
+                                      className="btn-secondary"
+                                      style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: '#ef4444', color: '#fff', fontWeight: 600 }}
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {cust.quote_status === 'Accepted' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <span style={{ fontSize: '0.65rem', color: '#10b981', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✓ Accepted</span>
+                                </div>
+                              )}
+                              {cust.quote_status === 'Rejected' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', alignItems: 'center' }}>
+                                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.95rem', textDecoration: 'line-through' }}>₹{parseFloat(cust.quoted_price || 0).toFixed(2)} / pc</span>
+                                  <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, textDecoration: 'line-through' }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
+                                  <span style={{ fontSize: '0.65rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px' }}>✗ Rejected</span>
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                background: cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.15)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.15)' : 'rgba(251, 191, 36, 0.15)',
+                                color: cust.status === 'Completed' ? '#7a4ea5' : cust.status === 'Rejected' ? '#e84e7e' : '#b45309',
+                                border: '1px solid ' + (cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.3)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.25)' : 'rgba(251, 191, 36, 0.25)')
+                              }}>
+                                {cust.status}
+                              </span>
+                            </td>
+                            <td>{new Date(cust.created_at).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        {userCustomizations.length === 0 && (
+                          <tr>
+                            <td colSpan="8" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>You haven't requested any custom designs yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+            </main>
           )}
         </div>
       )}
@@ -9284,20 +9283,20 @@ export default function App() {
           </aside>
 
           <main className="main-content">
-            
+
             {/* Shop Config panel */}
             {activePanel === 'shop_config' && adminShop && (
               <form onSubmit={handleUpdateAdminShop} className="glass-panel animate-fade-in admin-config-form">
                 <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>Shop Branding & API Configurations</h2>
-                
+
                 <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shop Name Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={adminShop.name}
                       onChange={e => setAdminShop(prev => ({ ...prev, name: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
                   <div>
@@ -9306,8 +9305,8 @@ export default function App() {
                       {adminShop.logo_url && (
                         <img src={adminShop.logo_url} alt="Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
                       )}
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*"
                         style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
                         onChange={e => {
@@ -9319,8 +9318,8 @@ export default function App() {
                           }
                         }}
                       />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Image path URL (automatically filled after upload)"
                         value={adminShop.logo_url}
                         onChange={e => setAdminShop(prev => ({ ...prev, logo_url: e.target.value }))}
@@ -9332,16 +9331,16 @@ export default function App() {
                 <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       value={adminShop.contact_email}
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_email: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={adminShop.contact_phone}
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_phone: e.target.value }))}
                     />
@@ -9350,20 +9349,20 @@ export default function App() {
 
                 <div>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Privacy Policy content</label>
-                  <textarea 
+                  <textarea
                     value={adminShop.privacy_policy}
                     onChange={e => setAdminShop(prev => ({ ...prev, privacy_policy: e.target.value }))}
-                    rows={4} 
+                    rows={4}
                   />
                 </div>
 
                 <div style={{ marginTop: '16px' }}>
                   <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shop Address (Displayed on Tax Invoices)</label>
-                  <textarea 
+                  <textarea
                     placeholder="Enter physical shop address to show in customer tax invoices"
                     value={adminShop.address || ""}
                     onChange={e => setAdminShop(prev => ({ ...prev, address: e.target.value }))}
-                    rows={3} 
+                    rows={3}
                   />
                 </div>
 
@@ -9372,8 +9371,8 @@ export default function App() {
                   <div className="admin-grid-2col">
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>GST Tax Rate (%)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.01"
                         min="0"
                         max="100"
@@ -9391,7 +9390,7 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>GST Type</label>
-                      <select 
+                      <select
                         value={adminShop.gst_inclusive ? 'inclusive' : 'exclusive'}
                         onChange={e => setAdminShop(prev => ({ ...prev, gst_inclusive: e.target.value === 'inclusive' }))}
                       >
@@ -9409,8 +9408,8 @@ export default function App() {
                   <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Shipping Charges Configuration</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         id="shipping_enabled"
                         checked={!!adminShop.shipping_enabled}
                         onChange={e => setAdminShop(prev => ({ ...prev, shipping_enabled: e.target.checked }))}
@@ -9425,7 +9424,7 @@ export default function App() {
                       <div className="animate-fade-in admin-grid-2col" style={{ background: 'rgba(122, 78, 165, 0.03)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(122, 78, 165, 0.1)', gap: '16px' }}>
                         <div>
                           <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shipping Charges Type</label>
-                          <select 
+                          <select
                             value={adminShop.shipping_charges_type || 'flat'}
                             onChange={e => setAdminShop(prev => ({ ...prev, shipping_charges_type: e.target.value }))}
                           >
@@ -9437,8 +9436,8 @@ export default function App() {
                           {adminShop.shipping_charges_type === 'flat' ? (
                             <>
                               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Flat Rate Amount (₹)</label>
-                              <input 
-                                type="number" 
+                              <input
+                                type="number"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -9476,8 +9475,8 @@ export default function App() {
                   <div className="admin-grid-2col">
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Razorpay Key ID</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="rzp_test..."
                         value={adminShop.razorpay_key_id}
                         onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_id: e.target.value }))}
@@ -9485,8 +9484,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Razorpay Secret Key</label>
-                      <input 
-                        type="password" 
+                      <input
+                        type="password"
                         placeholder="Razorpay password secret..."
                         value={adminShop.razorpay_key_secret}
                         onChange={e => setAdminShop(prev => ({ ...prev, razorpay_key_secret: e.target.value }))}
@@ -9498,16 +9497,16 @@ export default function App() {
                 <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fast2SMS platform API Key</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={adminShop.sms_api_key}
                       onChange={e => setAdminShop(prev => ({ ...prev, sms_api_key: e.target.value }))}
                     />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>WhatsApp Campaign API Secret</label>
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       value={adminShop.whatsapp_api_key}
                       onChange={e => setAdminShop(prev => ({ ...prev, whatsapp_api_key: e.target.value }))}
                     />
@@ -9522,8 +9521,8 @@ export default function App() {
                   <div className="admin-grid-2col">
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC Client Code</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g. GL001"
                         value={adminShop.dtdc_client_code || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, dtdc_client_code: e.target.value }))}
@@ -9531,8 +9530,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC API Key</label>
-                      <input 
-                        type="password" 
+                      <input
+                        type="password"
                         placeholder="DTDC API Key..."
                         value={adminShop.dtdc_api_key || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, dtdc_api_key: e.target.value }))}
@@ -9541,8 +9540,8 @@ export default function App() {
                   </div>
                   <div style={{ marginTop: '12px' }}>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>DTDC API URL</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="https://api.dtdc.com/v1/shipments"
                       value={adminShop.dtdc_api_url || ""}
                       onChange={e => setAdminShop(prev => ({ ...prev, dtdc_api_url: e.target.value }))}
@@ -9555,8 +9554,8 @@ export default function App() {
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Billing API Key</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Generate an API key for your desktop app..."
                         value={adminShop.billing_api_key || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, billing_api_key: e.target.value }))}
@@ -9590,29 +9589,29 @@ export default function App() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
                     Customize the images, titles, and descriptions of the card overlay floating alongside the model showcase in the header.
                   </p>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                     {(adminShop.saree_models || [
                       { id: 1, image: "/nobaraa_saree_model_1.png?v=2", name: "Royal Purple Saree", description: "Intricate gold zari borders woven on rich premium silk." },
                       { id: 2, image: "/nobaraa_saree_model_2.png?v=2", name: "Cream & Gold Banarasi", description: "Timeless luxury heritage weave from Varanasi." },
                       { id: 3, image: "/nobaraa_saree_model_3.png?v=2", name: "Kanjeevaram Magenta", description: "Vibrant royal pink and gold Kanjeevaram silk." }
                     ]).map((model, index, arr) => (
-                      <div 
-                        key={model.id || index} 
+                      <div
+                        key={model.id || index}
                         className="admin-model-item"
                       >
                         {/* Image Preview & Upload */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
                           <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
-                            <img 
-                              src={model.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"} 
-                              alt="" 
+                            <img
+                              src={model.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"}
+                              alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=100&q=80"; }}
                             />
                           </div>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             accept="image/*"
                             id={`saree-model-file-${index}`}
                             style={{ display: 'none' }}
@@ -9627,7 +9626,7 @@ export default function App() {
                               }
                             }}
                           />
-                          <button 
+                          <button
                             type="button"
                             className="btn-secondary"
                             style={{ padding: '2px 6px', fontSize: '0.7rem', minWidth: 'auto', height: 'auto' }}
@@ -9640,9 +9639,9 @@ export default function App() {
                         {/* Card Title */}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Card Text/Title</label>
-                          <input 
-                            type="text" 
-                            value={model.name || ""} 
+                          <input
+                            type="text"
+                            value={model.name || ""}
                             onChange={(e) => {
                               const updated = [...(adminShop.saree_models || arr)];
                               updated[index] = { ...updated[index], name: e.target.value };
@@ -9657,9 +9656,9 @@ export default function App() {
                         {/* Image URL */}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Image Path / URL</label>
-                          <input 
-                            type="text" 
-                            value={model.image || ""} 
+                          <input
+                            type="text"
+                            value={model.image || ""}
                             onChange={(e) => {
                               const updated = [...(adminShop.saree_models || arr)];
                               updated[index] = { ...updated[index], image: e.target.value };
@@ -9674,9 +9673,9 @@ export default function App() {
                         {/* Card Description */}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Card Description</label>
-                          <input 
-                            type="text" 
-                            value={model.description || ""} 
+                          <input
+                            type="text"
+                            value={model.description || ""}
                             onChange={(e) => {
                               const updated = [...(adminShop.saree_models || arr)];
                               updated[index] = { ...updated[index], description: e.target.value };
@@ -9768,7 +9767,7 @@ export default function App() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
                     Customize the background images, titles, subtitle text, and action button labels for the main customer page carousel.
                   </p>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                     {(adminShop.banners || [
                       {
@@ -9793,22 +9792,22 @@ export default function App() {
                         actionText: "View Wallet"
                       }
                     ]).map((banner, index, arr) => (
-                      <div 
-                        key={banner.id || index} 
+                      <div
+                        key={banner.id || index}
                         className="admin-model-item"
                       >
                         {/* Image Preview & Upload */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
                           <div style={{ width: '60px', height: '60px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)', background: '#fff' }}>
-                            <img 
-                              src={banner.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80"} 
-                              alt="" 
+                            <img
+                              src={banner.image || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80"}
+                              alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=1200&auto=format&fit=crop&q=80"; }}
                             />
                           </div>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             accept="image/*"
                             id={`banner-file-${index}`}
                             style={{ display: 'none' }}
@@ -9823,7 +9822,7 @@ export default function App() {
                               }
                             }}
                           />
-                          <button 
+                          <button
                             type="button"
                             className="btn-secondary"
                             style={{ padding: '2px 6px', fontSize: '0.7rem', minWidth: 'auto', height: 'auto' }}
@@ -9837,9 +9836,9 @@ export default function App() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Banner Title</label>
-                            <input 
-                              type="text" 
-                              value={banner.title || ""} 
+                            <input
+                              type="text"
+                              value={banner.title || ""}
                               onChange={(e) => {
                                 const updated = [...(adminShop.banners || arr)];
                                 updated[index] = { ...updated[index], title: e.target.value };
@@ -9852,9 +9851,9 @@ export default function App() {
                           </div>
                           <div>
                             <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Button Text</label>
-                            <input 
-                              type="text" 
-                              value={banner.actionText || ""} 
+                            <input
+                              type="text"
+                              value={banner.actionText || ""}
                               onChange={(e) => {
                                 const updated = [...(adminShop.banners || arr)];
                                 updated[index] = { ...updated[index], actionText: e.target.value };
@@ -9870,8 +9869,8 @@ export default function App() {
                         {/* Image URL */}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Image Path / URL</label>
-                          <textarea 
-                            value={banner.image || ""} 
+                          <textarea
+                            value={banner.image || ""}
                             onChange={(e) => {
                               const updated = [...(adminShop.banners || arr)];
                               updated[index] = { ...updated[index], image: e.target.value };
@@ -9886,8 +9885,8 @@ export default function App() {
                         {/* Subtitle / Description text */}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Text / Subtitle</label>
-                          <textarea 
-                            value={banner.subtitle || ""} 
+                          <textarea
+                            value={banner.subtitle || ""}
                             onChange={(e) => {
                               const updated = [...(adminShop.banners || arr)];
                               updated[index] = { ...updated[index], subtitle: e.target.value };
@@ -10001,12 +10000,12 @@ export default function App() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
                     Configure the custom SMTP email server for triggering system alerts, transactional checkout receipts, OTP verification codes, and security login notifications.
                   </p>
-                  
+
                   <div className="admin-grid-2col" style={{ marginBottom: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Host Server</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g. smtp.gmail.com or smtp.mailtrap.io"
                         value={adminShop.smtp_host || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, smtp_host: e.target.value }))}
@@ -10014,8 +10013,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Port Number</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="e.g. 587 or 465"
                         value={adminShop.smtp_port || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, smtp_port: e.target.value ? parseInt(e.target.value) : "" }))}
@@ -10026,8 +10025,8 @@ export default function App() {
                   <div className="admin-grid-2col" style={{ marginBottom: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Username / User Email</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g. your-email@gmail.com"
                         value={adminShop.smtp_user || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, smtp_user: e.target.value }))}
@@ -10035,8 +10034,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SMTP Password / App Secret</label>
-                      <input 
-                        type="password" 
+                      <input
+                        type="password"
                         placeholder="••••••••••••••••"
                         value={adminShop.smtp_password || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, smtp_password: e.target.value }))}
@@ -10047,8 +10046,8 @@ export default function App() {
                   <div className="admin-grid-2col" style={{ marginBottom: '24px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Default Sender Display Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g. Nobaraa Customer Support"
                         value={adminShop.smtp_sender_name || ""}
                         onChange={e => setAdminShop(prev => ({ ...prev, smtp_sender_name: e.target.value }))}
@@ -10056,8 +10055,8 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', height: '100%' }}>
                       <label style={{ fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', userSelect: 'none', marginTop: '24px' }}>
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={!!adminShop.smtp_use_tls}
                           onChange={e => setAdminShop(prev => ({ ...prev, smtp_use_tls: e.target.checked }))}
                           style={{ width: '18px', height: '18px', accentColor: '#7a4ea5' }}
@@ -10077,8 +10076,8 @@ export default function App() {
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                     <div style={{ flex: 1, minWidth: '200px' }}>
                       <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Recipient Mailbox</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         placeholder="recipient@example.com"
                         value={testRecipient}
                         onChange={e => setTestRecipient(e.target.value)}
@@ -10087,7 +10086,7 @@ export default function App() {
                     </div>
                     <div style={{ minWidth: '150px' }}>
                       <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Test Template Theme</label>
-                      <select 
+                      <select
                         value={testTemplateType}
                         onChange={e => setTestTemplateType(e.target.value)}
                         style={{ height: '38px', fontSize: '0.85rem', padding: '0 8px' }}
@@ -10098,8 +10097,8 @@ export default function App() {
                         <option value="login">Account Access Alert</option>
                       </select>
                     </div>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={handleSendTestEmail}
                       disabled={sendingTestEmail}
                       className="btn-secondary"
@@ -10118,7 +10117,7 @@ export default function App() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
                     Alter layout structures, custom greetings, and brand footnotes for notifications. Insert specified badges inside brackets to replace dynamically.
                   </p>
-                  
+
                   {/* Select template type */}
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', flexWrap: 'wrap' }}>
                     {[
@@ -10152,8 +10151,8 @@ export default function App() {
                   <div className="glass-panel" style={{ padding: '20px', border: '1px solid var(--border-subtle)', background: 'rgba(255,255,255,0.3)' }}>
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email Subject Line</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={adminShop.email_templates?.[selectedTemplateKey]?.subject || ""}
                         onChange={e => handleTemplateChange("subject", e.target.value)}
                         placeholder="Subject Line"
@@ -10162,7 +10161,7 @@ export default function App() {
                     </div>
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Email HTML/Text Body Content</label>
-                      <textarea 
+                      <textarea
                         value={adminShop.email_templates?.[selectedTemplateKey]?.body || ""}
                         onChange={e => handleTemplateChange("body", e.target.value)}
                         placeholder="Email Body Content"
@@ -10235,28 +10234,28 @@ export default function App() {
             {/* Categories Management panel */}
             {activePanel === 'categories' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Save category form */}
                 <form onSubmit={handleSaveCategory} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{categoryForm.id ? "Edit Category" : "Add New Category"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Category Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g., Electronics"
                       value={categoryForm.name}
                       onChange={e => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Description text</label>
-                    <textarea 
+                    <textarea
                       placeholder="Category catalog information..."
                       value={categoryForm.description}
                       onChange={e => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3} 
+                      rows={3}
                     />
                   </div>
                   <div>
@@ -10265,8 +10264,8 @@ export default function App() {
                       {categoryForm.image_url && (
                         <img src={categoryForm.image_url} alt="Category Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
                       )}
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*"
                         style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
                         onChange={e => {
@@ -10282,8 +10281,8 @@ export default function App() {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Return Window (Days)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       placeholder="e.g., 10 (Leave blank for shop default)"
                       value={categoryForm.return_window_days !== null && categoryForm.return_window_days !== undefined ? categoryForm.return_window_days : ""}
                       onChange={e => setCategoryForm(prev => ({ ...prev, return_window_days: e.target.value }))}
@@ -10292,8 +10291,8 @@ export default function App() {
                   {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shipping Charge (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.01"
                         min="0"
                         placeholder="e.g., 50.00"
@@ -10354,19 +10353,19 @@ export default function App() {
             {/* Collections Management panel */}
             {activePanel === 'collections' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Save collection form */}
                 <form onSubmit={handleSaveCollection} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{collectionForm.id ? "Edit Collection" : "Add New Collection"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Collection Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g., The Saree & Ethnic Collection"
                       value={collectionForm.name}
                       onChange={e => setCollectionForm(prev => ({ ...prev, name: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
 
@@ -10376,8 +10375,8 @@ export default function App() {
                       {adminCategories.map(c => {
                         const isChecked = collectionForm.category_ids.includes(c.id);
                         return (
-                          <div 
-                            key={c.id} 
+                          <div
+                            key={c.id}
                             className={`modern-select-pill ${isChecked ? 'active' : ''}`}
                             onClick={() => {
                               setCollectionForm(prev => {
@@ -10397,8 +10396,8 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id="separate_categories_mobile"
                       checked={!!collectionForm.separate_categories_mobile}
                       onChange={e => setCollectionForm(prev => ({ ...prev, separate_categories_mobile: e.target.checked }))}
@@ -10410,8 +10409,8 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id="show_category_banner"
                       checked={collectionForm.show_category_banner !== false && collectionForm.show_category_banner !== 0}
                       onChange={e => setCollectionForm(prev => ({ ...prev, show_category_banner: e.target.checked }))}
@@ -10426,9 +10425,9 @@ export default function App() {
                     Save Collection <Check size={16} />
                   </button>
                   {collectionForm.id && (
-                    <button 
-                      type="button" 
-                      className="btn-secondary" 
+                    <button
+                      type="button"
+                      className="btn-secondary"
                       style={{ justifyContent: 'center' }}
                       onClick={() => setCollectionForm({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true })}
                     >
@@ -10490,25 +10489,25 @@ export default function App() {
             {/* Product catalog panel */}
             {activePanel === 'products' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                
+
                 {/* Add product form */}
                 <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <h3 style={{ fontWeight: 800 }}>{productForm.id ? "Edit Product Catalog Item" : "Publish New Product"}</h3>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Title Name</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g., iPhone 15 Pro"
                         value={productForm.name}
                         onChange={e => setProductForm(prev => ({ ...prev, name: e.target.value }))}
-                        required 
+                        required
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Category Allocation</label>
-                      <select 
+                      <select
                         value={productForm.category_id}
                         onChange={e => setProductForm(prev => ({ ...prev, category_id: e.target.value }))}
                       >
@@ -10520,29 +10519,29 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Detailed catalog description</label>
-                    <textarea 
+                    <textarea
                       placeholder="Specifications, highlights, and shipping logistics details..."
                       value={productForm.description}
                       onChange={e => setProductForm(prev => ({ ...prev, description: e.target.value }))}
-                      rows={3} 
+                      rows={3}
                     />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Sale Price (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="12000"
                         value={productForm.price}
                         onChange={e => setProductForm(prev => ({ ...prev, price: e.target.value }))}
-                        required 
+                        required
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Original MRP (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="15000"
                         value={productForm.original_price}
                         onChange={e => setProductForm(prev => ({ ...prev, original_price: e.target.value }))}
@@ -10550,18 +10549,18 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Warehouse Stock Quantity</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="100"
                         value={productForm.stock}
                         onChange={e => setProductForm(prev => ({ ...prev, stock: e.target.value }))}
-                        required 
+                        required
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Stock Alert Threshold</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={productForm.alert_threshold}
                         onChange={e => setProductForm(prev => ({ ...prev, alert_threshold: e.target.value }))}
                       />
@@ -10571,8 +10570,8 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Promo Code (Specific discount)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="IPHONE20"
                         value={productForm.promo_code}
                         onChange={e => setProductForm(prev => ({ ...prev, promo_code: e.target.value.toUpperCase() }))}
@@ -10580,8 +10579,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Promo Code Flat Discount (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="2000"
                         value={productForm.promo_discount}
                         onChange={e => setProductForm(prev => ({ ...prev, promo_discount: e.target.value }))}
@@ -10593,8 +10592,8 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SKU Code (POS Inventory)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g., SKU-SHIRT-001"
                         value={productForm.sku_code || ""}
                         onChange={e => setProductForm(prev => ({ ...prev, sku_code: e.target.value }))}
@@ -10602,8 +10601,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>HSC / HSN Code (GST classification)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g., 62052000"
                         value={productForm.hsc_code || ""}
                         onChange={e => setProductForm(prev => ({ ...prev, hsc_code: e.target.value }))}
@@ -10611,8 +10610,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Barcode (Scan Code)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="e.g., 890123456789"
                         value={productForm.barcode || ""}
                         onChange={e => setProductForm(prev => ({ ...prev, barcode: e.target.value }))}
@@ -10620,8 +10619,8 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Return Window (Days)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="e.g., 7 (Optional)"
                         value={productForm.return_window_days !== null && productForm.return_window_days !== undefined ? productForm.return_window_days : ""}
                         onChange={e => setProductForm(prev => ({ ...prev, return_window_days: e.target.value }))}
@@ -10641,8 +10640,8 @@ export default function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Bulk Sale Price (₹)</label>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           placeholder="e.g., 9500"
                           value={productForm.bulk_sale_price}
                           onChange={e => setProductForm(prev => ({ ...prev, bulk_sale_price: e.target.value }))}
@@ -10652,8 +10651,8 @@ export default function App() {
                       </div>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Minimum Quantity for Bulk</label>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           placeholder="e.g., 10"
                           value={productForm.min_quantity}
                           onChange={e => setProductForm(prev => ({ ...prev, min_quantity: e.target.value }))}
@@ -10672,8 +10671,8 @@ export default function App() {
 
                   {/* Customization Activation Toggle */}
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#fbf9ff', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px 20px' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id="customization_enabled"
                       checked={productForm.customization_enabled || false}
                       onChange={e => setProductForm(prev => ({ ...prev, customization_enabled: e.target.checked }))}
@@ -10699,8 +10698,8 @@ export default function App() {
                             {img && (
                               <img src={img} alt="Product Preview" style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border-subtle)' }} />
                             )}
-                            <input 
-                              type="file" 
+                            <input
+                              type="file"
                               accept="image/*"
                               style={{ border: 'none', padding: '4px 0', cursor: 'pointer', flex: 1 }}
                               onChange={e => {
@@ -10715,22 +10714,22 @@ export default function App() {
                               }}
                             />
                             {productForm.images.length > 1 && (
-                              <button 
-                                type="button" 
+                              <button
+                                type="button"
                                 onClick={() => {
                                   const updated = productForm.images.filter((_, idx) => idx !== i);
                                   setProductForm(prev => ({ ...prev, images: updated }));
                                 }}
-                                className="btn-danger" 
+                                className="btn-danger"
                                 style={{ padding: '8px 12px' }}
                               >
                                 <X size={14} />
                               </button>
                             )}
                           </div>
-                          <input 
-                            type="text" 
-                            placeholder={`Image URL #${i+1} (automatically filled after upload)`}
+                          <input
+                            type="text"
+                            placeholder={`Image URL #${i + 1} (automatically filled after upload)`}
                             value={img}
                             onChange={e => {
                               const updated = [...productForm.images];
@@ -10741,10 +10740,10 @@ export default function App() {
                         </div>
                       ))}
                       {productForm.images.length < 10 && (
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={() => setProductForm(prev => ({ ...prev, images: [...prev.images, ""] }))}
-                          className="btn-secondary" 
+                          className="btn-secondary"
                           style={{ padding: '8px 16px', fontSize: '0.8rem', width: 'fit-content' }}
                         >
                           <Plus size={14} /> Add Another Image Bullet
@@ -10762,16 +10761,16 @@ export default function App() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
                     <h3 style={{ fontWeight: 800, margin: 0 }}>Current Store Products</h3>
-                    
+
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <input 
-                        type="text" 
-                        placeholder="Search products by ID or Name..." 
+                      <input
+                        type="text"
+                        placeholder="Search products by ID or Name..."
                         value={adminProductSearch}
                         onChange={e => setAdminProductSearch(e.target.value)}
                         style={{ width: '220px', padding: '8px 12px', fontSize: '0.85rem' }}
                       />
-                      
+
                       <select
                         value={adminProductCategoryFilter}
                         onChange={e => setAdminProductCategoryFilter(e.target.value)}
@@ -10782,10 +10781,10 @@ export default function App() {
                           <option key={cat.id} value={cat.id}>{cat.name}</option>
                         ))}
                       </select>
-                      
-                      <button 
-                        onClick={handleDownloadProductsReport} 
-                        className="btn-secondary" 
+
+                      <button
+                        onClick={handleDownloadProductsReport}
+                        className="btn-secondary"
                         style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
                         <Download size={14} /> Download Report
@@ -10863,15 +10862,15 @@ export default function App() {
             {/* Orders & Returns panel */}
             {activePanel === 'orders' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                
+
                 {/* Returns management */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div 
+                  <div
                     onClick={() => setAdminReturnsCollapsed(!adminReturnsCollapsed)}
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                       cursor: 'pointer',
                       padding: '12px 18px',
                       borderRadius: '12px',
@@ -10893,13 +10892,13 @@ export default function App() {
                       <h3 style={{ fontWeight: 800, margin: 0, color: 'var(--accent-danger)', fontSize: '1.2rem' }}>
                         Pending Customer Return Requests
                       </h3>
-                      <span style={{ 
-                        background: 'var(--accent-danger)', 
-                        color: 'white', 
-                        fontSize: '0.75rem', 
-                        padding: '2px 8px', 
+                      <span style={{
+                        background: 'var(--accent-danger)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
                         borderRadius: '20px',
-                        fontWeight: 'bold' 
+                        fontWeight: 'bold'
                       }}>
                         {adminOrders.filter(o => o.return_request_status === 'Pending').length} Pending
                       </span>
@@ -10939,18 +10938,18 @@ export default function App() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                   {o.items && o.items.map(item => (
                                     <div key={item.id} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                      <img 
-                                        src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50"} 
-                                        alt={item.product_name} 
-                                        style={{ 
-                                          width: '55px', 
-                                          height: '55px', 
-                                          objectFit: 'cover', 
-                                          borderRadius: '6px', 
+                                      <img
+                                        src={item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50"}
+                                        alt={item.product_name}
+                                        style={{
+                                          width: '55px',
+                                          height: '55px',
+                                          objectFit: 'cover',
+                                          borderRadius: '6px',
                                           border: '1px solid var(--border-subtle)',
                                           cursor: 'pointer',
                                           transition: 'transform 0.2s'
-                                        }} 
+                                        }}
                                         onClick={() => setExpandedImage(item.product_image || "https://images.unsplash.com/photo-1608748010899-18f300247112?w=50")}
                                         title="Click to view product photo"
                                         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.08)'}
@@ -10969,14 +10968,14 @@ export default function App() {
                               <td>"{o.return_reason}"</td>
                               <td>
                                 {o.return_image_url ? (
-                                  <img 
-                                    src={o.return_image_url} 
-                                    alt="Verification" 
-                                    style={{ 
-                                      width: '70px', 
-                                      height: '70px', 
-                                      objectFit: 'cover', 
-                                      borderRadius: '8px', 
+                                  <img
+                                    src={o.return_image_url}
+                                    alt="Verification"
+                                    style={{
+                                      width: '70px',
+                                      height: '70px',
+                                      objectFit: 'cover',
+                                      borderRadius: '8px',
                                       border: '1px solid var(--border-subtle)',
                                       cursor: 'pointer',
                                       transition: 'transform 0.2s'
@@ -10994,13 +10993,13 @@ export default function App() {
                               <td style={{ textAlign: 'right' }}>
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                                   {o.shipping_label_url && (
-                                    <button 
+                                    <button
                                       onClick={() => window.open(o.shipping_label_url, '_blank')}
-                                      className="btn-secondary" 
-                                      style={{ 
-                                        padding: '6px 12px', 
-                                        fontSize: '0.75rem', 
-                                        borderColor: '#7a4ea5', 
+                                      className="btn-secondary"
+                                      style={{
+                                        padding: '6px 12px',
+                                        fontSize: '0.75rem',
+                                        borderColor: '#7a4ea5',
                                         color: '#7a4ea5',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -11034,12 +11033,12 @@ export default function App() {
 
                 {/* Orders list with Filters & Export */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div 
+                  <div
                     onClick={() => setAdminOrdersCollapsed(!adminOrdersCollapsed)}
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                       cursor: 'pointer',
                       padding: '12px 18px',
                       borderRadius: '12px',
@@ -11061,13 +11060,13 @@ export default function App() {
                       <h3 style={{ fontWeight: 800, margin: 0, color: '#2b0b57', fontSize: '1.2rem' }}>
                         Store Sales Transactions
                       </h3>
-                      <span style={{ 
-                        background: '#7a4ea5', 
-                        color: 'white', 
-                        fontSize: '0.75rem', 
-                        padding: '2px 8px', 
+                      <span style={{
+                        background: '#7a4ea5',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        padding: '2px 8px',
                         borderRadius: '20px',
-                        fontWeight: 'bold' 
+                        fontWeight: 'bold'
                       }}>
                         {filteredAdminOrders.length} {filteredAdminOrders.length === 1 ? 'Transaction' : 'Transactions'}
                       </span>
@@ -11083,28 +11082,28 @@ export default function App() {
                   {!adminOrdersCollapsed && (
                     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                        
+
                         {/* Date filters and CSV export action container */}
                         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Search Orders</label>
                             <div style={{ position: 'relative' }}>
-                              <input 
-                                type="text" 
-                                placeholder="ID, Buyer, Item, Status..." 
-                                value={adminOrderSearch} 
-                                onChange={(e) => setAdminOrderSearch(e.target.value)} 
-                                style={{ 
-                                  padding: '8px 12px 8px 32px', 
-                                  borderRadius: '6px', 
-                                  border: '1px solid rgba(154, 132, 200, 0.3)', 
+                              <input
+                                type="text"
+                                placeholder="ID, Buyer, Item, Status..."
+                                value={adminOrderSearch}
+                                onChange={(e) => setAdminOrderSearch(e.target.value)}
+                                style={{
+                                  padding: '8px 12px 8px 32px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(154, 132, 200, 0.3)',
                                   background: 'rgba(255, 255, 255, 0.8)',
                                   color: 'var(--text-main)',
                                   fontSize: '0.8rem',
                                   width: '220px',
                                   outline: 'none',
                                   transition: 'all 0.2s ease'
-                                }} 
+                                }}
                                 onFocus={(e) => e.target.style.borderColor = '#7a4ea5'}
                                 onBlur={(e) => e.target.style.borderColor = 'rgba(154, 132, 200, 0.3)'}
                               />
@@ -11139,54 +11138,54 @@ export default function App() {
                             <>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
-                                <input 
-                                  type="date" 
-                                  value={adminStartDate} 
-                                  onChange={(e) => setAdminStartDate(e.target.value)} 
-                                  style={{ 
-                                    padding: '8px 12px', 
-                                    borderRadius: '6px', 
-                                    border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                <input
+                                  type="date"
+                                  value={adminStartDate}
+                                  onChange={(e) => setAdminStartDate(e.target.value)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(154, 132, 200, 0.3)',
                                     background: 'rgba(255, 255, 255, 0.8)',
                                     color: 'var(--text-main)',
                                     fontSize: '0.8rem',
                                     outline: 'none'
-                                  }} 
+                                  }}
                                 />
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
-                                <input 
-                                  type="date" 
-                                  value={adminEndDate} 
-                                  onChange={(e) => setAdminEndDate(e.target.value)} 
-                                  style={{ 
-                                    padding: '8px 12px', 
-                                    borderRadius: '6px', 
-                                    border: '1px solid rgba(154, 132, 200, 0.3)', 
+                                <input
+                                  type="date"
+                                  value={adminEndDate}
+                                  onChange={(e) => setAdminEndDate(e.target.value)}
+                                  style={{
+                                    padding: '8px 12px',
+                                    borderRadius: '6px',
+                                    border: '1px solid rgba(154, 132, 200, 0.3)',
                                     background: 'rgba(255, 255, 255, 0.8)',
                                     color: 'var(--text-main)',
                                     fontSize: '0.8rem',
                                     outline: 'none'
-                                  }} 
+                                  }}
                                 />
                               </div>
                             </>
                           )}
-                          
+
                           {(adminStartDate || adminEndDate || adminOrderSearch || adminDateFilter !== "all") && (
-                            <button 
-                              onClick={() => { setAdminStartDate(''); setAdminEndDate(''); setAdminOrderSearch(''); setAdminDateFilter('all'); }} 
-                              className="btn-secondary" 
+                            <button
+                              onClick={() => { setAdminStartDate(''); setAdminEndDate(''); setAdminOrderSearch(''); setAdminDateFilter('all'); }}
+                              className="btn-secondary"
                               style={{ padding: '8px 12px', fontSize: '0.75rem', height: '36px' }}
                             >
                               Clear
                             </button>
                           )}
-                          
-                          <button 
-                            onClick={exportOrdersCSV} 
-                            className="btn-primary" 
+
+                          <button
+                            onClick={exportOrdersCSV}
+                            className="btn-primary"
                             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '0.8rem', height: '36px' }}
                           >
                             <Download size={14} /> Export CSV Report
@@ -11240,14 +11239,14 @@ export default function App() {
                                   )}
                                 </td>
                                 <td>
-                                  <button 
-                                    onClick={() => handleShowCustomerHistory(o.user_id, o.user_name)} 
-                                    style={{ 
-                                      background: 'none', 
-                                      border: 'none', 
-                                      color: '#7a4ea5', 
-                                      textDecoration: 'underline', 
-                                      cursor: 'pointer', 
+                                  <button
+                                    onClick={() => handleShowCustomerHistory(o.user_id, o.user_name)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#7a4ea5',
+                                      textDecoration: 'underline',
+                                      cursor: 'pointer',
                                       fontWeight: 600,
                                       padding: 0,
                                       textAlign: 'left',
@@ -11263,14 +11262,14 @@ export default function App() {
                                     {o.items && o.items.map((item, idx) => (
                                       <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.4)', padding: '4px 6px', borderRadius: '4px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
                                         {item.product_image ? (
-                                          <img 
-                                            src={item.product_image} 
-                                            alt={item.product_name} 
-                                            style={{ 
-                                              width: '32px', 
-                                              height: '32px', 
-                                              objectFit: 'cover', 
-                                              borderRadius: '4px', 
+                                          <img
+                                            src={item.product_image}
+                                            alt={item.product_name}
+                                            style={{
+                                              width: '32px',
+                                              height: '32px',
+                                              objectFit: 'cover',
+                                              borderRadius: '4px',
                                               border: '1px solid rgba(154, 132, 200, 0.15)',
                                               cursor: 'pointer',
                                               transition: 'transform 0.2s'
@@ -11348,122 +11347,55 @@ export default function App() {
                                   </div>
                                 </td>
                                 <td>
-                                  <span className={`badge ${
-                                    o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                                  }`}>
+                                  <span className={`badge ${o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                    }`}>
                                     {o.status}
                                   </span>
                                 </td>
-                                  <td style={{ textAlign: 'right' }}>
-                                    {o.status === 'Pending' && (
-                                      <>
-                                        {o.payment_method === 'COD' ? (
-                                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                            <button 
-                                              onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')} 
-                                              className="btn-primary" 
-                                              style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
-                                            >
-                                              Accept
-                                            </button>
-                                            <button 
-                                              onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')} 
-                                              className="btn-danger" 
-                                              style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                            >
-                                              Reject
-                                            </button>
-                                          </div>
-                                        ) : (
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                            <button 
-                                              onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
-                                              className="btn-primary" 
-                                              style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
-                                            >
-                                              Dispatch Order
-                                            </button>
-                                            <button 
-                                              onClick={() => {
-                                                const weightStr = prompt("Enter package weight in kg:", "0.5");
-                                                if (weightStr !== null) {
-                                                  const weight = parseFloat(weightStr) || 0.5;
-                                                  handleBookDtdcShipping(o.id, weight);
-                                                }
-                                              }}
-                                              className="btn-primary" 
-                                              disabled={bookingShippingId === o.id}
-                                              style={{ 
-                                                padding: '6px 12px', 
-                                                fontSize: '0.75rem', 
-                                                background: '#7a4ea5', 
-                                                borderColor: '#7a4ea5',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '6px',
-                                                width: '100%',
-                                                maxWidth: '160px'
-                                              }}
-                                            >
-                                              <Truck size={12} />
-                                              {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
-                                            </button>
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                    {o.status === 'Accepted' && (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                        <button 
-                                          onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')} 
-                                          className="btn-primary" 
-                                          style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
-                                        >
-                                          Dispatch Order
-                                        </button>
-                                        <button 
-                                          onClick={() => {
-                                            const weightStr = prompt("Enter package weight in kg:", "0.5");
-                                            if (weightStr !== null) {
-                                              const weight = parseFloat(weightStr) || 0.5;
-                                              handleBookDtdcShipping(o.id, weight);
-                                            }
-                                          }}
-                                          className="btn-primary" 
-                                          disabled={bookingShippingId === o.id}
-                                          style={{ 
-                                            padding: '6px 12px', 
-                                            fontSize: '0.75rem', 
-                                            background: '#7a4ea5', 
-                                            borderColor: '#7a4ea5',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '6px',
-                                            width: '100%',
-                                            maxWidth: '160px'
-                                          }}
-                                        >
-                                          <Truck size={12} />
-                                          {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
-                                        </button>
-                                      </div>
-                                    )}
-                                    {o.status === 'Dispatched' && (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
-                                        <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399', width: '100%', maxWidth: '160px' }}>
-                                          Confirm Delivery
-                                        </button>
-                                        {o.shipping_label_url && (
-                                          <button 
-                                            onClick={() => window.open(o.shipping_label_url, '_blank')}
-                                            className="btn-secondary" 
-                                            style={{ 
-                                              padding: '6px 12px', 
-                                              fontSize: '0.75rem', 
-                                              borderColor: '#7a4ea5', 
-                                              color: '#7a4ea5',
+                                <td style={{ textAlign: 'right' }}>
+                                  {o.status === 'Pending' && (
+                                    <>
+                                      {o.payment_method === 'COD' ? (
+                                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                          <button
+                                            onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')}
+                                            className="btn-primary"
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                          >
+                                            Accept
+                                          </button>
+                                          <button
+                                            onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')}
+                                            className="btn-danger"
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                          >
+                                            Reject
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                          <button
+                                            onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')}
+                                            className="btn-primary"
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
+                                          >
+                                            Dispatch Order
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              const weightStr = prompt("Enter package weight in kg:", "0.5");
+                                              if (weightStr !== null) {
+                                                const weight = parseFloat(weightStr) || 0.5;
+                                                handleBookDtdcShipping(o.id, weight);
+                                              }
+                                            }}
+                                            className="btn-primary"
+                                            disabled={bookingShippingId === o.id}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '0.75rem',
+                                              background: '#7a4ea5',
+                                              borderColor: '#7a4ea5',
                                               display: 'flex',
                                               alignItems: 'center',
                                               justifyContent: 'center',
@@ -11472,21 +11404,87 @@ export default function App() {
                                               maxWidth: '160px'
                                             }}
                                           >
-                                            <Printer size={12} /> Label
+                                            <Truck size={12} />
+                                            {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
                                           </button>
-                                        )}
-                                      </div>
-                                    )}
-                                    {o.status === 'Customer Received' && (
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
-                                    )}
-                                    {o.status === 'Returned' && (
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
-                                    )}
-                                    {o.status === 'Rejected' && (
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
-                                    )}
-                                  </td>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {o.status === 'Accepted' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                      <button
+                                        onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')}
+                                        className="btn-primary"
+                                        style={{ padding: '6px 12px', fontSize: '0.75rem', width: '100%', maxWidth: '160px' }}
+                                      >
+                                        Dispatch Order
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const weightStr = prompt("Enter package weight in kg:", "0.5");
+                                          if (weightStr !== null) {
+                                            const weight = parseFloat(weightStr) || 0.5;
+                                            handleBookDtdcShipping(o.id, weight);
+                                          }
+                                        }}
+                                        className="btn-primary"
+                                        disabled={bookingShippingId === o.id}
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '0.75rem',
+                                          background: '#7a4ea5',
+                                          borderColor: '#7a4ea5',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '6px',
+                                          width: '100%',
+                                          maxWidth: '160px'
+                                        }}
+                                      >
+                                        <Truck size={12} />
+                                        {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
+                                      </button>
+                                    </div>
+                                  )}
+                                  {o.status === 'Dispatched' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                                      <button onClick={() => handleUpdateOrderStatus(o.id, 'Customer Received')} className="btn-secondary" style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: 'var(--accent-success)', color: '#34d399', width: '100%', maxWidth: '160px' }}>
+                                        Confirm Delivery
+                                      </button>
+                                      {o.shipping_label_url && (
+                                        <button
+                                          onClick={() => window.open(o.shipping_label_url, '_blank')}
+                                          className="btn-secondary"
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '0.75rem',
+                                            borderColor: '#7a4ea5',
+                                            color: '#7a4ea5',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            width: '100%',
+                                            maxWidth: '160px'
+                                          }}
+                                        >
+                                          <Printer size={12} /> Label
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                  {o.status === 'Customer Received' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fully Delivered</span>
+                                  )}
+                                  {o.status === 'Returned' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Wiped (Returned)</span>
+                                  )}
+                                  {o.status === 'Rejected' && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-danger)', fontWeight: 'bold' }}>Rejected</span>
+                                  )}
+                                </td>
                               </tr>
                             ))}
                             {filteredAdminOrders.length === 0 && (
@@ -11532,7 +11530,7 @@ export default function App() {
                       flexDirection: 'column',
                       gap: '20px'
                     }}>
-                      <button 
+                      <button
                         onClick={() => setSelectedCustomerHistory(null)}
                         style={{
                           position: 'absolute',
@@ -11547,12 +11545,12 @@ export default function App() {
                       >
                         <X size={20} />
                       </button>
-                      
+
                       <div>
-                        <h3 style={{ 
-                          fontFamily: "'Playfair Display', serif", 
-                          fontSize: '1.8rem', 
-                          fontWeight: 700, 
+                        <h3 style={{
+                          fontFamily: "'Playfair Display', serif",
+                          fontSize: '1.8rem',
+                          fontWeight: 700,
                           color: '#2b0b57',
                           marginBottom: '6px'
                         }}>
@@ -11605,9 +11603,8 @@ export default function App() {
                                     </button>
                                   )}
                                 </div>
-                                <span className={`badge ${
-                                  o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                                }`}>
+                                <span className={`badge ${o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                  }`}>
                                   {o.status}
                                 </span>
                               </div>
@@ -11618,14 +11615,14 @@ export default function App() {
                                   {o.items && o.items.map((item, idx) => (
                                     <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', background: 'rgba(255, 255, 255, 0.6)', padding: '6px 8px', borderRadius: '6px', border: '1px solid rgba(154, 132, 200, 0.1)' }}>
                                       {item.product_image ? (
-                                        <img 
-                                          src={item.product_image} 
-                                          alt={item.product_name} 
-                                          style={{ 
-                                            width: '36px', 
-                                            height: '36px', 
-                                            objectFit: 'cover', 
-                                            borderRadius: '4px', 
+                                        <img
+                                          src={item.product_image}
+                                          alt={item.product_name}
+                                          style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            objectFit: 'cover',
+                                            borderRadius: '4px',
                                             border: '1px solid rgba(154, 132, 200, 0.15)',
                                             cursor: 'pointer',
                                             transition: 'transform 0.2s'
@@ -11669,9 +11666,9 @@ export default function App() {
                       </div>
 
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-                        <button 
+                        <button
                           onClick={() => setSelectedCustomerHistory(null)}
-                          className="btn-secondary" 
+                          className="btn-secondary"
                           style={{ padding: '8px 24px', fontSize: '0.85rem' }}
                         >
                           Close History
@@ -11687,7 +11684,7 @@ export default function App() {
             {/* Inventory panel with alerts */}
             {activePanel === 'inventory' && adminInventory && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                
+
                 {/* Stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
                   <div className="glass-panel" style={{ padding: '24px' }}>
@@ -11804,7 +11801,7 @@ export default function App() {
 
               const renderReportTable = (tab) => {
                 const reports = adminRevenue?.reports || {};
-                
+
                 if (tab === 'sales') {
                   const list = reports.sales || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No sales data available for this range.</p>;
@@ -11841,7 +11838,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'new_users') {
                   const list = reports.new_users || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No new users signed in during this range.</p>;
@@ -11872,7 +11869,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'online') {
                   const list = reports.online_payments || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No online payments recorded for this range.</p>;
@@ -11903,7 +11900,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'cod') {
                   const list = reports.cod_payments || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No Cash-on-Delivery payments recorded for this range.</p>;
@@ -11934,7 +11931,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'returns') {
                   const list = reports.returns || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No returns reported in this range.</p>;
@@ -11965,7 +11962,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'custom') {
                   const list = reports.custom_orders || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No custom orders placed in this range.</p>;
@@ -12009,7 +12006,7 @@ export default function App() {
                     </table>
                   );
                 }
-                
+
                 if (tab === 'promo') {
                   const list = reports.promo_orders || [];
                   if (list.length === 0) return <p style={{ fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)', padding: '20px' }}>No promo codes or discounts used in this range.</p>;
@@ -12048,7 +12045,7 @@ export default function App() {
                 let dataList = [];
                 let headers = [];
                 let filename = `report_${tab}.csv`;
-                
+
                 if (tab === 'sales') {
                   dataList = reports.sales || [];
                   headers = ["Order ID", "Date", "Customer Name", "Items", "Final Amount", "Status", "Payment Method"];
@@ -12071,14 +12068,14 @@ export default function App() {
                   dataList = reports.promo_orders || [];
                   headers = ["Order ID", "Date", "Customer Name", "Original Price", "Discount Amount", "Final Amount"];
                 }
-                
+
                 if (dataList.length === 0) {
                   addToast("Export Empty", "No data to export for this report range.", "warning");
                   return;
                 }
-                
+
                 let csvRows = [headers.join(",")];
-                
+
                 dataList.forEach(item => {
                   let row = [];
                   if (tab === 'sales') {
@@ -12152,7 +12149,7 @@ export default function App() {
                   }
                   csvRows.push(row.join(","));
                 });
-                
+
                 const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
@@ -12177,7 +12174,7 @@ export default function App() {
 
               return (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                  
+
                   {/* Date Filter Header Row */}
                   <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -12187,44 +12184,44 @@ export default function App() {
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Start Date</label>
-                        <input 
-                          type="date" 
-                          value={revenueStartDate} 
-                          onChange={(e) => setRevenueStartDate(e.target.value)} 
-                          style={{ 
-                            padding: '6px 12px', 
-                            borderRadius: '6px', 
-                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                        <input
+                          type="date"
+                          value={revenueStartDate}
+                          onChange={(e) => setRevenueStartDate(e.target.value)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(154, 132, 200, 0.3)',
                             background: '#ffffff',
                             color: 'var(--text-main)',
                             fontSize: '0.8rem',
                             outline: 'none',
                             height: '34px'
-                          }} 
+                          }}
                         />
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>End Date</label>
-                        <input 
-                          type="date" 
-                          value={revenueEndDate} 
-                          onChange={(e) => setRevenueEndDate(e.target.value)} 
-                          style={{ 
-                            padding: '6px 12px', 
-                            borderRadius: '6px', 
-                            border: '1px solid rgba(154, 132, 200, 0.3)', 
+                        <input
+                          type="date"
+                          value={revenueEndDate}
+                          onChange={(e) => setRevenueEndDate(e.target.value)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid rgba(154, 132, 200, 0.3)',
                             background: '#ffffff',
                             color: 'var(--text-main)',
                             fontSize: '0.8rem',
                             outline: 'none',
                             height: '34px'
-                          }} 
+                          }}
                         />
                       </div>
                       {(revenueStartDate || revenueEndDate) && (
-                        <button 
-                          onClick={() => { setRevenueStartDate(''); setRevenueEndDate(''); }} 
-                          className="btn-secondary" 
+                        <button
+                          onClick={() => { setRevenueStartDate(''); setRevenueEndDate(''); }}
+                          className="btn-secondary"
                           style={{ padding: '6px 12px', fontSize: '0.75rem', height: '34px' }}
                         >
                           Clear
@@ -12255,11 +12252,11 @@ export default function App() {
 
                   {/* Charts Row */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-                    
+
                     {/* Daily sales progress */}
                     <div className="glass-panel" style={{ padding: '24px', position: 'relative' }}>
                       <h4 style={{ fontWeight: 800, marginBottom: '16px', letterSpacing: '0.5px' }}>Daily Sales Progress (past week)</h4>
-                      
+
                       {dailySales.length > 0 ? (() => {
                         const rawMax = Math.max(...dailySales.map(x => x.revenue), 0);
                         const chartMaxLimit = rawMax <= 1000 ? 1000 : Math.ceil(rawMax / 1000) * 1000;
@@ -12283,9 +12280,9 @@ export default function App() {
                         if (points.length > 0) {
                           lineD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
                           const bottomY = padTop + chartH;
-                          areaD = `M ${points[0].x} ${bottomY} L ${points[0].x} ${points[0].y} ` + 
-                                  points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ") + 
-                                  ` L ${points[points.length - 1].x} ${bottomY} Z`;
+                          areaD = `M ${points[0].x} ${bottomY} L ${points[0].x} ${points[0].y} ` +
+                            points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ") +
+                            ` L ${points[points.length - 1].x} ${bottomY} Z`;
                         }
 
                         return (
@@ -12305,14 +12302,14 @@ export default function App() {
                                 const isTargetLine = i === 10;
                                 return (
                                   <g key={i}>
-                                    <line 
-                                      x1={padLeft} 
-                                      y1={yPos} 
-                                      x2={svgW - padRight} 
-                                      y2={yPos} 
-                                      stroke={isTargetLine ? "#ef4444" : "#f1f5f9"} 
+                                    <line
+                                      x1={padLeft}
+                                      y1={yPos}
+                                      x2={svgW - padRight}
+                                      y2={yPos}
+                                      stroke={isTargetLine ? "#ef4444" : "#f1f5f9"}
                                       strokeWidth={isTargetLine ? 1.5 : 1}
-                                      strokeDasharray={isTargetLine ? "4 4" : undefined} 
+                                      strokeDasharray={isTargetLine ? "4 4" : undefined}
                                     />
                                     <text
                                       x={padLeft - 8}
@@ -12342,19 +12339,19 @@ export default function App() {
 
                               {/* Area Shading */}
                               {areaD && (
-                                <path 
-                                  d={areaD} 
-                                  fill="url(#areaGrad)" 
+                                <path
+                                  d={areaD}
+                                  fill="url(#areaGrad)"
                                 />
                               )}
 
                               {/* Trend Line */}
                               {lineD && (
-                                <path 
-                                  d={lineD} 
-                                  fill="none" 
-                                  stroke="#3b82f6" 
-                                  strokeWidth="2.5" 
+                                <path
+                                  d={lineD}
+                                  fill="none"
+                                  stroke="#3b82f6"
+                                  strokeWidth="2.5"
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                 />
@@ -12417,7 +12414,7 @@ export default function App() {
                             {hoveredBarIndex !== null && (() => {
                               const p = points[hoveredBarIndex];
                               const item = p.item;
-                              
+
                               const tooltipLeftPct = (p.x / svgW) * 100;
                               const tooltipTopPct = (p.y / svgH) * 100;
 
@@ -12466,16 +12463,16 @@ export default function App() {
                     {/* Category distribution */}
                     <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
                       <h4 style={{ fontWeight: 800, marginBottom: '16px', letterSpacing: '0.5px' }}>Revenue share by category</h4>
-                      
+
                       {categorySales.length > 0 ? (
-                        <div style={{ 
-                          display: 'flex', 
-                          flexDirection: 'row', 
-                          gap: '24px', 
-                          flexWrap: 'wrap', 
-                          alignItems: 'center', 
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                          gap: '24px',
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
                           justifyContent: 'center',
-                          flexGrow: 1 
+                          flexGrow: 1
                         }}>
                           {/* Donut Chart Container */}
                           <div style={{ position: 'relative', width: '220px', height: '220px', flexShrink: 0 }}>
@@ -12505,7 +12502,7 @@ export default function App() {
                                 const strokeDashOffset = 0;
                                 const strokeDashArray = `${circumference * pct} ${circumference}`;
                                 const rotation = (accumulatedPercent * 360) - 90;
-                                
+
                                 // Accumulate percent for next segments
                                 accumulatedPercent += pct;
 
@@ -12539,14 +12536,14 @@ export default function App() {
                                   y={donutCenter - 8}
                                   textAnchor="middle"
                                   fill="var(--text-muted)"
-                                  style={{ 
-                                    fontSize: '9px', 
-                                    fontWeight: 700, 
-                                    letterSpacing: '1.2px', 
-                                    fontFamily: "'Jost', sans-serif" 
+                                  style={{
+                                    fontSize: '9px',
+                                    fontWeight: 700,
+                                    letterSpacing: '1.2px',
+                                    fontFamily: "'Jost', sans-serif"
                                   }}
                                 >
-                                  {hoveredCategoryIndex !== null 
+                                  {hoveredCategoryIndex !== null
                                     ? categorySales[hoveredCategoryIndex].name.toUpperCase()
                                     : 'TOTAL REVENUE'}
                                 </text>
@@ -12555,10 +12552,10 @@ export default function App() {
                                   y={donutCenter + 14}
                                   textAnchor="middle"
                                   fill="#2b0b57"
-                                  style={{ 
-                                    fontSize: '18px', 
-                                    fontWeight: 800, 
-                                    fontFamily: "'Jost', sans-serif" 
+                                  style={{
+                                    fontSize: '18px',
+                                    fontWeight: 800,
+                                    fontFamily: "'Jost', sans-serif"
                                   }}
                                 >
                                   ₹{hoveredCategoryIndex !== null
@@ -12571,10 +12568,10 @@ export default function App() {
                                     y={donutCenter + 28}
                                     textAnchor="middle"
                                     fill="var(--accent-secondary)"
-                                    style={{ 
-                                      fontSize: '10.5px', 
-                                      fontWeight: 700, 
-                                      fontFamily: "'Jost', sans-serif" 
+                                    style={{
+                                      fontSize: '10.5px',
+                                      fontWeight: 700,
+                                      fontFamily: "'Jost', sans-serif"
                                     }}
                                   >
                                     {Math.round((categorySales[hoveredCategoryIndex].value / totalCatRevenue) * 100)}% share
@@ -12585,12 +12582,12 @@ export default function App() {
                           </div>
 
                           {/* Legend Column */}
-                          <div style={{ 
-                            display: 'flex', 
-                            flexDirection: 'column', 
-                            gap: '10px', 
-                            flexGrow: 1, 
-                            minWidth: '180px' 
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                            flexGrow: 1,
+                            minWidth: '180px'
                           }}>
                             {categorySales.map((item, idx) => {
                               const pct = Math.round((item.value / totalCatRevenue) * 100);
@@ -12598,7 +12595,7 @@ export default function App() {
                               const isHovered = hoveredCategoryIndex === idx;
 
                               return (
-                                <div 
+                                <div
                                   key={idx}
                                   style={{
                                     display: 'flex',
@@ -12626,9 +12623,9 @@ export default function App() {
 
                                   {/* Label and Value */}
                                   <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '0.8rem', alignItems: 'center' }}>
-                                    <span style={{ 
-                                      fontWeight: isHovered ? 700 : 500, 
-                                      color: isHovered ? '#2b0b57' : 'var(--text-main)' 
+                                    <span style={{
+                                      fontWeight: isHovered ? 700 : 500,
+                                      color: isHovered ? '#2b0b57' : 'var(--text-main)'
                                     }}>{item.name}</span>
                                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                                       <strong style={{ color: isHovered ? '#7a4ea5' : 'var(--text-main)' }}>₹{item.value.toLocaleString('en-IN')}</strong>
@@ -12656,7 +12653,7 @@ export default function App() {
                         <h4 style={{ fontWeight: 800, letterSpacing: '0.5px', margin: 0, color: '#2b0b57' }}>Detailed Report Subsets</h4>
                         <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>View or export filtered subsets of your shop metrics.</p>
                       </div>
-                      
+
                       {/* Export CSV for selected report */}
                       <button
                         type="button"
@@ -12714,30 +12711,30 @@ export default function App() {
             {/* Popup Ads panel */}
             {activePanel === 'popup_ads' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Save Ad banner form */}
                 <form onSubmit={handleSavePopupAd} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{adForm.id ? "Edit Popup Banner" : "New Ad Banner Campaign"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Campaign Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g., Tech Season Blowout"
                       value={adForm.title}
                       onChange={e => setAdForm(prev => ({ ...prev, title: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Campaign Banner Image</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {adForm.image_url && (
                         <img src={adForm.image_url} alt="Ad Banner Preview" style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
                       )}
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*"
                         style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
                         onChange={e => {
@@ -12749,20 +12746,20 @@ export default function App() {
                           }
                         }}
                       />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Image path URL (automatically filled after upload)"
                         value={adForm.image_url}
                         onChange={e => setAdForm(prev => ({ ...prev, image_url: e.target.value }))}
-                        required 
+                        required
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Target Navigation Link</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="/shop/1"
                       value={adForm.target_url}
                       onChange={e => setAdForm(prev => ({ ...prev, target_url: e.target.value }))}
@@ -12771,8 +12768,8 @@ export default function App() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         style={{ width: '20px', height: '20px' }}
                         checked={adForm.show_before_login}
                         onChange={e => setAdForm(prev => ({ ...prev, show_before_login: e.target.checked }))}
@@ -12780,8 +12777,8 @@ export default function App() {
                       <span style={{ fontSize: '0.75rem' }}>Show Guest Visitor</span>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         style={{ width: '20px', height: '20px' }}
                         checked={adForm.show_after_login}
                         onChange={e => setAdForm(prev => ({ ...prev, show_after_login: e.target.checked }))}
@@ -12791,8 +12788,8 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       style={{ width: '20px', height: '20px' }}
                       checked={adForm.is_active}
                       onChange={e => setAdForm(prev => ({ ...prev, is_active: e.target.checked }))}
@@ -12836,37 +12833,37 @@ export default function App() {
             {/* Coupons panel */}
             {activePanel === 'coupons' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Save Coupon form */}
                 <form onSubmit={handleSaveCoupon} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{couponForm.id ? "Edit Coupon" : "Add Discount Code"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Coupon Code (Caps)</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g., TECH20"
                       value={couponForm.code}
                       onChange={e => setCouponForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                      required 
+                      required
                     />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Discount (%)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="20"
                         value={couponForm.discount_percentage}
                         onChange={e => setCouponForm(prev => ({ ...prev, discount_percentage: e.target.value }))}
-                        required 
+                        required
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Max Discount Limit (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={couponForm.max_discount}
                         onChange={e => setCouponForm(prev => ({ ...prev, max_discount: e.target.value }))}
                       />
@@ -12875,16 +12872,16 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Minimum Purchase Required (₹)</label>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={couponForm.min_purchase}
                       onChange={e => setCouponForm(prev => ({ ...prev, min_purchase: e.target.value }))}
                     />
                   </div>
 
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       style={{ width: '20px', height: '20px' }}
                       checked={couponForm.is_active}
                       onChange={e => setCouponForm(prev => ({ ...prev, is_active: e.target.checked }))}
@@ -12939,7 +12936,7 @@ export default function App() {
             {/* Support Tickets panel */}
             {activePanel === 'help_center' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Tickets list */}
                 <div>
                   <h3 style={{ fontWeight: 800, marginBottom: '16px' }}>Help Center support tickets</h3>
@@ -12966,15 +12963,15 @@ export default function App() {
                   <form onSubmit={handleResolveTicket} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                     <h3 style={{ fontWeight: 800 }}>Resolve Ticket ID #{ticketReplyForm.ticket_id}</h3>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Type support reply which will be dynamically notified to user.</p>
-                    
-                    <textarea 
-                      placeholder="Type response reply..." 
+
+                    <textarea
+                      placeholder="Type response reply..."
                       rows={4}
                       value={ticketReplyForm.reply}
                       onChange={e => setTicketReplyForm(prev => ({ ...prev, reply: e.target.value }))}
                       required
                     />
-                    
+
                     <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
                       Transmit Resolution reply <Send size={16} />
                     </button>
@@ -12987,16 +12984,16 @@ export default function App() {
             {/* Messaging campaigns (SMS & WhatsApp logs) */}
             {activePanel === 'messaging' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Send messaging campaign */}
                 <form onSubmit={handleDispatchCampaign} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>Broadcast Message Campaign</h3>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Transmit promo codes or notifications to customers via configured FAST2SMS or WhatsApp API keys.</p>
-                  
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Transmit Platform</label>
-                      <select 
+                      <select
                         value={messagingForm.platform}
                         onChange={e => setMessagingForm(prev => ({ ...prev, platform: e.target.value }))}
                       >
@@ -13006,7 +13003,7 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Recipient Target</label>
-                      <select 
+                      <select
                         value={messagingForm.recipient}
                         onChange={e => setMessagingForm(prev => ({ ...prev, recipient: e.target.value }))}
                       >
@@ -13019,8 +13016,8 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Message Text</label>
-                    <textarea 
-                      placeholder="Type promotional text details..." 
+                    <textarea
+                      placeholder="Type promotional text details..."
                       rows={4}
                       value={messagingForm.message}
                       onChange={e => setMessagingForm(prev => ({ ...prev, message: e.target.value }))}
@@ -13275,9 +13272,8 @@ export default function App() {
                               <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>₹{orderGoodsGst.toFixed(2)}</td>
                               <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)', textAlign: 'right' }}>₹{orderTotalGst.toFixed(2)}</td>
                               <td>
-                                <span className={`badge ${
-                                  o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                                }`}>
+                                <span className={`badge ${o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                                  }`}>
                                   {o.status}
                                 </span>
                               </td>
@@ -13398,8 +13394,8 @@ export default function App() {
                               {(!cust.quote_status || cust.quote_status === 'Pending') && (
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>₹</span>
-                                  <input 
-                                    type="number" 
+                                  <input
+                                    type="number"
                                     placeholder="0.00 / pc"
                                     value={quoteInputs[cust.id] || ''}
                                     onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
@@ -13420,8 +13416,8 @@ export default function App() {
                                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total: ₹{parseFloat((cust.quoted_price * cust.quantity).toString()).toFixed(2)}</span>
                                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Awaiting response</span>
                                   <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
-                                    <input 
-                                      type="number" 
+                                    <input
+                                      type="number"
                                       placeholder="New / pc"
                                       value={quoteInputs[cust.id] || ''}
                                       onChange={(e) => setQuoteInputs({ ...quoteInputs, [cust.id]: e.target.value })}
@@ -13452,11 +13448,11 @@ export default function App() {
                               )}
                             </td>
                             <td>
-                              <span style={{ 
-                                padding: '4px 8px', 
-                                borderRadius: '4px', 
-                                fontSize: '0.75rem', 
-                                fontWeight: 'bold', 
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
                                 background: cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.15)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.15)' : 'rgba(251, 191, 36, 0.15)',
                                 color: cust.status === 'Completed' ? '#7a4ea5' : cust.status === 'Rejected' ? '#e84e7e' : '#b45309',
                                 border: '1px solid ' + (cust.status === 'Completed' ? 'rgba(154, 132, 200, 0.3)' : cust.status === 'Rejected' ? 'rgba(232, 78, 126, 0.25)' : 'rgba(251, 191, 36, 0.25)')
@@ -13465,8 +13461,8 @@ export default function App() {
                               </span>
                             </td>
                             <td>
-                              <select 
-                                value={cust.status} 
+                              <select
+                                value={cust.status}
                                 onChange={async (e) => {
                                   const newStatus = e.target.value;
                                   try {
@@ -13506,7 +13502,7 @@ export default function App() {
 
                   {/* Right Column: Configurations & Palette */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    
+
                     {/* Minimum Order Quantity Configurator */}
                     <div className="glass-panel" style={{ padding: '20px' }}>
                       <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '8px', color: '#2b0b57' }}>Minimum Custom Quantity</h3>
@@ -13625,7 +13621,7 @@ export default function App() {
                     <div className="glass-panel" style={{ padding: '20px', height: 'fit-content' }}>
                       <h3 style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '16px', color: '#2b0b57' }}>Store Color Palette</h3>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Define the available color choices for custom tailoring orders.</p>
-                      
+
                       {/* List of current colors */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
                         {(adminShop.color_palette || []).map((color, idx) => (
@@ -13635,8 +13631,8 @@ export default function App() {
                               <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{color.name}</span>
                               <span style={{ fontSize: '0.75rem', color: '#888' }}>({color.hex})</span>
                             </div>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 const updatedPalette = (adminShop.color_palette || []).filter((_, i) => i !== idx);
                                 setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
@@ -13656,22 +13652,22 @@ export default function App() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f0e6fc', paddingTop: '16px' }}>
                         <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Add New Color</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             placeholder="Color Name (e.g. Royal Gold)"
                             id="new-color-name"
                             style={{ padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
                           />
                           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <input 
-                              type="text" 
+                            <input
+                              type="text"
                               placeholder="Color Code (e.g. #7a4ea5, rgb(...), gold)"
                               id="new-color-hex"
                               defaultValue="#7a4ea5"
                               style={{ flex: 3, padding: '8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}
                             />
-                            <input 
-                              type="color" 
+                            <input
+                              type="color"
                               id="new-color-picker"
                               defaultValue="#7a4ea5"
                               onChange={e => {
@@ -13682,7 +13678,7 @@ export default function App() {
                             />
                           </div>
                         </div>
-                        <button 
+                        <button
                           type="button"
                           onClick={() => {
                             const nameInput = document.getElementById("new-color-name");
@@ -13710,7 +13706,7 @@ export default function App() {
                         </button>
 
                         {/* Save Palette Button */}
-                        <button 
+                        <button
                           type="button"
                           onClick={async () => {
                             try {
@@ -13746,7 +13742,7 @@ export default function App() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px' }}>Select which categories and individual products are allowed to be customized by customers on the Bespoke Customization page.</p>
 
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.2fr', gap: '30px' }}>
-                    
+
                     {/* Category Customization Toggles */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                       <h4 style={{ fontWeight: 700, fontSize: '1.1rem', color: '#2b0b57', margin: 0, fontFamily: 'var(--font-serif)' }}>Category Customization</h4>
@@ -13901,17 +13897,17 @@ export default function App() {
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                     <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Store System Logs</h2>
-                    
+
                     {/* Log Filter Tabs */}
-                    <div style={{ 
-                      display: 'flex', 
-                      background: 'rgba(154, 132, 200, 0.05)', 
-                      padding: '4px', 
-                      borderRadius: '8px', 
-                      border: '1px solid var(--border-subtle)' 
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(154, 132, 200, 0.05)',
+                      padding: '4px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)'
                     }}>
-                      <button 
-                        onClick={() => setAdminLogTab('all')} 
+                      <button
+                        onClick={() => setAdminLogTab('all')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -13926,8 +13922,8 @@ export default function App() {
                       >
                         All Activities
                       </button>
-                      <button 
-                        onClick={() => setAdminLogTab('system')} 
+                      <button
+                        onClick={() => setAdminLogTab('system')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -13942,8 +13938,8 @@ export default function App() {
                       >
                         System Activity
                       </button>
-                      <button 
-                        onClick={() => setAdminLogTab('smtp')} 
+                      <button
+                        onClick={() => setAdminLogTab('smtp')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -14034,22 +14030,22 @@ export default function App() {
           </aside>
 
           <main className="main-content">
-            
+
             {/* Shop creation and list */}
             {activePanel === 'shop_creation' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Create/Edit Shop form */}
                 <form onSubmit={shopForm.id ? handleUpdateShopConfig : handleCreateShop} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{shopForm.id ? "Global Shop Customization" : "Create New Shop Platform"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Shop Name Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={shopForm.name}
                       onChange={e => setShopForm(prev => ({ ...prev, name: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
 
@@ -14059,8 +14055,8 @@ export default function App() {
                       {shopForm.logo_url && (
                         <img src={shopForm.logo_url} alt="Shop Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
                       )}
-                      <input 
-                        type="file" 
+                      <input
+                        type="file"
                         accept="image/*"
                         style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
                         onChange={e => {
@@ -14072,8 +14068,8 @@ export default function App() {
                           }
                         }}
                       />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Logo path URL (automatically filled after upload)"
                         value={shopForm.logo_url}
                         onChange={e => setShopForm(prev => ({ ...prev, logo_url: e.target.value }))}
@@ -14084,16 +14080,16 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Email</label>
-                      <input 
-                        type="email" 
+                      <input
+                        type="email"
                         value={shopForm.contact_email}
                         onChange={e => setShopForm(prev => ({ ...prev, contact_email: e.target.value }))}
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Phone</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={shopForm.contact_phone}
                         onChange={e => setShopForm(prev => ({ ...prev, contact_phone: e.target.value }))}
                       />
@@ -14102,27 +14098,27 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Privacy Policy Text</label>
-                    <textarea 
+                    <textarea
                       value={shopForm.privacy_policy}
                       onChange={e => setShopForm(prev => ({ ...prev, privacy_policy: e.target.value }))}
-                      rows={2} 
+                      rows={2}
                     />
                   </div>
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Shop Address (Displayed on Tax Invoices)</label>
-                    <textarea 
+                    <textarea
                       placeholder="Enter physical shop address"
                       value={shopForm.address || ""}
                       onChange={e => setShopForm(prev => ({ ...prev, address: e.target.value }))}
-                      rows={2} 
+                      rows={2}
                     />
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         style={{ width: '18px', height: '18px' }}
                         checked={shopForm.super_coin_enabled}
                         onChange={e => setShopForm(prev => ({ ...prev, super_coin_enabled: e.target.checked }))}
@@ -14131,16 +14127,16 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Ratio spent per coin (₹)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={shopForm.super_coin_ratio}
                         onChange={e => setShopForm(prev => ({ ...prev, super_coin_ratio: parseInt(e.target.value) }))}
                       />
                     </div>
                     <div>
                       <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>GST Percentage (%)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         step="0.01"
                         min="0"
                         max="100"
@@ -14150,7 +14146,7 @@ export default function App() {
                     </div>
                     <div>
                       <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>GST Tax Type</label>
-                      <select 
+                      <select
                         value={shopForm.gst_inclusive ? 'inclusive' : 'exclusive'}
                         onChange={e => setShopForm(prev => ({ ...prev, gst_inclusive: e.target.value === 'inclusive' }))}
                       >
@@ -14198,14 +14194,14 @@ export default function App() {
             {/* Admin accounts allocation */}
             {activePanel === 'admin_creation' && (
               <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
-                
+
                 {/* Create Admin form */}
                 <form onSubmit={handleCreateAdmin} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', height: 'fit-content' }}>
                   <h3 style={{ fontWeight: 800 }}>{newAdminForm.id ? "Edit Store Administrator" : "Allocate Store Administrator"}</h3>
-                  
+
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Select Target Shop</label>
-                    <select 
+                    <select
                       value={newAdminForm.shop_id}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, shop_id: e.target.value }))}
                       required
@@ -14217,45 +14213,45 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Admin Username ID</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="e.g., tech_hub_admin"
                       value={newAdminForm.username}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, username: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Display Name</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       placeholder="Aura Tech Admin"
                       value={newAdminForm.name}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, name: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email Address</label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       placeholder="admin@auratech.com"
                       value={newAdminForm.email}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, email: e.target.value }))}
-                      required 
+                      required
                     />
                   </div>
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Security Password</label>
-                    <input 
-                      type="password" 
+                    <input
+                      type="password"
                       placeholder={newAdminForm.id ? "Leave blank to keep current password" : "admin123"}
                       value={newAdminForm.password}
                       onChange={e => setNewAdminForm(prev => ({ ...prev, password: e.target.value }))}
-                      required={!newAdminForm.id} 
+                      required={!newAdminForm.id}
                     />
                   </div>
 
@@ -14264,9 +14260,9 @@ export default function App() {
                   </button>
 
                   {newAdminForm.id && (
-                    <button 
-                      type="button" 
-                      className="btn-secondary" 
+                    <button
+                      type="button"
+                      className="btn-secondary"
                       onClick={() => setNewAdminForm({ id: null, username: "", password: "", email: "", name: "", shop_id: "" })}
                       style={{ justifyContent: 'center', marginTop: '4px' }}
                     >
@@ -14296,19 +14292,19 @@ export default function App() {
                             <td>{a.email}</td>
                             <td>
                               <div style={{ display: 'flex', gap: '8px' }}>
-                                <button 
+                                <button
                                   type="button"
-                                  onClick={() => setNewAdminForm({ id: a.id, username: a.username, password: "", email: a.email, name: a.name || "", shop_id: a.shop_id })} 
-                                  className="btn-secondary" 
+                                  onClick={() => setNewAdminForm({ id: a.id, username: a.username, password: "", email: a.email, name: a.name || "", shop_id: a.shop_id })}
+                                  className="btn-secondary"
                                   style={{ padding: '6px' }}
                                   title="Edit Admin"
                                 >
                                   <Edit2 size={12} />
                                 </button>
-                                <button 
+                                <button
                                   type="button"
-                                  onClick={() => handleDeleteAdmin(a.id)} 
-                                  className="btn-danger" 
+                                  onClick={() => handleDeleteAdmin(a.id)}
+                                  className="btn-danger"
                                   style={{ padding: '6px' }}
                                   title="Delete Admin"
                                 >
@@ -14353,9 +14349,8 @@ export default function App() {
                           <td>₹{o.gst_amount} (GST)</td>
                           <td>{new Date(o.created_at).toLocaleString()}</td>
                           <td>
-                            <span className={`badge ${
-                              o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
-                            }`}>
+                            <span className={`badge ${o.status === 'Customer Received' ? 'badge-success' : o.status === 'Dispatched' ? 'badge-info' : o.status === 'Accepted' ? 'badge-info' : o.status === 'Rejected' ? 'badge-danger' : 'badge-warning'
+                              }`}>
                               {o.status}
                             </span>
                           </td>
@@ -14383,15 +14378,15 @@ export default function App() {
                     <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Absolute Audit Logs</h2>
 
                     {/* Log Filter Tabs */}
-                    <div style={{ 
-                      display: 'flex', 
-                      background: 'rgba(154, 132, 200, 0.05)', 
-                      padding: '4px', 
-                      borderRadius: '8px', 
-                      border: '1px solid var(--border-subtle)' 
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(154, 132, 200, 0.05)',
+                      padding: '4px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)'
                     }}>
-                      <button 
-                        onClick={() => setSuperLogTab('all')} 
+                      <button
+                        onClick={() => setSuperLogTab('all')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -14406,8 +14401,8 @@ export default function App() {
                       >
                         All Activities
                       </button>
-                      <button 
-                        onClick={() => setSuperLogTab('system')} 
+                      <button
+                        onClick={() => setSuperLogTab('system')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -14422,8 +14417,8 @@ export default function App() {
                       >
                         System Activity
                       </button>
-                      <button 
-                        onClick={() => setSuperLogTab('smtp')} 
+                      <button
+                        onClick={() => setSuperLogTab('smtp')}
                         style={{
                           padding: '6px 14px',
                           borderRadius: '6px',
@@ -14484,10 +14479,10 @@ export default function App() {
                   <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Customer Directory</h2>
                   <div className="search-bar" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: 'var(--bg-glass)', borderRadius: '24px', border: '1px solid var(--border-subtle)', width: '320px' }}>
                     <Search size={16} style={{ color: 'var(--text-muted)' }} />
-                    <input 
-                      type="text" 
-                      placeholder="Search by name, email, phone, ID..." 
-                      style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.85rem', color: 'var(--text-main)' }} 
+                    <input
+                      type="text"
+                      placeholder="Search by name, email, phone, ID..."
+                      style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.85rem', color: 'var(--text-main)' }}
                       value={superCustomerSearch}
                       onChange={e => setSuperCustomerSearch(e.target.value)}
                     />
@@ -14512,18 +14507,18 @@ export default function App() {
                       {superCustomers.filter(c => {
                         const q = superCustomerSearch.toLowerCase();
                         return (c.username || "").toLowerCase().includes(q) ||
-                               (c.name || "").toLowerCase().includes(q) ||
-                               (c.email || "").toLowerCase().includes(q) ||
-                               (c.contact_phone || "").toLowerCase().includes(q) ||
-                               c.id.toString().includes(q);
+                          (c.name || "").toLowerCase().includes(q) ||
+                          (c.email || "").toLowerCase().includes(q) ||
+                          (c.contact_phone || "").toLowerCase().includes(q) ||
+                          c.id.toString().includes(q);
                       }).length > 0 ? (
                         superCustomers.filter(c => {
                           const q = superCustomerSearch.toLowerCase();
                           return (c.username || "").toLowerCase().includes(q) ||
-                                 (c.name || "").toLowerCase().includes(q) ||
-                                 (c.email || "").toLowerCase().includes(q) ||
-                                 (c.contact_phone || "").toLowerCase().includes(q) ||
-                                 c.id.toString().includes(q);
+                            (c.name || "").toLowerCase().includes(q) ||
+                            (c.email || "").toLowerCase().includes(q) ||
+                            (c.contact_phone || "").toLowerCase().includes(q) ||
+                            c.id.toString().includes(q);
                         }).map(c => (
                           <tr key={c.id}>
                             <td style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>#{c.id}</td>
@@ -14538,10 +14533,10 @@ export default function App() {
                             </td>
                             <td>{c.created_at ? new Date(c.created_at).toLocaleString() : 'N/A'}</td>
                             <td style={{ textAlign: 'center' }}>
-                              <button 
+                              <button
                                 type="button"
-                                onClick={() => handleDeleteCustomer(c.id)} 
-                                className="btn-danger" 
+                                onClick={() => handleDeleteCustomer(c.id)}
+                                className="btn-danger"
                                 style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
                                 title="Delete Customer Account"
                               >
@@ -14750,7 +14745,7 @@ export default function App() {
         paddingBottom: 'safe-area-inset-bottom'
       }}>
         {/* Home Item */}
-        <button 
+        <button
           onClick={() => {
             setCurrentView("opac");
             setActiveCategoryPage(null);
@@ -14774,7 +14769,7 @@ export default function App() {
         </button>
 
         {/* Search Item */}
-        <button 
+        <button
           onClick={() => {
             setShowSmartSearch(true);
           }}
@@ -14795,7 +14790,7 @@ export default function App() {
         </button>
 
         {/* Wishlist Item */}
-        <button 
+        <button
           onClick={() => setShowWishlistDrawer(true)}
           style={{
             background: 'none',
@@ -14832,7 +14827,7 @@ export default function App() {
         </button>
 
         {/* Cart Item */}
-        <button 
+        <button
           onClick={() => setShowCartDrawer(true)}
           style={{
             background: 'none',
@@ -14871,7 +14866,7 @@ export default function App() {
         </button>
 
         {/* Profile Item */}
-        <button 
+        <button
           onClick={() => {
             if (role === 'guest') {
               setLoginRoleTab("user");
@@ -14993,7 +14988,7 @@ export default function App() {
                     title: sharingProduct.name,
                     text: `Check out this beautiful saree: ${sharingProduct.name}`,
                     url: `${window.location.origin}?product=${sharingProduct.id}`
-                  }).catch(() => {});
+                  }).catch(() => { });
                 }}
                 className="btn-primary"
                 style={{ width: '100%', padding: '12px', fontWeight: 700, fontSize: '0.9rem', justifyContent: 'center', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', borderRadius: '10px', cursor: 'pointer' }}
@@ -15034,12 +15029,12 @@ export default function App() {
                 <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Design Color Palette</label>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {(currentShop?.color_palette || [
-                    {"name": "Royal Gold", "hex": "#D4AF37"},
-                    {"name": "Noble Lavender", "hex": "#7a4ea5"},
-                    {"name": "Crimson Ruby", "hex": "#E84E7E"},
-                    {"name": "Midnight Indigo", "hex": "#2b0b57"},
-                    {"name": "Forest Green", "hex": "#228B22"},
-                    {"name": "Turquoise Teal", "hex": "#008080"}
+                    { "name": "Royal Gold", "hex": "#D4AF37" },
+                    { "name": "Noble Lavender", "hex": "#7a4ea5" },
+                    { "name": "Crimson Ruby", "hex": "#E84E7E" },
+                    { "name": "Midnight Indigo", "hex": "#2b0b57" },
+                    { "name": "Forest Green", "hex": "#228B22" },
+                    { "name": "Turquoise Teal", "hex": "#008080" }
                   ]).map((c, idx) => {
                     const isSelected = selectedCustomColor?.hex === c.hex;
                     return (
@@ -15182,8 +15177,8 @@ export default function App() {
 
       {/* SMART / QUICK SEARCH OVERLAY (FLIPKART ACCURATE MOBILE OVERLAY & DESKTOP SUITE) */}
       {showSmartSearch && (
-        <div 
-          className="smart-search-overlay" 
+        <div
+          className="smart-search-overlay"
           style={{
             position: 'fixed',
             top: 0,
@@ -15206,7 +15201,7 @@ export default function App() {
             background: '#ffffff',
             boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
           }}>
-            <button 
+            <button
               onClick={() => {
                 setShowSmartSearch(false);
                 setLocalSearchVal("");
@@ -15231,15 +15226,15 @@ export default function App() {
               display: 'flex',
               alignItems: 'center'
             }}>
-              <Search 
-                size={18} 
+              <Search
+                size={18}
                 style={{
                   position: 'absolute',
                   left: '16px',
                   color: '#7a4ea5'
-                }} 
+                }}
               />
-              <input 
+              <input
                 type="text"
                 placeholder="Search for sarees, lehengas, silk, categories..."
                 value={localSearchVal}
@@ -15283,7 +15278,7 @@ export default function App() {
             </div>
 
             {!isMobile && (
-              <button 
+              <button
                 onClick={() => handleCommitSearch(localSearchVal)}
                 className="btn-primary"
                 style={{
@@ -15308,7 +15303,7 @@ export default function App() {
             {!localSearchVal ? (
               // Initial State: suggestions
               <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '800px', margin: '0 auto' }}>
-                
+
                 {/* Recent Searches */}
                 {recentSearches.length > 0 && (
                   <div>
@@ -15316,7 +15311,7 @@ export default function App() {
                       <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
                         <Clock size={14} /> Recent Searches
                       </h4>
-                      <button 
+                      <button
                         onClick={clearRecentSearches}
                         style={{ background: 'none', border: 'none', color: '#7a4ea5', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}
                       >
@@ -15325,7 +15320,7 @@ export default function App() {
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                       {recentSearches.map((s, idx) => (
-                        <button 
+                        <button
                           key={idx}
                           onClick={() => handleCommitSearch(s)}
                           className="search-tag-item"
@@ -15344,7 +15339,7 @@ export default function App() {
                   </h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {["Royal Purple Saree", "Kanjeevaram", "Banarasi Silk", "Lehenga", "Saree Collections", "Bespoke Customization"].map((s, idx) => (
-                      <button 
+                      <button
                         key={idx}
                         onClick={() => handleCommitSearch(s)}
                         className="search-tag-item"
@@ -15366,7 +15361,7 @@ export default function App() {
                     gap: '16px'
                   }}>
                     {categories.slice(0, 4).map(c => (
-                      <div 
+                      <div
                         key={c.id}
                         onClick={() => {
                           setActiveCategoryPage(c);
@@ -15398,10 +15393,10 @@ export default function App() {
             ) : (
               // Suggestions lists
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '800px', margin: '0 auto' }}>
-                
+
                 {/* Category Scope Suggestions */}
                 {categories.filter(c => c.name.toLowerCase().includes(localSearchVal.toLowerCase())).map(c => (
-                  <div 
+                  <div
                     key={`cat-${c.id}`}
                     onClick={() => {
                       setSelectedCategory(c.id.toString());
@@ -15429,11 +15424,11 @@ export default function App() {
                   <h4 style={{ fontSize: '0.8rem', color: '#666666', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 700, marginBottom: '12px', margin: 0 }}>
                     Matching Products ({getLiveMatches().length})
                   </h4>
-                  
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                     {getLiveMatches().length > 0 ? (
                       getLiveMatches().map(p => (
-                        <div 
+                        <div
                           key={`prod-${p.id}`}
                           onClick={() => {
                             handleProductSelection(p.id);
@@ -15443,8 +15438,8 @@ export default function App() {
                           className="search-product-match"
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <img 
-                              src={p.images[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=50&q=80" } 
+                            <img
+                              src={p.images[0] || "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=50&q=80"}
                               alt={p.name}
                               style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #eeeeee' }}
                             />

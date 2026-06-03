@@ -19,7 +19,17 @@ from user import user_bp
 from billing_sync import billing_sync_bp
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origins=["http://localhost:5173", "https://vishnex.com", "https://back.vishnex.com"])
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost",
+    "https://vishnex.com",
+    "https://www.vishnex.com",
+    "http://vishnex.com",
+    "http://www.vishnex.com",
+    "https://back.vishnex.com",
+    "http://back.vishnex.com"
+])
 
 # Initialize Razorpay Client
 # Replace with your actual Test Key ID and Secret
@@ -57,12 +67,26 @@ def create_database_if_not_exists():
         except Exception as e:
             print(f"Warning: Could not connect to MySQL server to verify/create database: {e}")
 
-if DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+elif DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
     import urllib.parse
     encoded_password = urllib.parse.quote_plus(DB_PASSWORD)
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'ecommerce.db')}"
+    missing_vars = [var for var, val in {
+        "DB_USER": DB_USER,
+        "DB_PASSWORD": DB_PASSWORD,
+        "DB_HOST": DB_HOST,
+        "DB_PORT": DB_PORT,
+        "DB_NAME": DB_NAME
+    }.items() if not val]
+    raise RuntimeError(
+        f"Database configuration error: MySQL is required, but the following environment "
+        f"variables are missing or empty: {', '.join(missing_vars)}. "
+        f"Please configure them in your server/container environment or set DATABASE_URL."
+    )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # File Upload Configuration
@@ -88,6 +112,22 @@ def upload_file():
 @app.route('/api/uploads/<path:filename>', methods=['GET'])
 def serve_uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "success",
+        "message": "Backend is running successfully!",
+        "version": "1.0.0"
+    }), 200
+
+@app.route('/api')
+def api_home():
+    return jsonify({
+        "status": "success",
+        "message": "E-Commerce API is running successfully!",
+        "version": "1.0.0"
+    }), 200
 
 create_database_if_not_exists()
 db.init_app(app)

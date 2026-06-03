@@ -8,7 +8,7 @@ export default defineConfig({
     allowedHosts: ['vishnex.com'],
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5500',
+        target: 'https://back.vishnex.com',
         changeOrigin: true,
         secure: false,
       }
