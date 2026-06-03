@@ -148,6 +148,7 @@ const OnlineOrders: React.FC = () => {
   const [webOrders, setWebOrders] = useState<any[]>([]);
   const [webCustomizations, setWebCustomizations] = useState<any[]>([]);
   const [quoteInputs, setQuoteInputs] = useState<Record<number, string>>({});
+  const [apiUrl, setApiUrl] = useState('');
 
   const [activeTab, setActiveTab] = useState<'standard' | 'customization' | 'returns'>('standard');
   const [loading, setLoading] = useState(true);
@@ -172,6 +173,8 @@ const OnlineOrders: React.FC = () => {
     try {
       const raw = localStorage.getItem('app_settings');
       const settings = raw ? JSON.parse(raw) : {};
+      const url = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      setApiUrl(url);
       const saved = String(settings.shippingLabelSize || '').toUpperCase();
       if (saved && LABEL_SIZES.some(size => size.value === saved)) {
         setLabelSize(saved);
@@ -180,6 +183,26 @@ const OnlineOrders: React.FC = () => {
       // keep default
     }
   }, []);
+
+  const getFullImageUrl = (imgUrl: string) => {
+    if (!imgUrl) return '';
+    if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://') || imgUrl.startsWith('data:')) {
+      return imgUrl;
+    }
+    if (apiUrl) {
+      try {
+        const urlObj = new URL(apiUrl);
+        const origin = urlObj.origin;
+        const cleanPath = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
+        return `${origin}${cleanPath}`;
+      } catch (e) {
+        let base = apiUrl.replace(/\/api\/?$/, '');
+        const cleanPath = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
+        return `${base}${cleanPath}`;
+      }
+    }
+    return imgUrl;
+  };
 
   const persistLabelSize = (nextSize: string) => {
     setLabelSize(nextSize);
@@ -216,6 +239,7 @@ const OnlineOrders: React.FC = () => {
       
       const settings = JSON.parse(settingsRaw);
       const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      setApiUrl(apiUrl);
       const apiKey = settings.ecommerceApiKey || '';
       
       if (!apiUrl || !apiKey) {
@@ -1863,7 +1887,7 @@ const OnlineOrders: React.FC = () => {
                           <div className="flex items-center gap-3">
                             {cust.product_image ? (
                               <img 
-                                src={cust.product_image} 
+                                src={getFullImageUrl(cust.product_image)} 
                                 alt={cust.product_name} 
                                 className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
                               />
@@ -2120,7 +2144,7 @@ const OnlineOrders: React.FC = () => {
                                 <div key={item.id} className="flex items-center gap-3">
                                   {imageUrl ? (
                                     <img 
-                                      src={imageUrl} 
+                                      src={getFullImageUrl(imageUrl)} 
                                       alt={item.product_name} 
                                       className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
                                     />
@@ -2233,7 +2257,7 @@ const OnlineOrders: React.FC = () => {
                                 </div>
                                 {order.return_image_url && (
                                   <button
-                                    onClick={() => openLink(order.return_image_url)}
+                                    onClick={() => openLink(getFullImageUrl(order.return_image_url))}
                                     className="text-[10px] text-indigo-600 underline block mb-0.5 text-left bg-transparent border-none p-0 cursor-pointer"
                                   >
                                     View Proof Image
@@ -2349,7 +2373,7 @@ const OnlineOrders: React.FC = () => {
                                 <div key={item.id} className="flex items-center gap-3">
                                   {imageUrl ? (
                                     <img 
-                                      src={imageUrl} 
+                                      src={getFullImageUrl(imageUrl)} 
                                       alt={item.product_name} 
                                       className="h-10 w-10 rounded-lg object-cover border border-slate-200 shrink-0" 
                                     />
@@ -2384,14 +2408,14 @@ const OnlineOrders: React.FC = () => {
                           {order.return_image_url ? (
                             <div className="flex flex-col gap-1.5 items-start">
                               <img 
-                                src={order.return_image_url} 
+                                src={getFullImageUrl(order.return_image_url)} 
                                 alt="Proof" 
                                 className="h-10 w-10 rounded-lg object-cover border border-slate-200 hover:scale-105 transition-transform cursor-pointer shadow-sm" 
-                                onClick={() => openLink(order.return_image_url)}
+                                onClick={() => openLink(getFullImageUrl(order.return_image_url))}
                                 title="Click to view full image"
                               />
                               <button
-                                onClick={() => openLink(order.return_image_url)}
+                                onClick={() => openLink(getFullImageUrl(order.return_image_url))}
                                 className="text-[10px] text-indigo-600 hover:underline bg-transparent border-none p-0 cursor-pointer text-left font-semibold"
                               >
                                 View Proof
