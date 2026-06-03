@@ -297,7 +297,7 @@ class User(db.Model):
     super_coins = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.now)
     addresses_json = db.Column(db.Text, nullable=True)
-    last_used_address_id = db.Column(db.Integer, nullable=True)
+    last_used_address_id = db.Column(db.BigInteger, nullable=True)
     reset_token = db.Column(db.String(100), nullable=True)
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
 

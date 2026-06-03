@@ -519,6 +519,7 @@ def seed_database():
         ensure_dtdc_columns()
         ensure_shipping_columns()
         ensure_show_description_column()
+        ensure_last_used_address_id_bigint()
         backfill_online_order_numbers()
         sanitize_database_urls()
 
@@ -900,6 +901,15 @@ def ensure_show_description_column():
             print("Successfully added show_description column to categories table.")
     except Exception as e:
         print(f"Error ensuring show_description column: {e}")
+
+def ensure_last_used_address_id_bigint():
+    try:
+        if db.engine.name == 'mysql':
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE users MODIFY COLUMN last_used_address_id BIGINT"))
+            print("Successfully modified last_used_address_id column to BIGINT on MySQL.")
+    except Exception as e:
+        print(f"Error ensuring last_used_address_id is BIGINT: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():
