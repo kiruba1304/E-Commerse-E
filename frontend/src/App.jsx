@@ -7184,7 +7184,7 @@ export default function App() {
                           </div>
                         ) : (
                           <>
-                            {col.show_category_banner !== false && col.show_category_banner !== 0 && !(col.name.toLowerCase().includes('trend') || col.name.toLowerCase().includes('trand')) && (
+                            {col.show_category_banner !== false && col.show_category_banner !== 0 && (
                               <div className="nobaraa-category-grid" style={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))',
