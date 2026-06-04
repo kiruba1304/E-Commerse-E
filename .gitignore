@@ -40,3 +40,4 @@ backend/ecommerce.db
 *.sqlite3
 # Backend files
 backend/backend.zip
+*.zip
