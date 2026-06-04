@@ -163,6 +163,10 @@ def manage_shop():
             shop.shipping_charges_flat = float(data['shipping_charges_flat'])
         except ValueError:
             return jsonify({"error": "Invalid flat shipping charge value"}), 400
+    if 'cod_enabled' in data:
+        shop.cod_enabled = bool(data['cod_enabled'])
+    if 'customization_cod_enabled' in data:
+        shop.customization_cod_enabled = bool(data['customization_cod_enabled'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -500,7 +504,8 @@ def manage_products():
         barcode=data.get('barcode', ''),
         sku_code=data.get('sku_code', ''),
         hsc_code=data.get('hsc_code', ''),
-        return_window_days=return_window_days
+        return_window_days=return_window_days,
+        cod_enabled=bool(data.get('cod_enabled', True))
     )
     p.images = images  # sets JSON field via property setter
     
@@ -583,6 +588,8 @@ def modify_product(prod_id):
                 return jsonify({"error": "Invalid return window days value"}), 400
         else:
             p.return_window_days = None
+    if 'cod_enabled' in data:
+        p.cod_enabled = bool(data['cod_enabled'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")

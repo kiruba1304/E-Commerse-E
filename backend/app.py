@@ -507,6 +507,15 @@ def seed_database():
     with app.app_context():
         db.create_all()
         
+        # Ensure all columns exist before running any data checks or queries
+        ensure_shop_billing_heartbeat_column()
+        ensure_online_order_sequence_columns()
+        ensure_dtdc_columns()
+        ensure_shipping_columns()
+        ensure_show_description_column()
+        ensure_last_used_address_id_bigint()
+        ensure_cod_enabled_columns()
+        
         # Automatic SQLite to MySQL migration if using MySQL
         if db.engine.name == 'mysql':
             try:
@@ -514,12 +523,6 @@ def seed_database():
             except Exception as e:
                 print(f"Error during SQLite to MySQL migration: {e}")
                 
-        ensure_shop_billing_heartbeat_column()
-        ensure_online_order_sequence_columns()
-        ensure_dtdc_columns()
-        ensure_shipping_columns()
-        ensure_show_description_column()
-        ensure_last_used_address_id_bigint()
         backfill_online_order_numbers()
         sanitize_database_urls()
 
@@ -910,6 +913,41 @@ def ensure_last_used_address_id_bigint():
             print("Successfully modified last_used_address_id column to BIGINT on MySQL.")
     except Exception as e:
         print(f"Error ensuring last_used_address_id is BIGINT: {e}")
+
+def ensure_cod_enabled_columns():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
+        # 1. Shop table
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'cod_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN cod_enabled BOOLEAN DEFAULT 1 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN cod_enabled TINYINT(1) DEFAULT 1 NOT NULL"))
+            print("Successfully added cod_enabled column to shops table.")
+        if 'customization_cod_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN customization_cod_enabled BOOLEAN DEFAULT 1 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN customization_cod_enabled TINYINT(1) DEFAULT 1 NOT NULL"))
+            print("Successfully added customization_cod_enabled column to shops table.")
+
+        # 2. Product table
+        columns = [col['name'] for col in inspector.get_columns('products')]
+        if 'cod_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE products ADD COLUMN cod_enabled BOOLEAN DEFAULT 1 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE products ADD COLUMN cod_enabled TINYINT(1) DEFAULT 1 NOT NULL"))
+            print("Successfully added cod_enabled column to products table.")
+            
+    except Exception as e:
+        print(f"Error ensuring cod_enabled columns: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():

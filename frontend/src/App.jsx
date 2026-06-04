@@ -918,7 +918,7 @@ export default function App() {
   });
 
   // Admin edits/creations
-  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "", show_description: false });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
@@ -2618,7 +2618,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Catalog Updated", `Product saved.`, "success");
-        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "" });
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true });
         loadAdminProducts();
       } else {
         const err = await res.json();
@@ -3312,6 +3312,22 @@ export default function App() {
     }
     return 0;
   }, [currentShop, activeCustomizationCheckout, cart, categories]);
+
+  const isCodAvailable = useMemo(() => {
+    if (!currentShop) return true;
+    if (activeCustomizationCheckout) {
+      if (currentShop.customization_cod_enabled === false) return false;
+      return activeCustomizationCheckout.product?.cod_enabled !== false;
+    }
+    if (currentShop.cod_enabled === false) return false;
+    return cart.every(item => item.product?.cod_enabled !== false);
+  }, [currentShop, activeCustomizationCheckout, cart]);
+
+  useEffect(() => {
+    if (!isCodAvailable && checkoutData.payment_method === 'COD') {
+      setCheckoutData(prev => ({ ...prev, payment_method: 'UPI' }));
+    }
+  }, [isCodAvailable, checkoutData.payment_method]);
 
   const checkoutFinalAmount = (checkoutGstInclusive
     ? checkoutDiscountedAmount
@@ -5297,6 +5313,18 @@ export default function App() {
                     <span>Support Ticket Center</span>
                   </div>
 
+                  <div
+                    className="dropdown-item"
+                    onClick={() => {
+                      setCurrentView("user_dashboard");
+                      setActivePanel("customizations");
+                      setShowProfileDropdown(false);
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>Customization Requests</span>
+                  </div>
+
                   {/* Settings Link */}
                   <div
                     className="dropdown-item"
@@ -5910,14 +5938,24 @@ export default function App() {
 
                   {/* Payment Options */}
                   <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', overflow: 'hidden' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderBottom: '1px solid #e0e0e0', cursor: 'pointer', background: checkoutData.payment_method === 'COD' ? '#fcf9ff' : '#fff' }}>
+                    <label style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px',
+                      borderBottom: '1px solid #e0e0e0',
+                      cursor: isCodAvailable ? 'pointer' : 'not-allowed',
+                      opacity: isCodAvailable ? 1 : 0.5,
+                      background: checkoutData.payment_method === 'COD' ? '#fcf9ff' : '#fff'
+                    }}>
                       <input
                         type="radio"
                         name="payment_method"
                         value="COD"
+                        disabled={!isCodAvailable}
                         checked={checkoutData.payment_method === 'COD'}
                         onChange={e => setCheckoutData(prev => ({ ...prev, payment_method: e.target.value }))}
-                        style={{ width: '18px', height: '18px', accentColor: '#2b0b57' }}
+                        style={{ width: '18px', height: '18px', accentColor: '#2b0b57', cursor: isCodAvailable ? 'pointer' : 'not-allowed' }}
                       />
                       <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>Cash on Delivery (COD)</span>
                     </label>
@@ -5933,6 +5971,13 @@ export default function App() {
                       <span style={{ fontWeight: 600, color: '#222', fontSize: '1rem' }}>UPI / Netbanking</span>
                     </label>
                   </div>
+
+                  {!isCodAvailable && (
+                    <div style={{ background: '#fff3cd', border: '1px solid #ffeeba', padding: '12px', borderRadius: '4px', fontSize: '0.85rem', color: '#856404', display: 'flex', gap: '8px', marginTop: '12px' }}>
+                      <ShieldAlert size={18} style={{ flexShrink: 0 }} />
+                      <span>Cash on Delivery (COD) is not available for this order.</span>
+                    </div>
+                  )}
 
                   {checkoutData.payment_method === 'UPI' && (
                     <div style={{ background: '#f0fbff', border: '1px solid #b3e5fc', padding: '12px', borderRadius: '4px', fontSize: '0.85rem', color: '#0277bd', display: 'flex', gap: '8px' }}>
@@ -9507,6 +9552,36 @@ export default function App() {
                   </div>
                 </div>
 
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', paddingBottom: '10px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Payment Configurations</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="checkbox"
+                        id="cod_enabled"
+                        checked={adminShop.cod_enabled !== false}
+                        onChange={e => setAdminShop(prev => ({ ...prev, cod_enabled: e.target.checked }))}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <label htmlFor="cod_enabled" style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                        Enable Cash on Delivery (COD) for Standard Catalog Orders
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <input
+                        type="checkbox"
+                        id="customization_cod_enabled"
+                        checked={adminShop.customization_cod_enabled !== false}
+                        onChange={e => setAdminShop(prev => ({ ...prev, customization_cod_enabled: e.target.checked }))}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <label htmlFor="customization_cod_enabled" style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                        Enable Cash on Delivery (COD) for Bespoke Customization Orders
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>API Gateway Credentials</h4>
                   <div className="admin-grid-2col">
@@ -10372,109 +10447,109 @@ export default function App() {
                       gap: '24px'
                     }}>
                       {adminCategories.map(c => (
-                      <div key={c.id} className="glass-panel" style={{
-                        padding: '20px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                        borderRadius: '16px',
-                        position: 'relative',
-                        border: '1px solid rgba(154, 132, 200, 0.18)',
-                        background: '#ffffff'
-                      }}>
-                        {/* Cover Image */}
-                        <div style={{
-                          width: '100%',
-                          height: '140px',
-                          borderRadius: '12px',
-                          overflow: 'hidden',
-                          background: '#f8f5fc',
-                          border: '1px solid rgba(154, 132, 200, 0.08)'
+                        <div key={c.id} className="glass-panel" style={{
+                          padding: '20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          borderRadius: '16px',
+                          position: 'relative',
+                          border: '1px solid rgba(154, 132, 200, 0.18)',
+                          background: '#ffffff'
                         }}>
-                          {c.image_url ? (
-                            <img src={c.image_url} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                              No Cover Image
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Title & Info */}
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
-                            <h4 style={{ margin: 0, fontWeight: 750, color: 'var(--text-main)', fontSize: '1.05rem' }}>{c.name}</h4>
-                            {c.show_description && (
-                              <span style={{
-                                fontSize: '0.65rem',
-                                background: 'rgba(154, 132, 200, 0.12)',
-                                color: '#7a4ea5',
-                                padding: '2px 8px',
-                                borderRadius: '10px',
-                                fontWeight: 600
-                              }}>
-                                On Home Screen
-                              </span>
+                          {/* Cover Image */}
+                          <div style={{
+                            width: '100%',
+                            height: '140px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            background: '#f8f5fc',
+                            border: '1px solid rgba(154, 132, 200, 0.08)'
+                          }}>
+                            {c.image_url ? (
+                              <img src={c.image_url} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                No Cover Image
+                              </div>
                             )}
                           </div>
-                          <p style={{
-                            margin: 0,
-                            fontSize: '0.82rem',
-                            color: '#666666',
-                            wordBreak: 'break-word',
-                            lineHeight: '1.4',
-                            minHeight: '40px'
+
+                          {/* Title & Info */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+                              <h4 style={{ margin: 0, fontWeight: 750, color: 'var(--text-main)', fontSize: '1.05rem' }}>{c.name}</h4>
+                              {c.show_description && (
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  background: 'rgba(154, 132, 200, 0.12)',
+                                  color: '#7a4ea5',
+                                  padding: '2px 8px',
+                                  borderRadius: '10px',
+                                  fontWeight: 600
+                                }}>
+                                  On Home Screen
+                                </span>
+                              )}
+                            </div>
+                            <p style={{
+                              margin: 0,
+                              fontSize: '0.82rem',
+                              color: '#666666',
+                              wordBreak: 'break-word',
+                              lineHeight: '1.4',
+                              minHeight: '40px'
+                            }}>
+                              {c.description || <em style={{ color: 'var(--text-muted)' }}>No description</em>}
+                            </p>
+                          </div>
+
+                          {/* Badges/Details */}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '0.75rem', marginTop: 'auto', padding: '4px 0' }}>
+                            {c.customization_enabled && (
+                              <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Customizable</span>
+                            )}
+                            {c.return_window_days !== null && c.return_window_days !== undefined && (
+                              <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{c.return_window_days} Days Return</span>
+                            )}
+                            {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
+                              <span style={{ background: 'rgba(154, 132, 200, 0.08)', color: '#7a4ea5', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Shipping: ₹{(c.shipping_charge ?? 0).toFixed(2)}</span>
+                            )}
+                          </div>
+
+                          {/* Actions Footer */}
+                          <div style={{
+                            display: 'flex',
+                            gap: '10px',
+                            borderTop: '1px solid rgba(154, 132, 200, 0.1)',
+                            paddingTop: '12px',
+                            marginTop: '4px'
                           }}>
-                            {c.description || <em style={{ color: 'var(--text-muted)' }}>No description</em>}
-                          </p>
+                            <button
+                              onClick={() => setCategoryForm({
+                                ...c,
+                                show_description: !!c.show_description,
+                                return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "",
+                                shipping_charge: c.shipping_charge !== null && c.shipping_charge !== undefined ? c.shipping_charge : ""
+                              })}
+                              className="btn-secondary"
+                              style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
+                            >
+                              <Edit2 size={14} /> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(c.id)}
+                              className="btn-danger"
+                              style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
                         </div>
-
-                        {/* Badges/Details */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '0.75rem', marginTop: 'auto', padding: '4px 0' }}>
-                          {c.customization_enabled && (
-                            <span style={{ background: '#f0fdf4', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Customizable</span>
-                          )}
-                          {c.return_window_days !== null && c.return_window_days !== undefined && (
-                            <span style={{ background: '#f3f4f6', color: '#4b5563', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>{c.return_window_days} Days Return</span>
-                          )}
-                          {adminShop?.shipping_enabled && adminShop?.shipping_charges_type === 'section' && (
-                            <span style={{ background: 'rgba(154, 132, 200, 0.08)', color: '#7a4ea5', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Shipping: ₹{(c.shipping_charge ?? 0).toFixed(2)}</span>
-                          )}
-                        </div>
-
-                        {/* Actions Footer */}
-                        <div style={{
-                          display: 'flex',
-                          gap: '10px',
-                          borderTop: '1px solid rgba(154, 132, 200, 0.1)',
-                          paddingTop: '12px',
-                          marginTop: '4px'
-                        }}>
-                          <button
-                            onClick={() => setCategoryForm({
-                              ...c,
-                              show_description: !!c.show_description,
-                              return_window_days: c.return_window_days !== null && c.return_window_days !== undefined ? c.return_window_days : "",
-                              shipping_charge: c.shipping_charge !== null && c.shipping_charge !== undefined ? c.shipping_charge : ""
-                            })}
-                            className="btn-secondary"
-                            style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
-                          >
-                            <Edit2 size={14} /> Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(c.id)}
-                            className="btn-danger"
-                            style={{ flex: 1, padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', cursor: 'pointer' }}
-                          >
-                            <Trash2 size={14} /> Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
               </div>
             )}
 
@@ -10816,6 +10891,25 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* COD Activation Toggle */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#fbf9ff', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
+                    <input
+                      type="checkbox"
+                      id="product_cod_enabled"
+                      checked={productForm.cod_enabled !== false}
+                      onChange={e => setProductForm(prev => ({ ...prev, cod_enabled: e.target.checked }))}
+                      style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#7a4ea5' }}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <label htmlFor="product_cod_enabled" style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', cursor: 'pointer' }}>
+                        Enable Cash on Delivery (COD) for this product
+                      </label>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        If disabled, customers will not be able to choose Cash on Delivery at checkout if this item is in their cart.
+                      </span>
+                    </div>
+                  </div>
+
                   {/* Multiple Product Images - maximum below 10 */}
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Images (up to 10 images)</label>
@@ -10969,7 +11063,7 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "", return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "" })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "", return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "", cod_enabled: p.cod_enabled !== false })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -15001,6 +15095,9 @@ export default function App() {
               setShowLoginModal(true);
             } else {
               setCurrentView(role === 'user' ? "user_dashboard" : role === 'admin' ? "admin_dashboard" : "super_admin_dashboard");
+              if (role === 'user') {
+                setActivePanel("menu");
+              }
             }
           }}
           style={{

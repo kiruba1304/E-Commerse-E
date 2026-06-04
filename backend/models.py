@@ -81,6 +81,8 @@ class Shop(db.Model):
     shipping_enabled = db.Column(db.Boolean, default=False)
     shipping_charges_type = db.Column(db.String(50), default='flat')
     shipping_charges_flat = db.Column(db.Float, default=0.0)
+    cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    customization_cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -243,6 +245,8 @@ class Shop(db.Model):
             "shipping_enabled": self.shipping_enabled if self.shipping_enabled is not None else False,
             "shipping_charges_type": self.shipping_charges_type or 'flat',
             "shipping_charges_flat": self.shipping_charges_flat if self.shipping_charges_flat is not None else 0.0,
+            "cod_enabled": self.cod_enabled if self.cod_enabled is not None else True,
+            "customization_cod_enabled": self.customization_cod_enabled if self.customization_cod_enabled is not None else True,
             "smtp_host": self.smtp_host,
             "smtp_port": self.smtp_port,
             "smtp_user": self.smtp_user,
@@ -396,6 +400,7 @@ class Product(db.Model):
     hsc_code = db.Column(db.String(100), nullable=True)
     return_window_days = db.Column(db.Integer, nullable=True)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+    cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -438,6 +443,7 @@ class Product(db.Model):
             "sku_code": self.sku_code or "",
             "hsc_code": self.hsc_code or "",
             "return_window_days": self.return_window_days,
+            "cod_enabled": self.cod_enabled if self.cod_enabled is not None else True,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
