@@ -34,8 +34,8 @@ CORS(app, supports_credentials=True, origins=[
     "https://www.vishnex.com",
     "http://vishnex.com",
     "http://www.vishnex.com",
-    "https://back.vishnex.com",
-    "http://back.vishnex.com"
+    "https://co.nobaraafashion.co.in",
+    "http://co.nobaraafashion.co.in"
 ])
 
 # Initialize Razorpay Client

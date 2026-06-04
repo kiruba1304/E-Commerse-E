@@ -26,5 +26,5 @@ COPY default.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 80
 
 # Substitute environment variables in the Nginx configuration at startup and run Nginx.
-# If BACKEND_URL is not set, it defaults to https://back.vishnex.com.
-CMD ["/bin/sh", "-c", "export BACKEND_URL=${BACKEND_URL:-https://back.vishnex.com} && envsubst '${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+# If BACKEND_URL is not set, it defaults to https://co.nobaraafashion.co.in.
+CMD ["/bin/sh", "-c", "export BACKEND_URL=${BACKEND_URL:-https://co.nobaraafashion.co.in} && envsubst '${BACKEND_URL}' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]

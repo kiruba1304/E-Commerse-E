@@ -5,10 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: ['vishnex.com'],
+    allowedHosts: ['nobaraafashion.co.in'],
     proxy: {
       '/api': {
-        target: 'https://back.vishnex.com',
+        target: 'https://co.nobaraafashion.co.in',
         changeOrigin: true,
         secure: false,
       }
