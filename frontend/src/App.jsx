@@ -983,7 +983,7 @@ export default function App() {
   });
 
   // Admin edits/creations
-  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true });
+  const [productForm, setProductForm] = useState({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true, custom_colors: [] });
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "", show_description: false });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
@@ -2851,7 +2851,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Catalog Updated", `Product saved.`, "success");
-        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true });
+        setProductForm({ id: null, name: "", description: "", price: "", original_price: "", stock: "", alert_threshold: 5, images: [""], category_id: "", promo_code: "", promo_discount: "", bulk_sale_price: "", min_quantity: "", customization_enabled: false, barcode: "", sku_code: "", hsc_code: "", return_window_days: "", cod_enabled: true, custom_colors: [] });
         loadAdminProducts();
       } else {
         const err = await res.json();
@@ -5295,7 +5295,9 @@ export default function App() {
                       addToast("Authentication Required", "Please login to place a customization order.", "info");
                     } else {
                       setCustomizingProduct(detailProduct);
-                      const palette = currentShop?.color_palette || [];
+                      const palette = (detailProduct.custom_colors && detailProduct.custom_colors.length > 0)
+                        ? detailProduct.custom_colors
+                        : (currentShop?.color_palette || []);
                       setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                       setCustomSizingNotes("");
                       setCustomQuantity(currentShop?.customization_min_quantity || 1);
@@ -6587,7 +6589,9 @@ export default function App() {
                         addToast("Authentication Required", "Please login to place a customization order.", "info");
                       } else {
                         setCustomizingProduct(activeProduct);
-                        const palette = currentShop?.color_palette || [];
+                        const palette = (activeProduct.custom_colors && activeProduct.custom_colors.length > 0)
+                          ? activeProduct.custom_colors
+                          : (currentShop?.color_palette || []);
                         setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                         setCustomSizingNotes("");
                         setCustomQuantity(currentShop?.customization_min_quantity || 1);
@@ -8345,7 +8349,9 @@ export default function App() {
                         addToast("Authentication Required", "Please login to place a customization order.", "info");
                       } else {
                         setCustomizingProduct(p);
-                        const palette = currentShop?.color_palette || [];
+                        const palette = (p.custom_colors && p.custom_colors.length > 0)
+                          ? p.custom_colors
+                          : (currentShop?.color_palette || []);
                         setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                         setCustomSizingNotes("");
                         setCustomQuantity(currentShop?.customization_min_quantity || 1);
@@ -11189,6 +11195,128 @@ export default function App() {
                     </div>
                   </div>
 
+                  {productForm.customization_enabled && (
+                    <div style={{ padding: '16px', background: '#fcfaff', border: '1px solid #e1bee7', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <label style={{ fontSize: '0.9rem', fontWeight: 700, color: '#2b0b57', display: 'block', margin: 0 }}>
+                        Product-Specific Colors (Optional)
+                      </label>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', margin: 0 }}>
+                        Specify customization colors specifically for this product. If left empty, the shop's default color palette will be used.
+                      </span>
+
+                      {/* Added Colors List */}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {(productForm.custom_colors || []).map((color, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 12px',
+                              borderRadius: '20px',
+                              border: '1px solid #7a4ea5',
+                              background: '#ffffff',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              color: '#56337a'
+                            }}
+                          >
+                            <span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: color.hex }} />
+                            {color.name} ({color.hex})
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProductForm(prev => ({
+                                  ...prev,
+                                  custom_colors: prev.custom_colors.filter((_, i) => i !== idx)
+                                }));
+                              }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#e84e7e',
+                                cursor: 'pointer',
+                                padding: '0 2px',
+                                fontWeight: 'bold',
+                                fontSize: '0.85rem'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {(productForm.custom_colors || []).length === 0 && (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            No product-specific colors added. Using shop default palette.
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Add New Color Form */}
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <div style={{ flex: 2 }}>
+                          <input
+                            type="text"
+                            placeholder="Color Name (e.g., Silk Pink)"
+                            id="new_color_name"
+                            style={{
+                              width: '100%',
+                              borderRadius: '8px',
+                              border: '1px solid #dcdcdc',
+                              padding: '8px 10px',
+                              fontSize: '0.82rem',
+                            }}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                          <input
+                            type="color"
+                            id="new_color_hex"
+                            defaultValue="#7a4ea5"
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              border: 'none',
+                              padding: 0,
+                              cursor: 'pointer',
+                              background: 'none'
+                            }}
+                          />
+                          <span style={{ fontSize: '0.8rem', color: '#666' }}>Pick Color</span>
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nameInput = document.getElementById('new_color_name');
+                              const hexInput = document.getElementById('new_color_hex');
+                              const name = nameInput?.value?.trim();
+                              const hex = hexInput?.value;
+                              if (!name) {
+                                addToast("Name Required", "Please specify a color name.", "warning");
+                                return;
+                              }
+                              if ((productForm.custom_colors || []).some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                                addToast("Duplicate Color", "This color name already exists.", "warning");
+                                return;
+                              }
+                              setProductForm(prev => ({
+                                ...prev,
+                                custom_colors: [...(prev.custom_colors || []), { name, hex }]
+                              }));
+                              if (nameInput) nameInput.value = "";
+                            }}
+                            className="btn-primary"
+                            style={{ padding: '8px 16px', fontSize: '0.8rem', background: '#7a4ea5', border: 'none' }}
+                          >
+                            + Add Color
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* COD Activation Toggle */}
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', background: '#fbf9ff', border: '1px solid #f0e6fc', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
                     <input
@@ -11361,7 +11489,7 @@ export default function App() {
                             </td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "", return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "", cod_enabled: p.cod_enabled !== false })} className="btn-secondary" style={{ padding: '6px' }}>
+                                <button onClick={() => setProductForm({ ...p, images: (p.images && p.images.length > 0) ? p.images : [""], bulk_sale_price: p.bulk_sale_price || "", min_quantity: p.min_quantity || "", customization_enabled: p.customization_enabled || false, barcode: p.barcode || "", sku_code: p.sku_code || "", hsc_code: p.hsc_code || "", return_window_days: p.return_window_days !== null && p.return_window_days !== undefined ? p.return_window_days : "", cod_enabled: p.cod_enabled !== false, custom_colors: p.custom_colors || [] })} className="btn-secondary" style={{ padding: '6px' }}>
                                   <Edit2 size={14} />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(p.id)} className="btn-danger" style={{ padding: '6px' }}>
@@ -15551,14 +15679,17 @@ export default function App() {
               <div>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Design Color Palette</label>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {(currentShop?.color_palette || [
-                    { "name": "Royal Gold", "hex": "#D4AF37" },
-                    { "name": "Noble Lavender", "hex": "#7a4ea5" },
-                    { "name": "Crimson Ruby", "hex": "#E84E7E" },
-                    { "name": "Midnight Indigo", "hex": "#2b0b57" },
-                    { "name": "Forest Green", "hex": "#228B22" },
-                    { "name": "Turquoise Teal", "hex": "#008080" }
-                  ]).map((c, idx) => {
+                  {((customizingProduct?.custom_colors && customizingProduct.custom_colors.length > 0)
+                    ? customizingProduct.custom_colors
+                    : (currentShop?.color_palette || [
+                        { "name": "Royal Gold", "hex": "#D4AF37" },
+                        { "name": "Noble Lavender", "hex": "#7a4ea5" },
+                        { "name": "Crimson Ruby", "hex": "#E84E7E" },
+                        { "name": "Midnight Indigo", "hex": "#2b0b57" },
+                        { "name": "Forest Green", "hex": "#228B22" },
+                        { "name": "Turquoise Teal", "hex": "#008080" }
+                      ])
+                  ).map((c, idx) => {
                     const isSelected = selectedCustomColor?.hex === c.hex;
                     return (
                       <button

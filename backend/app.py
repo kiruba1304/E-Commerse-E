@@ -515,6 +515,7 @@ def seed_database():
         ensure_show_description_column()
         ensure_last_used_address_id_bigint()
         ensure_cod_enabled_columns()
+        ensure_product_custom_colors_column()
         
         # Automatic SQLite to MySQL migration if using MySQL
         if db.engine.name == 'mysql':
@@ -948,6 +949,21 @@ def ensure_cod_enabled_columns():
             
     except Exception as e:
         print(f"Error ensuring cod_enabled columns: {e}")
+
+def ensure_product_custom_colors_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('products')]
+        if 'custom_colors_json' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE products ADD COLUMN custom_colors_json TEXT"))
+                else:
+                    connection.execute(text("ALTER TABLE products ADD COLUMN custom_colors_json TEXT"))
+            print("Successfully added custom_colors_json column to products table.")
+    except Exception as e:
+        print(f"Error ensuring custom_colors_json column: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():

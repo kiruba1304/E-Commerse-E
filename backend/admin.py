@@ -508,6 +508,7 @@ def manage_products():
         cod_enabled=bool(data.get('cod_enabled', True))
     )
     p.images = images  # sets JSON field via property setter
+    p.custom_colors = data.get('custom_colors', [])
     
     db.session.add(p)
     db.session.commit()
@@ -590,6 +591,8 @@ def modify_product(prod_id):
             p.return_window_days = None
     if 'cod_enabled' in data:
         p.cod_enabled = bool(data['cod_enabled'])
+    if 'custom_colors' in data:
+        p.custom_colors = data['custom_colors']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Modified product details for '{p.name}'")

@@ -395,6 +395,7 @@ class Product(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
     customization_enabled = db.Column(db.Boolean, default=False)
+    custom_colors_json = db.Column(db.Text, nullable=True) # JSON list of custom color objects [{"name": "...", "hex": "..."}]
     barcode = db.Column(db.String(100), nullable=True)
     sku_code = db.Column(db.String(100), nullable=True)
     hsc_code = db.Column(db.String(100), nullable=True)
@@ -420,6 +421,19 @@ class Product(db.Model):
     def images(self, value):
         self.images_json = json.dumps(value)
 
+    @property
+    def custom_colors(self):
+        if not self.custom_colors_json:
+            return []
+        try:
+            return json.loads(self.custom_colors_json)
+        except Exception:
+            return []
+
+    @custom_colors.setter
+    def custom_colors(self, value):
+        self.custom_colors_json = json.dumps(value)
+
     def serialize(self):
         return {
             "id": self.id,
@@ -439,6 +453,7 @@ class Product(db.Model):
             "shop_id": self.shop_id,
             "shop_name": self.shop.name if self.shop else "Kirubanithi Enterprises",
             "customization_enabled": self.customization_enabled or False,
+            "custom_colors": self.custom_colors,
             "barcode": self.barcode or "",
             "sku_code": self.sku_code or "",
             "hsc_code": self.hsc_code or "",
