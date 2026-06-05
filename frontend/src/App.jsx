@@ -592,8 +592,22 @@ export default function App() {
   const [role, setRole] = useState("guest"); // guest, user, admin, super_admin
 
   // Navigation states
-  const [currentView, setCurrentView] = useState("opac"); // opac, user_dashboard, admin_dashboard, super_admin_dashboard
-  const [activePanel, setActivePanel] = useState(window.innerWidth <= 768 ? "menu" : "orders"); // active sub-panel in dashboards
+  const [currentView, setCurrentView] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    if (hasHistory) return window.history.state.currentView || "opac";
+    const cachedRole = localStorage.getItem('role');
+    if (cachedRole === 'admin') return "admin_dashboard";
+    if (cachedRole === 'super_admin') return "super_admin_dashboard";
+    return "opac";
+  });
+  const [activePanel, setActivePanel] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    if (hasHistory) return window.history.state.activePanel || (window.innerWidth <= 768 ? "menu" : "orders");
+    const cachedRole = localStorage.getItem('role');
+    if (cachedRole === 'admin') return "shop_config";
+    if (cachedRole === 'super_admin') return "shop_creation";
+    return window.innerWidth <= 768 ? "menu" : "orders";
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "", addresses: [] });
@@ -604,9 +618,18 @@ export default function App() {
   const [categories, setCategories] = useState([]);
   const [collections, setCollections] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [activeCategoryPage, setActiveCategoryPage] = useState(null);
-  const [showCartDrawer, setShowCartDrawer] = useState(false);
-  const [showWishlistDrawer, setShowWishlistDrawer] = useState(false);
+  const [activeCategoryPage, setActiveCategoryPage] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? window.history.state.activeCategoryPage || null : null;
+  });
+  const [showCartDrawer, setShowCartDrawer] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? !!window.history.state.showCartDrawer : false;
+  });
+  const [showWishlistDrawer, setShowWishlistDrawer] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? !!window.history.state.showWishlistDrawer : false;
+  });
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -668,9 +691,15 @@ export default function App() {
   };
 
   // UI Details & Overlay states
-  const [detailProduct, setDetailProduct] = useState(null);
+  const [detailProduct, setDetailProduct] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? window.history.state.detailProduct || null : null;
+  });
   const [activeDetailImageIndex, setActiveDetailImageIndex] = useState(0);
-  const [activeProduct, setActiveProduct] = useState(null);
+  const [activeProduct, setActiveProduct] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? window.history.state.activeProduct || null : null;
+  });
   const [activeProductImageIndex, setActiveProductImageIndex] = useState(0);
   const [recentlyViewed, setRecentlyViewed] = useState(() => {
     try {
@@ -692,6 +721,42 @@ export default function App() {
     }
   }, [activeProduct]);
   const [popupAd, setPopupAd] = useState(null);
+  const [popupAdImageStyle, setPopupAdImageStyle] = useState({ width: '90%', maxWidth: '550px' });
+
+  useEffect(() => {
+    if (popupAd) {
+      setPopupAdImageStyle({ width: '90%', maxWidth: '550px' });
+    }
+  }, [popupAd]);
+
+  const handleAdImageLoad = (e) => {
+    const { naturalWidth, naturalHeight } = e.target;
+    if (!naturalWidth || !naturalHeight) return;
+    const ratio = naturalWidth / naturalHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const maxAllowedWidth = Math.min(600, viewportWidth * 0.9);
+    const maxAllowedImageHeight = viewportHeight * 0.5;
+    
+    let targetWidth = naturalWidth;
+    if (targetWidth > maxAllowedWidth) {
+      targetWidth = maxAllowedWidth;
+    }
+    
+    if (targetWidth / ratio > maxAllowedImageHeight) {
+      targetWidth = maxAllowedImageHeight * ratio;
+    }
+    
+    const minWidth = Math.min(320, viewportWidth * 0.9);
+    if (targetWidth < minWidth) {
+      targetWidth = minWidth;
+    }
+    
+    setPopupAdImageStyle({
+      width: `${Math.round(targetWidth)}px`,
+      maxWidth: '90%'
+    });
+  };
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -933,6 +998,8 @@ export default function App() {
   const [selectedCustomColor, setSelectedCustomColor] = useState(null);
   const [customSizingNotes, setCustomSizingNotes] = useState("");
   const [customQuantity, setCustomQuantity] = useState(1);
+  const [customPurchaseUnit, setCustomPurchaseUnit] = useState("pcs"); // pcs or meter
+  const [customMeters, setCustomMeters] = useState("");
   const [submittingCustomOrder, setSubmittingCustomOrder] = useState(false);
   const [userCustomizations, setUserCustomizations] = useState([]);
   const [adminCustomizations, setAdminCustomizations] = useState([]);
@@ -953,6 +1020,146 @@ export default function App() {
   // Super Admin forms
   const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
   const [newAdminForm, setNewAdminForm] = useState({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
+
+  // History and Back Navigation Synchronization
+  const getActiveOverlaysCount = (state) => {
+    if (!state) return 0;
+    let count = 0;
+    if (state.detailProduct) count++;
+    if (state.showCartDrawer) count++;
+    if (state.showWishlistDrawer) count++;
+    if (state.showLoginModal) count++;
+    if (state.invoiceOrder) count++;
+    if (state.expandedImage) count++;
+    if (state.activeReturnOrder) count++;
+    if (state.showPolicyModal) count++;
+    if (state.showPrivacyModal) count++;
+    if (state.showShippingModal) count++;
+    if (state.showTermsModal) count++;
+    if (state.showAboutModal) count++;
+    if (state.showContactModal) count++;
+    return count;
+  };
+
+  const hasPurchasedProduct = (productId) => {
+    if (role !== 'user' || !user) return false;
+    return myOrders.some(order => 
+      order.status === 'Customer Received' && 
+      order.items && 
+      order.items.some(item => item.product_id === productId)
+    );
+  };
+
+  const isHandlingPopState = useRef(false);
+  const prevOverlaysCount = useRef(0);
+  const isInitialBoot = useRef(true);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      if (event.state && event.state.isAppNavigation) {
+        isHandlingPopState.current = true;
+        const state = event.state;
+
+        setCurrentView(state.currentView || "opac");
+        setActiveProduct(state.activeProduct || null);
+        setActiveCategoryPage(state.activeCategoryPage || null);
+        setActivePanel(state.activePanel || "orders");
+        setDetailProduct(state.detailProduct || null);
+        setShowCartDrawer(!!state.showCartDrawer);
+        setShowWishlistDrawer(!!state.showWishlistDrawer);
+        setShowLoginModal(!!state.showLoginModal);
+        setInvoiceOrder(state.invoiceOrder || null);
+        setExpandedImage(state.expandedImage || null);
+        setActiveReturnOrder(state.activeReturnOrder || null);
+        setShowPolicyModal(!!state.showPolicyModal);
+        setShowPrivacyModal(!!state.showPrivacyModal);
+        setShowShippingModal(!!state.showShippingModal);
+        setShowTermsModal(!!state.showTermsModal);
+        setShowAboutModal(!!state.showAboutModal);
+        setShowContactModal(!!state.showContactModal);
+
+        prevOverlaysCount.current = getActiveOverlaysCount(state);
+
+        setTimeout(() => {
+          isHandlingPopState.current = false;
+        }, 50);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isHandlingPopState.current) return;
+
+    const newState = {
+      isAppNavigation: true,
+      currentView,
+      activeProduct,
+      activeCategoryPage,
+      activePanel,
+      detailProduct,
+      showCartDrawer,
+      showWishlistDrawer,
+      showLoginModal,
+      invoiceOrder,
+      expandedImage,
+      activeReturnOrder,
+      showPolicyModal,
+      showPrivacyModal,
+      showShippingModal,
+      showTermsModal,
+      showAboutModal,
+      showContactModal
+    };
+
+    const overlaysCount = getActiveOverlaysCount(newState);
+
+    if (overlaysCount < prevOverlaysCount.current) {
+      // An overlay was closed manually. Go back in history.
+      prevOverlaysCount.current = overlaysCount;
+      window.history.back();
+      return;
+    }
+
+    prevOverlaysCount.current = overlaysCount;
+
+    const currentHistoryState = window.history.state;
+    const isStateDifferent = !currentHistoryState ||
+      currentHistoryState.currentView !== currentView ||
+      JSON.stringify(currentHistoryState.activeProduct) !== JSON.stringify(activeProduct) ||
+      JSON.stringify(currentHistoryState.activeCategoryPage) !== JSON.stringify(activeCategoryPage) ||
+      currentHistoryState.activePanel !== activePanel ||
+      JSON.stringify(currentHistoryState.detailProduct) !== JSON.stringify(detailProduct) ||
+      currentHistoryState.showCartDrawer !== showCartDrawer ||
+      currentHistoryState.showWishlistDrawer !== showWishlistDrawer ||
+      currentHistoryState.showLoginModal !== showLoginModal ||
+      JSON.stringify(currentHistoryState.invoiceOrder) !== JSON.stringify(invoiceOrder) ||
+      currentHistoryState.expandedImage !== expandedImage ||
+      JSON.stringify(currentHistoryState.activeReturnOrder) !== JSON.stringify(activeReturnOrder) ||
+      currentHistoryState.showPolicyModal !== showPolicyModal ||
+      currentHistoryState.showPrivacyModal !== showPrivacyModal ||
+      currentHistoryState.showShippingModal !== showShippingModal ||
+      currentHistoryState.showTermsModal !== showTermsModal ||
+      currentHistoryState.showAboutModal !== showAboutModal ||
+      currentHistoryState.showContactModal !== showContactModal;
+
+    if (isStateDifferent) {
+      if (!currentHistoryState) {
+        window.history.replaceState(newState, "");
+      } else {
+        window.history.pushState(newState, "");
+      }
+    }
+  }, [
+    currentView, activeProduct, activeCategoryPage, activePanel, detailProduct,
+    showCartDrawer, showWishlistDrawer, showLoginModal, invoiceOrder,
+    expandedImage, activeReturnOrder, showPolicyModal, showPrivacyModal,
+    showShippingModal, showTermsModal, showAboutModal, showContactModal
+  ]);
 
   // Add a Toast Notification helper
   const addToast = (title, message, type = "info") => {
@@ -1146,26 +1353,51 @@ export default function App() {
     const cachedRole = localStorage.getItem('role');
 
     let currentRole = null;
+    const hasHistoryState = window.history.state && window.history.state.isAppNavigation;
+    const shouldRestoreFromHistory = isInitialBoot.current && hasHistoryState;
+
     if (cachedToken && cachedUser && cachedRole) {
       setToken(cachedToken);
       setUser(JSON.parse(cachedUser));
       setRole(cachedRole);
       currentRole = cachedRole;
 
-      // Auto Route depending on role
-      if (cachedRole === 'user') {
-        setCurrentView("opac");
-        setActivePanel("orders");
-      } else if (cachedRole === 'admin') {
-        setCurrentView("admin_dashboard");
-        setActivePanel("shop_config");
-      } else if (cachedRole === 'super_admin') {
-        setCurrentView("super_admin_dashboard");
-        setActivePanel("shop_creation");
+      // Auto Route depending on role, only if not restoring from history state
+      if (!shouldRestoreFromHistory) {
+        if (cachedRole === 'user') {
+          setCurrentView("opac");
+          setActivePanel("orders");
+        } else if (cachedRole === 'admin') {
+          setCurrentView("admin_dashboard");
+          setActivePanel("shop_config");
+        } else if (cachedRole === 'super_admin') {
+          setCurrentView("super_admin_dashboard");
+          setActivePanel("shop_creation");
+        }
       }
     }
 
     fetchShops();
+
+    // If we are on initial boot and have restored a product details view from history, refresh it in the background
+    if (shouldRestoreFromHistory) {
+      const state = window.history.state;
+      if (state.currentView === 'product_detail' && state.activeProduct && state.activeProduct.id) {
+        fetch(`${API_BASE}/opac/products/${state.activeProduct.id}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && !data.error) {
+              setActiveProduct(data);
+            }
+          })
+          .catch(err => console.error("Failed to background refresh product on boot", err));
+      }
+    }
+
+    // Set initial boot to false after a short delay to allow all boot-phase state updates to stabilize
+    setTimeout(() => {
+      isInitialBoot.current = false;
+    }, 200);
 
     // Check if deep linking product parameter is present
     const urlParams = new URLSearchParams(window.location.search);
@@ -1175,7 +1407,7 @@ export default function App() {
         .then(res => res.json())
         .then(data => {
           if (data && !data.error) {
-            if (currentRole === 'user') {
+            if (currentRole === 'user' || !currentRole) {
               setActiveProduct(data);
               setActiveProductImageIndex(0);
               setCurrentView('product_detail');
@@ -1565,6 +1797,7 @@ export default function App() {
   // LOGGED IN USER SPECIFIC ROUTINES
   useEffect(() => {
     if (role === 'user') {
+      loadUserOrders(); // Pre-fetch user orders to track purchased items for review restriction
       if (currentView === 'user_dashboard') {
         loadUserDashboard();
         if (activePanel === 'cart') loadUserCart();
@@ -3399,16 +3632,16 @@ export default function App() {
 
       {/* RENDER ACTIVE POPUP AD IF GUEST OR USER OPENS SHOP */}
       {popupAd && (
-        <div className="ad-modal-backdrop" onClick={() => setPopupAd(null)}>
-          <div className="ad-modal-body" onClick={e => e.stopPropagation()}>
+        <div className="ad-modal-backdrop" onClick={() => setPopupAd(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(43, 11, 87, 0.45)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="ad-modal-body" onClick={e => e.stopPropagation()} style={{ width: popupAdImageStyle.width, maxWidth: popupAdImageStyle.maxWidth, display: 'flex', flexDirection: 'column' }}>
             <button className="ad-modal-close" onClick={() => setPopupAd(null)}>
               <X size={18} />
             </button>
-            <img className="ad-modal-img" src={popupAd.image_url || null} alt={popupAd.title} />
+            <img className="ad-modal-img" src={popupAd.image_url || null} alt={popupAd.title} onLoad={handleAdImageLoad} />
             <div className="ad-modal-info">
-              <span className="badge badge-info" style={{ width: 'fit-content', margin: '0 auto' }}>Special Event Campaign</span>
-              <h3 style={{ fontWeight: 800, fontSize: '1.4rem' }}>{popupAd.title}</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Visit this shop page to redeem amazing discount and promo coupon codes right now.</p>
+              <span className="badge" style={{ width: 'fit-content', margin: '0 auto', background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '30px', padding: '6px 14px', fontSize: '0.72rem', letterSpacing: '1.2px', fontWeight: 700 }}>SPECIAL EVENT CAMPAIGN</span>
+              <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.8rem', color: '#2b0b57', margin: 0 }}>{popupAd.title}</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>Visit this shop page to redeem amazing discount and promo coupon codes right now.</p>
               {popupAd.target_url && (
                 <button onClick={() => {
                   setPopupAd(null);
@@ -3416,7 +3649,7 @@ export default function App() {
                     const shopId = popupAd.target_url.split('/').pop();
                     setActiveShopId(parseInt(shopId));
                   }
-                }} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                }} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px 28px', borderRadius: '12px', fontSize: '0.95rem', fontWeight: 700, background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', border: 'none', boxShadow: '0 4px 15px rgba(122, 78, 165, 0.2)', cursor: 'pointer', transition: 'all 0.3s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(122, 78, 165, 0.3)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(122, 78, 165, 0.2)'; }}>
                   Explore Event Now <ChevronRight size={18} />
                 </button>
               )}
@@ -4925,20 +5158,20 @@ export default function App() {
 
       {/* DETAIL PRODUCT OVERLAY POPUP */}
       {detailProduct && (
-        <div className="ad-modal-backdrop" onClick={() => setDetailProduct(null)}>
+        <div className="ad-modal-backdrop" onClick={() => setDetailProduct(null)} style={{ zIndex: 11000, backgroundColor: 'rgba(43, 11, 87, 0.45)', backdropFilter: 'blur(8px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <div className="ad-modal-body glass-panel product-detail-modal-body" onClick={e => e.stopPropagation()}>
             <button className="ad-modal-close" onClick={() => setDetailProduct(null)}>
               <X size={18} />
             </button>
-
+ 
             {/* Left side: Images */}
             <div className="product-detail-modal-left">
               <img
                 src={detailProduct.images[activeDetailImageIndex] || "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=500&auto=format&fit=crop&q=80"}
                 alt={detailProduct.name}
-                style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px', transition: 'all 0.3s ease' }}
+                style={{ width: '100%', height: '320px', objectFit: 'cover', borderRadius: '12px', transition: 'all 0.3s ease', boxShadow: '0 8px 24px rgba(122, 78, 165, 0.1)', border: '1px solid rgba(122, 78, 165, 0.08)' }}
               />
-
+ 
               {/* Image gallery previews */}
               {detailProduct.images.length > 1 && (
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -4953,9 +5186,9 @@ export default function App() {
                         height: '60px',
                         flexShrink: 0,
                         objectFit: 'cover',
-                        borderRadius: '4px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
-                        border: activeDetailImageIndex === i ? '2px solid #7a4ea5' : '1px solid #eeeeee',
+                        border: activeDetailImageIndex === i ? '2px solid #7a4ea5' : '1px solid rgba(122, 78, 165, 0.15)',
                         transition: 'all 0.2s ease',
                         opacity: activeDetailImageIndex === i ? 1 : 0.7
                       }}
@@ -4966,55 +5199,90 @@ export default function App() {
                 </div>
               )}
             </div>
-
+ 
             {/* Right side: Information */}
             <div className="product-detail-modal-right">
-              <span className="badge badge-info" style={{ width: 'fit-content' }}>{detailProduct.category_name}</span>
+              <span className="badge" style={{ width: 'fit-content', background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '30px', padding: '6px 14px', fontSize: '0.75rem', letterSpacing: '1.2px', fontWeight: 700 }}>
+                {detailProduct.category_name}
+              </span>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
-                <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.6rem', color: '#222222', margin: 0 }}>{detailProduct.name}</h3>
+                <h3 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.8rem', color: '#2b0b57', margin: 0, lineHeight: 1.2 }}>{detailProduct.name}</h3>
                 <button
                   onClick={() => setSharingProduct(detailProduct)}
-                  style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', padding: '8px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', flexShrink: 0 }}
+                  style={{ background: 'rgba(122, 78, 165, 0.08)', border: '1px solid rgba(122, 78, 165, 0.15)', color: '#7a4ea5', padding: '10px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s ease', flexShrink: 0 }}
                   title="Share Saree"
-                  onMouseEnter={e => { e.currentTarget.style.background = '#e8d8fc'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#f5edff'; e.currentTarget.style.transform = 'none'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#7a4ea5'; e.currentTarget.style.color = '#ffffff'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(122, 78, 165, 0.08)'; e.currentTarget.style.color = '#7a4ea5'; e.currentTarget.style.transform = 'none'; }}
                 >
                   <Share2 size={18} />
                 </button>
               </div>
-
-              <div className="price-row">
-                <span className="current-price" style={{ fontSize: '1.6rem' }}>₹{detailProduct.price.toFixed(2)}</span>
+ 
+              <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                <span className="current-price" style={{ fontSize: '1.8rem', color: '#2b0b57', fontWeight: 800 }}>₹{detailProduct.price.toFixed(2)}</span>
                 {detailProduct.original_price > detailProduct.price && (
-                  <span className="original-price" style={{ fontSize: '1.1rem' }}>₹{detailProduct.original_price.toFixed(2)}</span>
+                  <span className="original-price" style={{ fontSize: '1.1rem', color: '#a0aec0', textDecoration: 'line-through' }}>₹{detailProduct.original_price.toFixed(2)}</span>
                 )}
               </div>
-
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{detailProduct.description}</p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.8rem', background: '#fafafa', padding: '12px', borderRadius: '4px', border: '1px solid #eeeeee' }}>
-                <div>Stock Status: <span style={{ color: detailProduct.stock > 0 ? 'var(--accent-primary)' : 'var(--accent-secondary)', fontWeight: 'bold' }}>{detailProduct.stock > 0 ? `${detailProduct.stock} Available` : "Out of Stock"}</span></div>
-                {detailProduct.promo_code && <div style={{ color: 'var(--accent-primary)', fontWeight: 'bold' }}>Coupon Active: {detailProduct.promo_code}</div>}
+ 
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>{detailProduct.description}</p>
+ 
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.82rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(154, 132, 200, 0.08)', color: '#7a4ea5', padding: '8px 16px', borderRadius: '30px', fontWeight: 600, border: '1px solid rgba(154, 132, 200, 0.15)' }}>
+                  <Clock size={14} /> Stock Status: {detailProduct.stock > 0 ? `${detailProduct.stock} Available` : "Out of Stock"}
+                </div>
+                {detailProduct.promo_code && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(232, 78, 126, 0.08)', color: '#e84e7e', padding: '8px 16px', borderRadius: '30px', fontWeight: 600, border: '1px solid rgba(232, 78, 126, 0.15)' }}>
+                    <Tag size={14} /> Coupon Active: {detailProduct.promo_code}
+                  </div>
+                )}
               </div>
-
+ 
               {/* Order checkout buttons */}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', gap: '14px', marginTop: '8px' }}>
                 <button
                   onClick={() => {
                     handleAddToCart(detailProduct.id);
                   }}
                   className="btn-primary"
-                  style={{ flexGrow: 1, justifyContent: 'center' }}
+                  style={{
+                    flexGrow: 1,
+                    justifyContent: 'center',
+                    padding: '14px 28px',
+                    borderRadius: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                    border: 'none',
+                    boxShadow: '0 4px 15px rgba(122, 78, 165, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(122, 78, 165, 0.3)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(122, 78, 165, 0.2)'; }}
                   disabled={detailProduct.stock <= 0}
                 >
-                  <ShoppingCart size={18} /> Buy / Place Order
+                  <ShoppingCart size={18} /> BUY / PLACE ORDER
                 </button>
                 <button
                   onClick={() => handleAddToWishlist(detailProduct.id)}
-                  className="btn-secondary"
-                  style={{ padding: '12px' }}
+                  style={{
+                    padding: '14px',
+                    borderRadius: '12px',
+                    background: '#ffffff',
+                    border: '1px solid rgba(122, 78, 165, 0.25)',
+                    color: '#7a4ea5',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(122, 78, 165, 0.05)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.transform = 'none'; }}
                 >
-                  <Heart size={18} />
+                  <Heart size={20} />
                 </button>
               </div>
 
@@ -5031,17 +5299,19 @@ export default function App() {
                       setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                       setCustomSizingNotes("");
                       setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                      setCustomPurchaseUnit("pcs");
+                      setCustomMeters("");
                     }
                   }}
                   className="btn-primary"
                   style={{
                     width: '100%',
-                    padding: '12px',
-                    fontSize: '1rem',
+                    padding: '14px 28px',
+                    fontSize: '0.95rem',
                     fontWeight: 700,
                     background: 'linear-gradient(135deg, #7a4ea5 0%, #2b0b57 100%)',
                     border: 'none',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
@@ -5052,37 +5322,47 @@ export default function App() {
                     transition: 'all 0.3s ease',
                     marginTop: '12px'
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(43, 11, 87, 0.25)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(122, 78, 165, 0.15)'; }}
                 >
                   <Sparkles size={16} /> BESPOKE CUSTOMIZATION
                 </button>
               )}
 
               {/* Reviews listing section */}
-              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
-                <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Customer Reviews</h4>
+              <div style={{ marginTop: '20px', borderTop: '1px solid rgba(122, 78, 165, 0.12)', paddingTop: '20px' }}>
+                <h4 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '1.3rem', color: '#2b0b57', marginBottom: '16px', borderBottom: '1px solid rgba(122, 78, 165, 0.1)', paddingBottom: '8px' }}>Customer Reviews</h4>
 
                 {role === 'user' && (
-                  <form onSubmit={(e) => handleCreateReview(e, detailProduct.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
-                    <h5 style={{ fontWeight: 700, fontSize: '0.85rem' }}>Write a verified review</h5>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rating:</span>
-                      <select
-                        value={newReview.rating}
-                        onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
-                        style={{ width: '80px', padding: '4px' }}
-                      >
-                        {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
-                      </select>
+                  hasPurchasedProduct(detailProduct.id) ? (
+                    <form onSubmit={(e) => handleCreateReview(e, detailProduct.id)} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
+                      <h5 style={{ fontWeight: 700, fontSize: '0.85rem' }}>Write a verified review</h5>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rating:</span>
+                        <select
+                          value={newReview.rating}
+                          onChange={e => setNewReview(prev => ({ ...prev, rating: parseInt(e.target.value) }))}
+                          style={{ width: '80px', padding: '4px' }}
+                        >
+                          {[5, 4, 3, 2, 1].map(x => <option key={x} value={x}>{x} Stars</option>)}
+                        </select>
+                      </div>
+                      <textarea
+                        placeholder="Comment text feedback..."
+                        rows={2}
+                        value={newReview.comment}
+                        onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                        required
+                      />
+                      <button type="submit" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content' }}>Post Review</button>
+                    </form>
+                  ) : (
+                    <div style={{ background: 'rgba(122, 78, 165, 0.03)', border: '1px dashed rgba(122, 78, 165, 0.2)', color: '#2b0b57', fontSize: '0.82rem', padding: '16px', borderRadius: '12px', textAlign: 'center', marginBottom: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                      <ShieldCheck size={20} style={{ color: '#7a4ea5' }} />
+                      <span style={{ fontWeight: 700 }}>Verified Purchase Required</span>
+                      <span style={{ opacity: 0.8 }}>You can only review this product after purchasing and receiving it.</span>
                     </div>
-                    <textarea
-                      placeholder="Comment text feedback..."
-                      rows={2}
-                      value={newReview.comment}
-                      onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
-                      required
-                    />
-                    <button type="submit" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'fit-content' }}>Post Review</button>
-                  </form>
+                  )
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -6311,6 +6591,8 @@ export default function App() {
                         setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                         setCustomSizingNotes("");
                         setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                        setCustomPurchaseUnit("pcs");
+                        setCustomMeters("");
                       }
                     }}
                     className="btn-primary"
@@ -6505,96 +6787,106 @@ export default function App() {
 
                       {/* Review submit form */}
                       {role === 'user' && (
-                        <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel product-detail-review-form" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: isMobile ? '16px' : '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
-                          <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
+                        hasPurchasedProduct(activeProduct.id) ? (
+                          <form id="review-form-flipkart" onSubmit={(e) => handleCreateReview(e, activeProduct.id)} className="glass-panel product-detail-review-form" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: isMobile ? '16px' : '24px', background: '#ffffff', boxShadow: '0 8px 30px rgba(122,78,165,0.03)' }}>
+                            <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
 
-                          {/* Interactive star selector */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-                            <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 600 }}>Your Rating:</span>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              {[1, 2, 3, 4, 5].map(starIndex => (
-                                <Star
-                                  key={starIndex}
-                                  size={28}
-                                  style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
-                                  fill={newReview.rating >= starIndex ? "#ffc107" : "none"}
-                                  color={newReview.rating >= starIndex ? "#ffc107" : "#d0d0d0"}
-                                  onClick={() => setNewReview(prev => ({ ...prev, rating: starIndex }))}
-                                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
-                                  onMouseLeave={e => e.currentTarget.style.transform = 'none'}
-                                />
-                              ))}
+                            {/* Interactive star selector */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                              <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 600 }}>Your Rating:</span>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                {[1, 2, 3, 4, 5].map(starIndex => (
+                                  <Star
+                                    key={starIndex}
+                                    size={28}
+                                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                                    fill={newReview.rating >= starIndex ? "#ffc107" : "none"}
+                                    color={newReview.rating >= starIndex ? "#ffc107" : "#d0d0d0"}
+                                    onClick={() => setNewReview(prev => ({ ...prev, rating: starIndex }))}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.2)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+                                  />
+                                ))}
+                              </div>
+                              <span style={{ fontSize: '0.9rem', color: '#7a4ea5', fontWeight: 700 }}>
+                                {newReview.rating} Stars ({
+                                  newReview.rating === 5 ? 'Excellent' :
+                                    newReview.rating === 4 ? 'Very Good' :
+                                      newReview.rating === 3 ? 'Good' :
+                                        newReview.rating === 2 ? 'Fair' : 'Poor'
+                                })
+                              </span>
                             </div>
-                            <span style={{ fontSize: '0.9rem', color: '#7a4ea5', fontWeight: 700 }}>
-                              {newReview.rating} Stars ({
-                                newReview.rating === 5 ? 'Excellent' :
-                                  newReview.rating === 4 ? 'Very Good' :
-                                    newReview.rating === 3 ? 'Good' :
-                                      newReview.rating === 2 ? 'Fair' : 'Poor'
-                              })
-                            </span>
-                          </div>
 
-                          <textarea
-                            placeholder="Tell us what you think about this product..."
-                            rows={4}
-                            value={newReview.comment}
-                            onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
-                            style={{ width: '100%', padding: '16px', border: '1px solid #e2d9f0', borderRadius: '12px', outline: 'none', resize: 'vertical', marginBottom: '20px', fontSize: '0.95rem', fontFamily: 'inherit', transition: 'all 0.3s' }}
-                            onFocus={e => { e.target.style.borderColor = '#7a4ea5'; e.target.style.boxShadow = '0 0 0 3px rgba(122,78,165,0.1)' }}
-                            onBlur={e => { e.target.style.borderColor = '#e2d9f0'; e.target.style.boxShadow = 'none' }}
-                            required
-                          />
+                            <textarea
+                              placeholder="Tell us what you think about this product..."
+                              rows={4}
+                              value={newReview.comment}
+                              onChange={e => setNewReview(prev => ({ ...prev, comment: e.target.value }))}
+                              style={{ width: '100%', padding: '16px', border: '1px solid #e2d9f0', borderRadius: '12px', outline: 'none', resize: 'vertical', marginBottom: '20px', fontSize: '0.95rem', fontFamily: 'inherit', transition: 'all 0.3s' }}
+                              onFocus={e => { e.target.style.borderColor = '#7a4ea5'; e.target.style.boxShadow = '0 0 0 3px rgba(122,78,165,0.1)' }}
+                              onBlur={e => { e.target.style.borderColor = '#e2d9f0'; e.target.style.boxShadow = 'none' }}
+                              required
+                            />
 
-                          {/* File upload section */}
-                          <div style={{ marginBottom: '24px' }}>
-                            <span style={{ display: 'block', fontSize: '0.95rem', color: '#444', fontWeight: 600, marginBottom: '10px' }}>Add Photo to your Review:</span>
+                            {/* File upload section */}
+                            <div style={{ marginBottom: '24px' }}>
+                              <span style={{ display: 'block', fontSize: '0.95rem', color: '#444', fontWeight: 600, marginBottom: '10px' }}>Add Photo to your Review:</span>
 
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <label
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  padding: '10px 20px',
-                                  background: '#f8f5fc',
-                                  color: '#7a4ea5',
-                                  border: '1px dashed #7a4ea5',
-                                  borderRadius: '12px',
-                                  fontSize: '0.9rem',
-                                  fontWeight: 700,
-                                  cursor: isUploadingReviewImage ? 'not-allowed' : 'pointer',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                <Camera size={18} />
-                                {isUploadingReviewImage ? 'Uploading...' : 'Attach Image'}
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleUploadReviewImage}
-                                  disabled={isUploadingReviewImage}
-                                  style={{ display: 'none' }}
-                                />
-                              </label>
+                              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <label
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '10px 20px',
+                                    background: '#f8f5fc',
+                                    color: '#7a4ea5',
+                                    border: '1px dashed #7a4ea5',
+                                    borderRadius: '12px',
+                                    fontSize: '0.9rem',
+                                    fontWeight: 700,
+                                    cursor: isUploadingReviewImage ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  <Camera size={18} />
+                                  {isUploadingReviewImage ? 'Uploading...' : 'Attach Image'}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleUploadReviewImage}
+                                    disabled={isUploadingReviewImage}
+                                    style={{ display: 'none' }}
+                                  />
+                                </label>
 
-                              {newReview.image_url && (
-                                <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', border: '1px solid #e0d0f5', overflow: 'hidden' }}>
-                                  <img src={newReview.image_url} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                  <button
-                                    type="button"
-                                    onClick={() => setNewReview(prev => ({ ...prev, image_url: "" }))}
-                                    style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
-                                  >
-                                    <X size={10} />
-                                  </button>
-                                </div>
-                              )}
+                                {newReview.image_url && (
+                                  <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '8px', border: '1px solid #e0d0f5', overflow: 'hidden' }}>
+                                    <img src={newReview.image_url} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <button
+                                      type="button"
+                                      onClick={() => setNewReview(prev => ({ ...prev, image_url: "" }))}
+                                      style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
 
-                          <button type="submit" className="btn-primary" style={{ padding: '12px 32px', fontWeight: 700, borderRadius: '12px', letterSpacing: '0.5px' }}>Submit Review</button>
-                        </form>
+                            <button type="submit" className="btn-primary" style={{ padding: '12px 32px', fontWeight: 700, borderRadius: '12px', letterSpacing: '0.5px' }}>Submit Review</button>
+                          </form>
+                        ) : (
+                          <div className="glass-panel" style={{ border: '1px solid rgba(122, 78, 165, 0.12)', borderRadius: '16px', padding: '24px', background: '#fcfaff', boxShadow: '0 8px 30px rgba(122,78,165,0.02)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <ShieldCheck size={28} style={{ color: '#7a4ea5' }} />
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#2b0b57', fontWeight: 700 }}>Verified Purchase Required</h4>
+                            <p style={{ margin: 0, fontSize: '0.88rem', color: '#666', lineHeight: 1.5 }}>
+                              Only customers who have successfully purchased and received this product can write a review.
+                            </p>
+                          </div>
+                        )
                       )}
 
                       {/* Review Listings */}
@@ -6677,7 +6969,11 @@ export default function App() {
                       <img src={p.images[0] || null} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{ fontSize: '1rem', color: '#222', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px', fontWeight: 600, fontFamily: 'var(--font-serif)' }} title={p.name}>{p.name}</div>
-                    <div style={{ color: 'var(--coin-gold)', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 700 }}>{Math.round(Math.random() * 20 + 10)}% Special Discount</div>
+                    <div style={{ color: 'var(--coin-gold)', fontSize: '0.85rem', marginBottom: '6px', fontWeight: 700 }}>
+                      {p.original_price && p.original_price > p.price
+                        ? Math.round(((p.original_price - p.price) / p.original_price) * 100)
+                        : ((p.id * 3 + 7) % 16 + 10)}% Special Discount
+                    </div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#2b0b57' }}>₹{p.price.toFixed(2)}</div>
                   </div>
                 ))}
@@ -8053,6 +8349,8 @@ export default function App() {
                         setSelectedCustomColor(palette.length > 0 ? palette[0] : null);
                         setCustomSizingNotes("");
                         setCustomQuantity(currentShop?.customization_min_quantity || 1);
+                        setCustomPurchaseUnit("pcs");
+                        setCustomMeters("");
                       }
                     }}
                     style={{ borderRadius: '16px', overflow: 'hidden', cursor: 'pointer', padding: '16px', display: 'flex', flexDirection: 'column', background: '#ffffff', transition: 'all 0.3s ease' }}
@@ -15318,26 +15616,97 @@ export default function App() {
                 />
               </div>
 
-              {/* Quantity Selector */}
+              {/* Sizing Unit Selection */}
               <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
-                  Quantity (Minimum: {currentShop?.customization_min_quantity || 1})
-                </label>
-                <input
-                  type="number"
-                  min={currentShop?.customization_min_quantity || 1}
-                  value={customQuantity}
-                  onChange={e => setCustomQuantity(Math.max(currentShop?.customization_min_quantity || 1, parseInt(e.target.value) || 1))}
-                  style={{
-                    width: '100%',
-                    borderRadius: '12px',
-                    border: '1px solid #dcdcdc',
-                    padding: '10px 12px',
-                    fontSize: '0.85rem',
-                    outline: 'none',
-                  }}
-                />
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '8px' }}>Select Sizing Method</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCustomPurchaseUnit("pcs")}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      borderRadius: '12px',
+                      border: '2px solid ' + (customPurchaseUnit === 'pcs' ? '#7a4ea5' : 'var(--border-subtle)'),
+                      background: customPurchaseUnit === 'pcs' ? '#f5edff' : '#ffffff',
+                      color: customPurchaseUnit === 'pcs' ? '#7a4ea5' : '#555555',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Quantity-based (Pcs)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomPurchaseUnit("meter")}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      borderRadius: '12px',
+                      border: '2px solid ' + (customPurchaseUnit === 'meter' ? '#7a4ea5' : 'var(--border-subtle)'),
+                      background: customPurchaseUnit === 'meter' ? '#f5edff' : '#ffffff',
+                      color: customPurchaseUnit === 'meter' ? '#7a4ea5' : '#555555',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    Meter-based Length
+                  </button>
+                </div>
               </div>
+
+              {/* Quantity Selector */}
+              {customPurchaseUnit === 'pcs' && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
+                    Quantity (Minimum: {currentShop?.customization_min_quantity || 1})
+                  </label>
+                  <input
+                    type="number"
+                    min={currentShop?.customization_min_quantity || 1}
+                    value={customQuantity}
+                    onChange={e => setCustomQuantity(Math.max(currentShop?.customization_min_quantity || 1, parseInt(e.target.value) || 1))}
+                    style={{
+                      width: '100%',
+                      borderRadius: '12px',
+                      border: '1px solid #dcdcdc',
+                      padding: '10px 12px',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Meter Input Section */}
+              {customPurchaseUnit === 'meter' && (
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', color: '#2b0b57', marginBottom: '6px' }}>
+                    Length in Meters
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g., 5.5"
+                    value={customMeters}
+                    onChange={e => setCustomMeters(e.target.value)}
+                    style={{
+                      width: '100%',
+                      borderRadius: '12px',
+                      border: '1px solid #dcdcdc',
+                      padding: '10px 12px',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                    }}
+                    required
+                  />
+                </div>
+              )}
 
               {/* Actions */}
               <div className="customization-actions" style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
@@ -15361,8 +15730,21 @@ export default function App() {
                       addToast("Notes Required", "Please specify custom sizing notes.", "warning");
                       return;
                     }
+                    if (customPurchaseUnit === 'meter') {
+                      if (!customMeters || isNaN(parseFloat(customMeters)) || parseFloat(customMeters) <= 0) {
+                        addToast("Invalid Length", "Please specify a valid fabric length in meters.", "warning");
+                        return;
+                      }
+                    }
                     setSubmittingCustomOrder(true);
                     try {
+                      const finalNotes = customPurchaseUnit === 'meter'
+                        ? `[Unit: Meter | Length: ${customMeters} meters]\n${customSizingNotes}`
+                        : customSizingNotes;
+                      const finalQty = customPurchaseUnit === 'meter'
+                        ? Math.ceil(parseFloat(customMeters)) || 1
+                        : customQuantity;
+
                       const res = await fetch(`${API_BASE}/user/customizations`, {
                         method: 'POST',
                         headers: getHeaders(),
@@ -15371,8 +15753,8 @@ export default function App() {
                           product_id: customizingProduct.id,
                           color_name: selectedCustomColor.name,
                           color_hex: selectedCustomColor.hex,
-                          customization_notes: customSizingNotes,
-                          quantity: customQuantity
+                          customization_notes: finalNotes,
+                          quantity: finalQty
                         })
                       });
                       const data = await res.json();
