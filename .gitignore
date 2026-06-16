@@ -41,3 +41,8 @@ backend/ecommerce.db
 # Backend files
 backend/backend.zip
 *.zip
+
+# Secrets & Firebase credentials
+backend/firebase-service-account.json
+**/firebase-service-account.json
+

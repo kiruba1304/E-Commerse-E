@@ -73,11 +73,37 @@ def sync_products():
     data = request.get_json() or {}
     api_key = data.get('api_key')
     incoming_products = data.get('products', [])
+    incoming_deleted_products = data.get('deleted_products', [])
     
     shop = get_shop_by_api_key(api_key)
     if not shop:
         return jsonify({"error": "Invalid API key"}), 401
         
+    # Process incoming deleted products from POS
+    for dp_in in incoming_deleted_products:
+        barcode = dp_in.get('barcode', '').strip()
+        sku_code = dp_in.get('skuCode', '').strip() or dp_in.get('sku_code', '').strip()
+        
+        product = None
+        if barcode:
+            product = Product.query.filter_by(shop_id=shop.id, barcode=barcode).first()
+        if not product and sku_code:
+            product = Product.query.filter_by(shop_id=shop.id, sku_code=sku_code).first()
+            
+        if product:
+            has_order_refs = OrderItem.query.filter_by(product_id=product.id).first() is not None or \
+                             CustomizationOrder.query.filter_by(product_id=product.id).first() is not None
+            try:
+                if has_order_refs:
+                    product.is_deleted = True
+                    product.category_id = None
+                else:
+                    db.session.delete(product)
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error processing POS product sync deletion: {e}")
+
     # Get or create default category for POS imports
     category = Category.query.filter_by(shop_id=shop.id, name="POS Imported").first()
     if not category:
@@ -88,12 +114,12 @@ def sync_products():
     # Match and update/create products
     for p_in in incoming_products:
         barcode = p_in.get('barcode', '').strip()
-        sku_code = p_in.get('skuCode', '').strip()
+        sku_code = p_in.get('skuCode', '').strip() or p_in.get('sku_code', '').strip()
         name = p_in.get('name', 'POS Product')
         price = float(p_in.get('sellingPrice') or 0.0)
         cost_price = float(p_in.get('costPrice') or 0.0)
         stock = int(p_in.get('count') or 0)
-        hsn_code = p_in.get('hsnCode', '').strip()
+        hsn_code = p_in.get('hsnCode', '').strip() or p_in.get('hsc_code', '').strip()
         category_name = p_in.get('categoryName', '').strip()
         
         # Get target category id
@@ -126,6 +152,9 @@ def sync_products():
                 product.barcode = barcode
             if sku_code and not product.sku_code:
                 product.sku_code = sku_code
+            # If POS sends an update for a soft-deleted product, restore it
+            if product.is_deleted:
+                product.is_deleted = False
         else:
             # Create new product
             product = Product(
@@ -150,8 +179,10 @@ def sync_products():
         
     # Return all products currently stored on website
     web_products = Product.query.filter_by(shop_id=shop.id, is_deleted=False).all()
+    deleted_products = Product.query.filter_by(shop_id=shop.id, is_deleted=True).all()
     return jsonify({
-        "products": [p.serialize() for p in web_products]
+        "products": [p.serialize() for p in web_products],
+        "deleted_products": [{"barcode": dp.barcode, "sku_code": dp.sku_code} for dp in deleted_products]
     }), 200
 
 @billing_sync_bp.route('/orders/pull', methods=['POST'])
@@ -391,16 +422,68 @@ def update_order_status(order_id):
         order.shipping_label_url = data.get('shipping_label_url', order.shipping_label_url)
         
     db.session.commit()
+    
+    # Send FCM notification
+    try:
+        from fcm_helper import send_order_status_notification
+        send_order_status_notification(order, new_status)
+    except Exception as e:
+        print("FCM status notification error:", e)
+
     return jsonify({
         "success": True,
         "message": f"Order status updated to '{new_status}' successfully",
         "order": order.serialize()
     }), 200
 
+@billing_sync_bp.route('/orders/<int:order_id>/shipping-serviceability', methods=['GET', 'POST'])
+def get_order_shipping_serviceability(order_id):
+    import re
+    import shiprocket_helper
+
+    data = request.get_json(silent=True) or {}
+    api_key = request.args.get('api_key') or data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    weight_kg = request.args.get('weight_kg', type=float) or float(data.get('weight_kg', 0.5))
+    
+    # Extract pincode from order's shipping address
+    delivery_pincode = "400001"
+    if order.shipping_address:
+        pin_match = re.search(r'\b\d{6}\b', order.shipping_address)
+        if pin_match:
+            delivery_pincode = pin_match.group(0)
+
+    is_cod = (order.payment_method == "COD")
+    declared_value = order.final_amount or 0.0
+
+    try:
+        couriers = shiprocket_helper.check_serviceability(
+            shop=shop,
+            delivery_postcode=delivery_pincode,
+            weight_kg=weight_kg,
+            is_cod=is_cod,
+            declared_value=declared_value
+        )
+        return jsonify({
+            "success": True,
+            "available_couriers": couriers
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
 @billing_sync_bp.route('/orders/<int:order_id>/book-shipping', methods=['POST'])
 def book_order_shipping(order_id):
     import requests
     import secrets
+    from datetime import datetime
+    import shiprocket_helper
     
     data = request.get_json() or {}
     api_key = data.get('api_key')
@@ -414,7 +497,106 @@ def book_order_shipping(order_id):
         
     weight_kg = float(data.get('weight_kg', 0.5))
     declared_value = float(data.get('declared_value', order.final_amount))
+    carrier = data.get('carrier', 'DTDC')
     
+    if carrier == 'Shiprocket':
+        try:
+            sr_order_id = order.shiprocket_order_id
+            sr_shipment_id = order.shiprocket_shipment_id
+            
+            # If not created on Shiprocket yet, create it
+            if not sr_order_id or not sr_shipment_id:
+                # 1. Build order items details
+                items_list = []
+                for item in order.items:
+                    items_list.append({
+                        "name": item.product_name,
+                        "sku": item.product.sku_code if (item.product and item.product.sku_code) else f"SKU-{item.product_id}",
+                        "units": item.quantity,
+                        "price": item.price,
+                        "product_id": item.product_id
+                    })
+                if not items_list:
+                    items_list.append({
+                        "name": "General Order Item",
+                        "sku": f"GEN-SKU-{order.id}",
+                        "units": 1,
+                        "price": order.final_amount,
+                        "product_id": 0
+                    })
+                    
+                # 2. Call Shiprocket Create Order
+                res_dict = shiprocket_helper.create_shiprocket_order(
+                    shop=shop,
+                    order_id_str=f"EC-{order.online_order_number or order.id}",
+                    order_date=order.created_at or datetime.now(),
+                    customer_name=order.user.name or order.user.username if order.user else "Customer",
+                    customer_email=order.user.email if order.user else f"cust_{order.id}@example.com",
+                    customer_phone=order.billing_phone or (order.user.contact_phone if order.user else "9999999999"),
+                    shipping_address=order.shipping_address,
+                    items=items_list,
+                    weight_kg=weight_kg,
+                    declared_value=declared_value,
+                    payment_method=order.payment_method
+                )
+                
+                sr_order_id = res_dict.get('shiprocket_order_id')
+                sr_shipment_id = res_dict.get('shiprocket_shipment_id')
+                
+                order.shiprocket_order_id = sr_order_id
+                order.shiprocket_shipment_id = sr_shipment_id
+                db.session.commit() # Save Shiprocket IDs immediately
+                
+            # 3. Assign AWB (do not catch exception here so failure propagates back to desktop)
+            courier_id = data.get('courier_id')
+            awb_res = shiprocket_helper.assign_awb(shop, sr_shipment_id, courier_id)
+            awb_code = awb_res.get('awb_code')
+            courier_name = awb_res.get('courier_name')
+            
+            # 4. Try to generate label
+            label_url = None
+            if awb_code:
+                try:
+                    label_url = shiprocket_helper.generate_label(shop, sr_shipment_id)
+                except Exception as lbl_err:
+                    print(f"Shiprocket label generation failed: {lbl_err}")
+                    
+            order.status = 'Dispatched'
+            if awb_code:
+                if courier_name:
+                    order.tracking_info = f"Shiprocket (via {courier_name}) AWB: {awb_code}"
+                else:
+                    order.tracking_info = f"Shiprocket AWB: {awb_code}"
+            else:
+                order.tracking_info = f"Shiprocket Order ID: {sr_order_id}"
+                
+            if label_url:
+                order.shipping_label_url = label_url
+            else:
+                host = request.host_url
+                if not host.endswith('/'):
+                    host += '/'
+                order.shipping_label_url = f"{host}api/admin/orders/{order.id}/shipping-label"
+                
+            db.session.commit()
+            
+            # Send FCM notification
+            try:
+                from fcm_helper import send_order_status_notification
+                send_order_status_notification(order, 'Dispatched')
+            except Exception as e:
+                print("FCM status notification error:", e)
+                
+            return jsonify({
+                "success": True,
+                "message": "Shiprocket shipment booked successfully from POS",
+                "order": order.serialize()
+            }), 200
+            
+        except Exception as err:
+            return jsonify({"error": str(err)}), 400
+
+    # Fallback to DTDC
     client_code = shop.dtdc_client_code
     api_key_dtdc = shop.dtdc_api_key
     api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
@@ -468,6 +650,13 @@ def book_order_shipping(order_id):
     order.tracking_info = f"DTDC AWB: {awb_number}"
     order.shipping_label_url = label_url
     db.session.commit()
+    
+    # Send FCM notification
+    try:
+        from fcm_helper import send_order_status_notification
+        send_order_status_notification(order, 'Dispatched')
+    except Exception as e:
+        print("FCM status notification error:", e)
     
     return jsonify({
         "success": True,
@@ -555,6 +744,14 @@ def update_customization_status(cust_id):
         cust.shipping_label_url = data.get('shipping_label_url', cust.shipping_label_url)
         
     db.session.commit()
+    
+    # Send FCM notification
+    try:
+        from fcm_helper import send_customization_status_notification
+        send_customization_status_notification(cust, 'status')
+    except Exception as e:
+        print("FCM customization status notification error:", e)
+        
     return jsonify({
         "success": True,
         "message": f"Customization order status updated to '{new_status}' successfully",
@@ -581,6 +778,13 @@ def update_customization_quote(cust_id):
     cust.quote_status = 'Quoted'
     db.session.commit()
     
+    # Send FCM notification
+    try:
+        from fcm_helper import send_customization_status_notification
+        send_customization_status_notification(cust, 'quote')
+    except Exception as e:
+        print("FCM customization quote notification error:", e)
+        
     return jsonify({
         "success": True,
         "message": f"Customization order quote set to ₹{cust.quoted_price} successfully",
@@ -588,10 +792,78 @@ def update_customization_quote(cust_id):
     }), 200
 
 
+@billing_sync_bp.route('/customizations/<int:cust_id>/shipping-serviceability', methods=['GET', 'POST'])
+def get_customization_shipping_serviceability(cust_id):
+    import re
+    import shiprocket_helper
+
+    data = request.get_json(silent=True) or {}
+    api_key = request.args.get('api_key') or data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+
+    weight_kg = request.args.get('weight_kg', type=float) or float(data.get('weight_kg', 0.5))
+    
+    consignee_address = cust.shipping_address or (cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A")
+
+    # Extract pincode from customization's shipping address
+    delivery_pincode = "400001"
+    if consignee_address:
+        pin_match = re.search(r'\b\d{6}\b', consignee_address)
+        if pin_match:
+            delivery_pincode = pin_match.group(0)
+
+    is_cod = (cust.payment_method or "COD") == "COD"
+    prod_price = cust.product.price if cust.product else 1000.0
+    declared_value = float(cust.quoted_price if cust.quoted_price is not None else (prod_price * cust.quantity))
+
+    try:
+        couriers = shiprocket_helper.check_serviceability(
+            shop=shop,
+            delivery_postcode=delivery_pincode,
+            weight_kg=weight_kg,
+            is_cod=is_cod,
+            declared_value=declared_value
+        )
+        return jsonify({
+            "success": True,
+            "available_couriers": couriers
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+
+@billing_sync_bp.route('/shipping-wallet-balance', methods=['GET', 'POST'])
+def get_sync_shipping_wallet_balance():
+    import shiprocket_helper
+
+    data = request.get_json(silent=True) or {}
+    api_key = request.args.get('api_key') or data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+
+    try:
+        balance = shiprocket_helper.get_wallet_balance(shop)
+        return jsonify({
+            "success": True,
+            "balance": balance
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+
 @billing_sync_bp.route('/customizations/<int:cust_id>/book-shipping', methods=['POST'])
 def book_customization_shipping(cust_id):
     import requests
     import secrets
+    from datetime import datetime
+    import shiprocket_helper
     
     data = request.get_json() or {}
     api_key = data.get('api_key')
@@ -606,7 +878,98 @@ def book_customization_shipping(cust_id):
     weight_kg = float(data.get('weight_kg', 0.5))
     prod_price = cust.product.price if cust.product else 1000.0
     declared_value = float(data.get('declared_value', prod_price * cust.quantity))
+    carrier = data.get('carrier', 'DTDC')
     
+    consignee_address = cust.shipping_address or (cust.user.addresses[0].get('address') if cust.user and cust.user.addresses else "N/A")
+    
+    if carrier == 'Shiprocket':
+        try:
+            sr_order_id = cust.shiprocket_order_id
+            sr_shipment_id = cust.shiprocket_shipment_id
+            
+            # If not created on Shiprocket yet, create it
+            if not sr_order_id or not sr_shipment_id:
+                # 1. Build order items details
+                items_list = [{
+                    "name": f"Customized {cust.product.name}" if cust.product else "Customized Product",
+                    "sku": cust.product.sku_code if (cust.product and cust.product.sku_code) else f"CUST-SKU-{cust.product_id}",
+                    "units": cust.quantity or 1,
+                    "price": cust.quoted_price if cust.quoted_price is not None else prod_price,
+                    "product_id": cust.product_id
+                }]
+                
+                # 2. Call Shiprocket Create Order
+                res_dict = shiprocket_helper.create_shiprocket_order(
+                    shop=shop,
+                    order_id_str=f"CUST-{cust.id}",
+                    order_date=cust.created_at or datetime.now(),
+                    customer_name=cust.user.name or cust.user.username if cust.user else "Customer",
+                    customer_email=cust.user.email if cust.user else f"cust_custom_{cust.id}@example.com",
+                    customer_phone=cust.billing_phone or (cust.user.contact_phone if cust.user else "9999999999"),
+                    shipping_address=consignee_address,
+                    items=items_list,
+                    weight_kg=weight_kg,
+                    declared_value=declared_value,
+                    payment_method=cust.payment_method or "COD"
+                )
+                
+                sr_order_id = res_dict.get('shiprocket_order_id')
+                sr_shipment_id = res_dict.get('shiprocket_shipment_id')
+                
+                cust.shiprocket_order_id = sr_order_id
+                cust.shiprocket_shipment_id = sr_shipment_id
+                db.session.commit() # Save Shiprocket IDs immediately
+                
+            # 3. Assign AWB (do not catch exception here so failure propagates back to desktop)
+            courier_id = data.get('courier_id')
+            awb_res = shiprocket_helper.assign_awb(shop, sr_shipment_id, courier_id)
+            awb_code = awb_res.get('awb_code')
+            courier_name = awb_res.get('courier_name')
+            
+            # 4. Try to generate label
+            label_url = None
+            if awb_code:
+                try:
+                    label_url = shiprocket_helper.generate_label(shop, sr_shipment_id)
+                except Exception as lbl_err:
+                    print(f"Shiprocket label generation failed: {lbl_err}")
+                    
+            cust.status = 'Dispatched'
+            if awb_code:
+                if courier_name:
+                    cust.tracking_info = f"Shiprocket (via {courier_name}) AWB: {awb_code}"
+                else:
+                    cust.tracking_info = f"Shiprocket AWB: {awb_code}"
+            else:
+                cust.tracking_info = f"Shiprocket Order ID: {sr_order_id}"
+                
+            if label_url:
+                cust.shipping_label_url = label_url
+            else:
+                host = request.host_url
+                if not host.endswith('/'):
+                    host += '/'
+                cust.shipping_label_url = f"{host}api/admin/customizations/{cust.id}/shipping-label"
+                
+            db.session.commit()
+            
+            # Send FCM notification
+            try:
+                from fcm_helper import send_customization_status_notification
+                send_customization_status_notification(cust, 'status')
+            except Exception as e:
+                print("FCM customization status notification error:", e)
+                
+            return jsonify({
+                "success": True,
+                "message": "Shiprocket shipment booked successfully for customization from POS",
+                "customization": cust.serialize()
+            }), 200
+            
+        except Exception as err:
+            return jsonify({"error": str(err)}), 400
+
+    # Fallback to DTDC
     client_code = shop.dtdc_client_code
     api_key_dtdc = shop.dtdc_api_key
     api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
@@ -663,6 +1026,13 @@ def book_customization_shipping(cust_id):
     cust.shipping_label_url = label_url
     db.session.commit()
     
+    # Send FCM notification
+    try:
+        from fcm_helper import send_customization_status_notification
+        send_customization_status_notification(cust, 'status')
+    except Exception as e:
+        print("FCM customization status notification error:", e)
+        
     return jsonify({
         "success": True,
         "message": "DTDC shipment booked successfully for customization from POS",

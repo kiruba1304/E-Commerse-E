@@ -193,3 +193,284 @@ def send_shop_email(shop, template_type, recipient_email, placeholders, sender_i
         print(f"SMTP error sending email to {recipient_email} via shop {shop.name}: {err_msg}")
         log_smtp_action(shop, template_type, recipient_email, False, err_msg, sender_info)
         return False
+
+def send_popup_ad_email(shop, recipient_email, ad, site_link, sender_info=None):
+    if not shop.smtp_host or not shop.smtp_port or not shop.smtp_user or not shop.smtp_password:
+        msg = f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping email announcement."
+        print(msg)
+        log_smtp_action(shop, "popup_ad_release", recipient_email, False, "SMTP settings not configured", sender_info)
+        return False
+
+    subject = f"New Announcement from {shop.name}: {ad.title}"
+    
+    body_html = f"""
+    <div style="text-align: center;">
+        <h2 style="font-family: 'Playfair Display', 'Georgia', serif; color: #7a4ea5; font-size: 22px; margin-bottom: 16px;">{ad.title}</h2>
+    """
+    if ad.image_url:
+        body_html += f"""
+        <div style="margin: 20px 0;">
+            <img src="{ad.image_url}" alt="{ad.title}" style="max-width: 100%; height: auto; border-radius: 8px; border: 1px solid #e7e2ed; box-shadow: 0 4px 10px rgba(0,0,0,0.05);" />
+        </div>
+        """
+    body_html += f"""
+        <p style="font-size: 15px; color: #4a4550; line-height: 1.6; margin-bottom: 24px;">Check out our latest campaign and updates now on our store.</p>
+        <div style="margin-top: 24px;">
+            <a href="{site_link}" style="background-color: #7a4ea5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 8px rgba(122,78,165,0.2);">Visit Store Now</a>
+        </div>
+    </div>
+    """
+    
+    html_body = wrap_in_premium_template(shop, body_html, "popup_ad_release")
+    
+    msg = MIMEMultipart('alternative')
+    from_name = shop.smtp_sender_name or shop.name
+    msg['From'] = f'"{from_name}" <{shop.smtp_user}>'
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    
+    body_plain = f"New Announcement from {shop.name}: {ad.title}\n\nVisit store now: {site_link}"
+    
+    msg.attach(MIMEText(body_plain, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+    
+    try:
+        port = int(shop.smtp_port)
+        if shop.smtp_use_tls:
+            server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            server.starttls()
+        else:
+            if port == 465:
+                server = smtplib.SMTP_SSL(shop.smtp_host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            
+        server.login(shop.smtp_user, shop.smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"Popup ad announcement email sent to {recipient_email} via shop {shop.name} SMTP.")
+        log_smtp_action(shop, "popup_ad_release", recipient_email, True, sender_info=sender_info)
+        return True
+    except Exception as e:
+        err_msg = str(e)
+        print(f"SMTP error sending popup ad email to {recipient_email} via shop {shop.name}: {err_msg}")
+        log_smtp_action(shop, "popup_ad_release", recipient_email, False, err_msg, sender_info)
+        return False
+
+def send_pearls_granted_email(shop, recipient_email, amount, reason, balance, site_link, sender_info=None):
+    if not shop.smtp_host or not shop.smtp_port or not shop.smtp_user or not shop.smtp_password:
+        msg = f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping pearls email."
+        print(msg)
+        log_smtp_action(shop, "pearls_granted", recipient_email, False, "SMTP settings not configured", sender_info)
+        return False
+
+    subject = f"Privilege Pearls Credited - {shop.name}"
+    
+    body_html = f"""
+    <div style="text-align: center; font-family: 'Inter', sans-serif;">
+        <div style="margin: 20px auto; width: 80px; height: 80px; background-color: rgba(122, 78, 165, 0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px dashed rgba(122, 78, 165, 0.3);">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="#E0D1F5" stroke="#7A4EA5" stroke-width="2" style="display: inline-block; vertical-align: middle;">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="5" fill="#FFFFFF" stroke="none" opacity="0.6" />
+                <circle cx="10" cy="10" r="2" fill="#FFFFFF" stroke="none" />
+            </svg>
+        </div>
+        <h2 style="font-family: 'Playfair Display', 'Georgia', serif; color: #7a4ea5; font-size: 22px; margin-bottom: 8px;">Privilege Pearls Credited!</h2>
+        <p style="font-size: 15px; color: #6a6073; line-height: 1.5; margin: 0 0 20px 0;">Dear Customer,</p>
+        <p style="font-size: 15px; color: #4a4550; line-height: 1.6; margin-bottom: 24px;">
+            We are pleased to inform you that <strong style="color: #7a4ea5; font-size: 18px;">{amount} Privilege Pearls</strong> have been credited to your account.
+        </p>
+        
+        <div style="background-color: #fcfbfe; border: 1px solid #f2ecfb; border-radius: 8px; padding: 16px; margin-bottom: 24px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;">
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #6a6073;"><strong>Reason:</strong> {reason}</p>
+            <p style="margin: 0; font-size: 14px; color: #6a6073;"><strong>New Balance:</strong> <strong style="color: #7a4ea5;">{balance} Pearls</strong></p>
+        </div>
+        
+        <p style="font-size: 14px; color: #6a6073; margin-bottom: 24px;">
+            You can redeem your Privilege Pearls for exclusive discounts on your next elegant drape!
+        </p>
+        
+        <div style="margin-top: 24px;">
+            <a href="{site_link}" style="background-color: #7a4ea5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 8px rgba(122,78,165,0.2);">Explore the Collection</a>
+        </div>
+    </div>
+    """
+    
+    html_body = wrap_in_premium_template(shop, body_html, "pearls_granted")
+    
+    msg = MIMEMultipart('alternative')
+    from_name = shop.smtp_sender_name or shop.name
+    msg['From'] = f'"{from_name}" <{shop.smtp_user}>'
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    
+    body_plain = f"Privilege Pearls Credited - {shop.name}\n\nDear Customer,\n\nWe are pleased to inform you that {amount} Privilege Pearls have been credited to your account.\nReason: {reason}\nNew Balance: {balance} Pearls\n\nExplore our collection at: {site_link}"
+    
+    msg.attach(MIMEText(body_plain, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+    
+    try:
+        port = int(shop.smtp_port)
+        if shop.smtp_use_tls:
+            server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            server.starttls()
+        else:
+            if port == 465:
+                server = smtplib.SMTP_SSL(shop.smtp_host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            
+        server.login(shop.smtp_user, shop.smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"Pearls grant email sent to {recipient_email} via shop {shop.name} SMTP.")
+        log_smtp_action(shop, "pearls_granted", recipient_email, True, sender_info=sender_info)
+        return True
+    except Exception as e:
+        err_msg = str(e)
+        print(f"SMTP error sending pearls grant email to {recipient_email} via shop {shop.name}: {err_msg}")
+        log_smtp_action(shop, "pearls_granted", recipient_email, False, err_msg, sender_info)
+        return False
+
+def send_newsletter_welcome_email(shop, recipient_email, sender_info=None):
+    if not shop.smtp_host or not shop.smtp_port or not shop.smtp_user or not shop.smtp_password:
+        msg = f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping welcome email."
+        print(msg)
+        log_smtp_action(shop, "newsletter_welcome", recipient_email, False, "SMTP settings not configured", sender_info)
+        return False
+
+    subject = f"Welcome to the {shop.name} Newsletter!"
+    
+    body_html = f"""
+    <div style="text-align: center; font-family: 'Inter', sans-serif;">
+        <h2 style="font-family: 'Playfair Display', 'Georgia', serif; color: #7a4ea5; font-size: 22px; margin-bottom: 16px;">Thank You for Subscribing!</h2>
+        <p style="font-size: 15px; color: #4a4550; line-height: 1.6; margin-bottom: 24px;">
+            We are thrilled to have you join our boutique community. As a newsletter subscriber, you will receive first access to our new collections, exclusive promotions, and design highlights.
+        </p>
+        
+        <p style="font-size: 15px; color: #4a4550; line-height: 1.6; margin-bottom: 8px;">
+            Here is your special subscriber welcome gift:
+        </p>
+        
+        <div style="background-color: #fcfbfe; border: 1px dashed #7a4ea5; border-radius: 8px; padding: 20px; margin-bottom: 24px; text-align: center; max-width: 320px; margin-left: auto; margin-right: auto;">
+            <span style="font-size: 12px; color: #8c8594; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">YOUR DISCOUNT CODE</span>
+            <strong style="color: #7a4ea5; font-size: 24px; font-family: monospace; letter-spacing: 1px;">NOBARAA10</strong>
+            <span style="font-size: 13px; color: #7a4ea5; display: block; margin-top: 6px; font-weight: 500;">Get 10% OFF your next order</span>
+        </div>
+        
+        <p style="font-size: 14px; color: #6a6073; margin-bottom: 24px;">
+            Simply enter this code at checkout to claim your discount.
+        </p>
+    </div>
+    """
+    
+    html_body = wrap_in_premium_template(shop, body_html, "newsletter_welcome")
+    
+    msg = MIMEMultipart('alternative')
+    from_name = shop.smtp_sender_name or shop.name
+    msg['From'] = f'"{from_name}" <{shop.smtp_user}>'
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    
+    body_plain = f"Welcome to the {shop.name} Newsletter!\n\nThank you for subscribing to our community. As a subscriber, you get 10% off your next purchase using code: NOBARAA10\n\nShop now at our store!"
+    
+    msg.attach(MIMEText(body_plain, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+    
+    try:
+        port = int(shop.smtp_port)
+        if shop.smtp_use_tls and port != 465:
+            server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            server.starttls()
+        else:
+            if port == 465:
+                server = smtplib.SMTP_SSL(shop.smtp_host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            
+        server.login(shop.smtp_user, shop.smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"Newsletter welcome email sent to {recipient_email} via shop {shop.name} SMTP.")
+        log_smtp_action(shop, "newsletter_welcome", recipient_email, True, sender_info=sender_info)
+        return True
+    except Exception as e:
+        err_msg = str(e)
+        print(f"SMTP error sending newsletter welcome email to {recipient_email} via shop {shop.name}: {err_msg}")
+        log_smtp_action(shop, "newsletter_welcome", recipient_email, False, err_msg, sender_info)
+        return False
+
+def send_ticket_reply_email(shop, recipient_email, ticket_subject, query_message, admin_reply, site_link, sender_info=None):
+    if not shop.smtp_host or not shop.smtp_port or not shop.smtp_user or not shop.smtp_password:
+        msg = f"SMTP not configured for shop {shop.name} (ID: {shop.id}). Skipping ticket reply email."
+        print(msg)
+        log_smtp_action(shop, "ticket_reply", recipient_email, False, "SMTP settings not configured", sender_info)
+        return False
+
+    subject = f"Support Ticket Update: {ticket_subject} - {shop.name}"
+    
+    body_html = f"""
+    <div style="font-family: 'Inter', sans-serif;">
+        <h2 style="font-family: 'Playfair Display', 'Georgia', serif; color: #7a4ea5; font-size: 20px; margin-bottom: 16px;">We have updated your Support Ticket</h2>
+        <p style="font-size: 15px; color: #4a4550; line-height: 1.5; margin-bottom: 24px;">
+            An administrator has replied to your support request. Please find the details of your ticket update below:
+        </p>
+        
+        <div style="background-color: #fcfbfe; border: 1px solid #f2ecfb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 12px 0; font-size: 14px; color: #6a6073;">
+                <strong>Ticket Subject:</strong> {ticket_subject}
+            </p>
+            <div style="border-top: 1px solid #f2ecfb; padding-top: 12px; margin-bottom: 12px;">
+                <span style="font-size: 12px; color: #8c8594; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Your Query</span>
+                <p style="margin: 0; font-size: 14px; color: #4a4550; font-style: italic;">"{query_message}"</p>
+            </div>
+            <div style="border-top: 1px solid #e2d7ed; padding-top: 12px; background-color: rgba(122, 78, 165, 0.02); margin: 0 -20px -20px -20px; padding: 16px 20px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                <span style="font-size: 12px; color: #7a4ea5; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 4px;">Admin Reply</span>
+                <p style="margin: 0; font-size: 14px; color: #2e1a47; font-weight: 500;">{admin_reply}</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 32px;">
+            <a href="{site_link}" style="background-color: #7a4ea5; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 14px; box-shadow: 0 4px 8px rgba(122,78,165,0.2);">View Support Dashboard</a>
+        </div>
+    </div>
+    """
+    
+    html_body = wrap_in_premium_template(shop, body_html, "ticket_reply")
+    
+    msg = MIMEMultipart('alternative')
+    from_name = shop.smtp_sender_name or shop.name
+    msg['From'] = f'"{from_name}" <{shop.smtp_user}>'
+    msg['To'] = recipient_email
+    msg['Subject'] = subject
+    
+    body_plain = f"Support Ticket Update: {ticket_subject} - {shop.name}\n\nYour Query:\n{query_message}\n\nAdmin Reply:\n{admin_reply}\n\nView support dashboard at: {site_link}"
+    
+    msg.attach(MIMEText(body_plain, 'plain'))
+    msg.attach(MIMEText(html_body, 'html'))
+    
+    try:
+        port = int(shop.smtp_port)
+        if shop.smtp_use_tls and port != 465:
+            server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            server.starttls()
+        else:
+            if port == 465:
+                server = smtplib.SMTP_SSL(shop.smtp_host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(shop.smtp_host, port, timeout=10)
+            
+        server.login(shop.smtp_user, shop.smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"Ticket reply email sent to {recipient_email} via shop {shop.name} SMTP.")
+        log_smtp_action(shop, "ticket_reply", recipient_email, True, sender_info=sender_info)
+        return True
+    except Exception as e:
+        err_msg = str(e)
+        print(f"SMTP error sending ticket reply email to {recipient_email} via shop {shop.name}: {err_msg}")
+        log_smtp_action(shop, "ticket_reply", recipient_email, False, err_msg, sender_info)
+        return False
+
+
+

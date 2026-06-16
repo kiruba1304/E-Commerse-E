@@ -8,7 +8,7 @@ export default defineConfig({
     allowedHosts: ['nobaraafashion.co.in'],
     proxy: {
       '/api': {
-        target: 'https://co.nobaraafashion.co.in',
+        target: 'http://127.0.0.1:5500',
         changeOrigin: true,
         secure: false,
       }

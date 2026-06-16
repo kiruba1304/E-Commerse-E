@@ -3,11 +3,12 @@ import {
   ShoppingCart, Heart, User, LogOut, LayoutDashboard, Settings, ShoppingBag,
   Minus, Plus, Trash2, Edit2, Search, Bell, HelpCircle, Check, X, ShieldAlert,
   Award, FileText, ChevronRight, ChevronDown, ChevronUp, Menu, ArrowLeft, Send, Sparkles, Mail,
-  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, MessageSquare, Clock, TrendingUp,
-  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload
+  BarChart2, AlertCircle, Percent, Phone, Lock, Eye, EyeOff, MessageSquare, Clock, TrendingUp,
+  Truck, ShieldCheck, RotateCcw, Headphones, Home, Star, Tag, Download, Share2, Printer, Camera, Upload, Copy, Gift, MapPin, Map
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { App as CapApp } from '@capacitor/app';
 
 const API_BASE = "/api";
 
@@ -45,6 +46,56 @@ const loadGoogleIdentityScript = () => {
   });
 };
 
+const getEmbedMapUrl = (link, address) => {
+  if (!link && !address) return null;
+  const cleanLink = (link || "").trim();
+
+  // 1. If it's an iframe tag, extract the src attribute
+  if (cleanLink.includes('<iframe')) {
+    const match = cleanLink.match(/src="([^"]+)"/);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  // 2. If it is already a Google Maps embed URL
+  if (cleanLink.includes('google.com/maps/embed') || cleanLink.includes('google.com/maps/d/embed') || cleanLink.includes('output=embed')) {
+    return cleanLink;
+  }
+
+  // 3. Try to extract query/coordinates from standard Google Maps links
+  if (cleanLink.startsWith('http')) {
+    // Check for place name in URL: /maps/place/PLACE_NAME/
+    const placeMatch = cleanLink.match(/\/maps\/place\/([^/]+)/);
+    if (placeMatch && placeMatch[1]) {
+      const place = decodeURIComponent(placeMatch[1]).replace(/\+/g, ' ');
+      return `https://maps.google.com/maps?q=${encodeURIComponent(place)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    // Check for search query in URL: /maps/search/QUERY/
+    const searchMatch = cleanLink.match(/\/maps\/search\/([^/]+)/);
+    if (searchMatch && searchMatch[1]) {
+      const query = decodeURIComponent(searchMatch[1]).replace(/\+/g, ' ');
+      return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+
+    // Check for coordinates in URL: @lat,lng
+    const coordMatch = cleanLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (coordMatch && coordMatch[1] && coordMatch[2]) {
+      const latLng = `${coordMatch[1]},${coordMatch[2]}`;
+      return `https://maps.google.com/maps?q=${latLng}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+    }
+  }
+
+  // 4. Fallback to using the text link itself (if not a URL) or the physical address
+  const querySource = (cleanLink && !cleanLink.startsWith('http')) ? cleanLink : (address || "");
+  if (querySource) {
+    return `https://maps.google.com/maps?q=${encodeURIComponent(querySource)}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  }
+
+  return null;
+};
+
 const NobaraaLogo = ({ size = 60, color = "#7a4ea5" }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="44" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
@@ -68,6 +119,24 @@ const NobaraaLogo = ({ size = 60, color = "#7a4ea5" }) => (
     <path d="M30 80 C27 83 24 82 22 78" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
     <path d="M24 72 C20 68 18 64 20 60" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
     <path d="M20 60 C18 62 16 62 15 60" fill={color} />
+  </svg>
+);
+
+const PearlIcon = ({ size = 16, style = {} }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="#E0D1F5" 
+    stroke="#7A4EA5" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '4px', ...style }}
+  >
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" fill="#FFFFFF" stroke="none" opacity="0.6" />
+    <circle cx="10" cy="10" r="2" fill="#FFFFFF" stroke="none" />
   </svg>
 );
 
@@ -400,7 +469,9 @@ function NobaraaHero({ sareeModels = [] }) {
   );
 }
 
-function FeaturesBar({ isMobile }) {
+function FeaturesBar({ isMobile, currentShop }) {
+  const returnDays = currentShop?.return_window_days ?? 30;
+
   const perks = [
     {
       icon: <Award size={28} style={{ color: '#7a4ea5' }} />,
@@ -410,12 +481,12 @@ function FeaturesBar({ isMobile }) {
     {
       icon: <Truck size={28} style={{ color: '#7a4ea5' }} />,
       title: "Fast & Free Shipping",
-      subtitle: "Free shipping on all orders over $50. Delivered fast."
+      subtitle: "Free shipping on all orders. Delivered fast."
     },
     {
       icon: <RotateCcw size={28} style={{ color: '#7a4ea5' }} />,
       title: "Easy Returns",
-      subtitle: "Hassle-free returns within 30 days. Shop with confidence."
+      subtitle: `Hassle-free returns within ${returnDays} days. Shop with confidence.`
     },
     {
       icon: <Headphones size={28} style={{ color: '#7a4ea5' }} />,
@@ -579,9 +650,13 @@ function FeaturesBar({ isMobile }) {
 export default function App() {
   // Mobile detection
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isExtraSmall, setIsExtraSmall] = useState(window.innerWidth <= 360);
   const googleButtonRef = useRef(null);
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+      setIsExtraSmall(window.innerWidth <= 360);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -611,6 +686,16 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "", addresses: [] });
+
+  // Admin Pearls Grant states
+  const [selectedCustomerForPearls, setSelectedCustomerForPearls] = useState(null);
+  const [showGrantPearlsModal, setShowGrantPearlsModal] = useState(false);
+  const [pearlsGrantAmount, setPearlsGrantAmount] = useState("");
+  const [pearlsGrantReason, setPearlsGrantReason] = useState("");
+
+  // SMS DLT Template Content Previews
+  const [smsTemplatePreviews, setSmsTemplatePreviews] = useState({});
+  const [fetchingSmsTemplates, setFetchingSmsTemplates] = useState({});
 
   // Shared functional states
   const [shops, setShops] = useState([]);
@@ -737,39 +822,51 @@ export default function App() {
     const viewportHeight = window.innerHeight;
     const maxAllowedWidth = Math.min(600, viewportWidth * 0.9);
     const maxAllowedImageHeight = viewportHeight * 0.5;
-    
+
     let targetWidth = naturalWidth;
     if (targetWidth > maxAllowedWidth) {
       targetWidth = maxAllowedWidth;
     }
-    
+
     if (targetWidth / ratio > maxAllowedImageHeight) {
       targetWidth = maxAllowedImageHeight * ratio;
     }
-    
+
     const minWidth = Math.min(320, viewportWidth * 0.9);
     if (targetWidth < minWidth) {
       targetWidth = minWidth;
     }
-    
+
     setPopupAdImageStyle({
       width: `${Math.round(targetWidth)}px`,
       maxWidth: '90%'
     });
   };
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
   const [loginRoleTab, setLoginRoleTab] = useState("user"); // user, admin, super_admin
   const [showRegister, setShowRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [invoiceOrder, setInvoiceOrder] = useState(null);
+  const [showBillingApiKey, setShowBillingApiKey] = useState(false);
+  const [showSmsApiKey, setShowSmsApiKey] = useState(false);
+  const [showBillingRegenConfirm, setShowBillingRegenConfirm] = useState(false);
+  const [billingRegenPassword, setBillingRegenPassword] = useState('');
+  const [billingRegenError, setBillingRegenError] = useState('');
   const [orderSuccessInfo, setOrderSuccessInfo] = useState(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(() => {
+    const hasHistory = window.history.state && window.history.state.isAppNavigation;
+    return hasHistory ? !!window.history.state.showLogoutConfirm : false;
+  });
   const [toasts, setToasts] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [ribbonImageIndexes, setRibbonImageIndexes] = useState([0, 2, 4, 6, 8]);
@@ -804,7 +901,7 @@ export default function App() {
       id: 3,
       image: "https://images.unsplash.com/photo-1608748010899-18f300247112?w=1200&auto=format&fit=crop&q=80",
       title: "NOBARAA PRIVILEGE FEST",
-      subtitle: "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
+      subtitle: "Earn Privilege Pearls & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
       actionText: "View Wallet"
     }
   ]).filter(b => b.id !== 3 || currentShop?.super_coin_enabled !== false);
@@ -865,6 +962,22 @@ export default function App() {
   const [userHelpTickets, setUserHelpTickets] = useState([]);
   const [userNotifications, setUserNotifications] = useState([]);
   const [checkoutData, setCheckoutData] = useState({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
+  const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState(null);
+  const [loadingDeliveryEstimate, setLoadingDeliveryEstimate] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCouponDetails, setAppliedCouponDetails] = useState(null);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [deletedNotifications, setDeletedNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("deletedNotifications");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const activeUserNotifications = useMemo(() => {
+    return userNotifications.filter(n => !deletedNotifications.includes(n.id));
+  }, [userNotifications, deletedNotifications]);
   const [checkoutCustomAddress, setCheckoutCustomAddress] = useState({
     pincode: "",
     flat: "",
@@ -879,6 +992,8 @@ export default function App() {
   });
   const [activeCustomizationCheckout, setActiveCustomizationCheckout] = useState(null);
   const [newReview, setNewReview] = useState({ rating: 5, comment: "", image_url: "" });
+  const [activeTrackingData, setActiveTrackingData] = useState({});
+  const [loadingTrackingIds, setLoadingTrackingIds] = useState({});
   const [isUploadingReviewImage, setIsUploadingReviewImage] = useState(false);
   const [newTicket, setNewTicket] = useState({ shop_id: "", subject: "", message: "" });
 
@@ -900,8 +1015,20 @@ export default function App() {
 
   const [otpLoginStep, setOtpLoginStep] = useState('none'); // 'none', 'request', 'verify'
   const [otpEmail, setOtpEmail] = useState('');
+  const [otpPhone, setOtpPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
+  const [otpMethod, setOtpMethod] = useState('phone'); // 'phone' or 'email'
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resendCount, setResendCount] = useState(0);
   const [requestingOtp, setRequestingOtp] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileOtpCode, setProfileOtpCode] = useState('');
+  const [profileOtpStep, setProfileOtpStep] = useState('request');
+  const [profileResendTimer, setProfileResendTimer] = useState(0);
+  const [profileResendCount, setProfileResendCount] = useState(0);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [showPaymentWarningModal, setShowPaymentWarningModal] = useState(false);
   const [adminCategories, setAdminCategories] = useState([]);
   const [adminCollections, setAdminCollections] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
@@ -931,9 +1058,137 @@ export default function App() {
   const [activeReportTab, setActiveReportTab] = useState("sales");
   const [selectedCustomerHistory, setSelectedCustomerHistory] = useState(null);
   const [adminOrderSearch, setAdminOrderSearch] = useState("");
+
+  // Shiprocket Courier Selector Modal States
+  const [shiprocketSelectorOrder, setShiprocketSelectorOrder] = useState(null);
+  const [shiprocketWeight, setShiprocketWeight] = useState(0.5);
+  const [shiprocketCouriers, setShiprocketCouriers] = useState([]);
+  const [fetchingShiprocketRates, setFetchingShiprocketRates] = useState(false);
+  const [shiprocketRatesError, setShiprocketRatesError] = useState("");
+  const [shiprocketWalletBalance, setShiprocketWalletBalance] = useState(null);
   const [adminReturnsCollapsed, setAdminReturnsCollapsed] = useState(false);
   const [adminOrdersCollapsed, setAdminOrdersCollapsed] = useState(false);
   const [adminDateFilter, setAdminDateFilter] = useState("all");
+
+  const backButtonStatesRef = useRef();
+  backButtonStatesRef.current = {
+    showLoginModal,
+    showPolicyModal,
+    showPrivacyModal,
+    showShippingModal,
+    showTermsModal,
+    showAboutModal,
+    showContactModal,
+    detailProduct,
+    showCartDrawer,
+    showWishlistDrawer,
+    showLogoutConfirm,
+    invoiceOrder,
+    expandedImage,
+    activeReturnOrder,
+    selectedNotification,
+    showSmartSearch,
+    popupAd,
+    showPaymentWarningModal,
+    forgotPasswordStep,
+    otpLoginStep,
+    mobileMenuOpen,
+    currentView,
+    activeCategoryPage,
+    selectedCategory
+  };
+
+  useEffect(() => {
+    let backButtonListener;
+    const registerBackButton = async () => {
+      if (Capacitor.isNativePlatform()) {
+        backButtonListener = await CapApp.addListener('backButton', () => {
+          const {
+            showLoginModal,
+            showPolicyModal,
+            showPrivacyModal,
+            showShippingModal,
+            showTermsModal,
+            showAboutModal,
+            showContactModal,
+            detailProduct,
+            showCartDrawer,
+            showWishlistDrawer,
+            showLogoutConfirm,
+            invoiceOrder,
+            expandedImage,
+            activeReturnOrder,
+            selectedNotification,
+            showSmartSearch,
+            popupAd,
+            showPaymentWarningModal,
+            forgotPasswordStep,
+            otpLoginStep,
+            mobileMenuOpen,
+            currentView,
+            activeCategoryPage,
+            selectedCategory
+          } = backButtonStatesRef.current;
+
+          // 1. Handle non-history-tracked overlays first
+          if (selectedNotification) {
+            setSelectedNotification(null);
+          } else if (showSmartSearch) {
+            setShowSmartSearch(false);
+          } else if (popupAd) {
+            setPopupAd(null);
+          } else if (showPaymentWarningModal) {
+            setShowPaymentWarningModal(false);
+          } else if (mobileMenuOpen) {
+            setMobileMenuOpen(false);
+          } else if (showLoginModal && forgotPasswordStep !== 'none') {
+            setForgotPasswordStep('none');
+          } else if (showLoginModal && otpLoginStep !== 'none') {
+            setOtpLoginStep('none');
+          }
+          // 2. Handle history-tracked overlays next
+          else if (
+            showLoginModal ||
+            showPolicyModal ||
+            showPrivacyModal ||
+            showShippingModal ||
+            showTermsModal ||
+            showAboutModal ||
+            showContactModal ||
+            detailProduct ||
+            showCartDrawer ||
+            showWishlistDrawer ||
+            showLogoutConfirm ||
+            invoiceOrder ||
+            expandedImage ||
+            activeReturnOrder
+          ) {
+            window.history.back();
+          }
+          // 3. Handle active sub-views / category pages inside opac view
+          else if (currentView === 'opac' && (activeCategoryPage || selectedCategory)) {
+            window.history.back();
+          }
+          // 4. Handle other views (e.g. checkout, customization, dashboards)
+          else if (currentView !== 'opac') {
+            window.history.back();
+          }
+          // 5. If at the homepage with no overlays, exit the app
+          else {
+            CapApp.exitApp();
+          }
+        });
+      }
+    };
+
+    registerBackButton();
+
+    return () => {
+      if (backButtonListener) {
+        backButtonListener.then(l => l.remove()).catch(() => {});
+      }
+    };
+  }, []);
 
   const filteredAdminOrders = adminOrders.filter(o => {
     if (!o.created_at) return true;
@@ -987,8 +1242,9 @@ export default function App() {
   const [purchaseMode, setPurchaseMode] = useState("single"); // single or bulk
   const [categoryForm, setCategoryForm] = useState({ id: null, name: "", description: "", image_url: "", return_window_days: "", shipping_charge: "", show_description: false });
   const [collectionForm, setCollectionForm] = useState({ id: null, name: "", category_ids: [], separate_categories_mobile: false, show_category_banner: true });
-  const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
+  const [couponForm, setCouponForm] = useState({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, expires_at: "", usage_limit: "", usage_limit_per_user: "", is_active: true });
   const [adForm, setAdForm] = useState({ id: null, title: "", image_url: "", target_url: "", show_before_login: true, show_after_login: true, is_active: true });
+  const [subscriberEmail, setSubscriberEmail] = useState("");
   const [messagingForm, setMessagingForm] = useState({ platform: "SMS", recipient: "All Customers", message: "" });
   const [ticketReplyForm, setTicketReplyForm] = useState({ ticket_id: "", reply: "" });
 
@@ -1018,7 +1274,7 @@ export default function App() {
   const [superCustomerSearch, setSuperCustomerSearch] = useState("");
 
   // Super Admin forms
-  const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
+  const [shopForm, setShopForm] = useState({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, welcome_super_coins: 50, signature_url: "", store_locator_link: "", gst_percentage: 18.0, gst_inclusive: false, sms_enabled: false, sms_dispatch_enabled: false, sms_delivery_enabled: false, sms_campaign_enabled: false, sms_sender_id: "", sms_otp_template_id: "", sms_dispatch_template_id: "", sms_delivery_template_id: "" });
   const [newAdminForm, setNewAdminForm] = useState({ id: null, username: "", password: "", email: "", name: "", shop_id: "" });
 
   // History and Back Navigation Synchronization
@@ -1029,6 +1285,7 @@ export default function App() {
     if (state.showCartDrawer) count++;
     if (state.showWishlistDrawer) count++;
     if (state.showLoginModal) count++;
+    if (state.showLogoutConfirm) count++;
     if (state.invoiceOrder) count++;
     if (state.expandedImage) count++;
     if (state.activeReturnOrder) count++;
@@ -1043,14 +1300,15 @@ export default function App() {
 
   const hasPurchasedProduct = (productId) => {
     if (role !== 'user' || !user) return false;
-    return myOrders.some(order => 
-      order.status === 'Customer Received' && 
-      order.items && 
+    return myOrders.some(order =>
+      order.status === 'Customer Received' &&
+      order.items &&
       order.items.some(item => item.product_id === productId)
     );
   };
 
   const isHandlingPopState = useRef(false);
+  const isProgrammaticNavigation = useRef(false);
   const prevOverlaysCount = useRef(0);
   const isInitialBoot = useRef(true);
 
@@ -1068,6 +1326,7 @@ export default function App() {
         setShowCartDrawer(!!state.showCartDrawer);
         setShowWishlistDrawer(!!state.showWishlistDrawer);
         setShowLoginModal(!!state.showLoginModal);
+        setShowLogoutConfirm(!!state.showLogoutConfirm);
         setInvoiceOrder(state.invoiceOrder || null);
         setExpandedImage(state.expandedImage || null);
         setActiveReturnOrder(state.activeReturnOrder || null);
@@ -1105,6 +1364,7 @@ export default function App() {
       showCartDrawer,
       showWishlistDrawer,
       showLoginModal,
+      showLogoutConfirm,
       invoiceOrder,
       expandedImage,
       activeReturnOrder,
@@ -1119,10 +1379,14 @@ export default function App() {
     const overlaysCount = getActiveOverlaysCount(newState);
 
     if (overlaysCount < prevOverlaysCount.current) {
-      // An overlay was closed manually. Go back in history.
-      prevOverlaysCount.current = overlaysCount;
-      window.history.back();
-      return;
+      if (isProgrammaticNavigation.current) {
+        isProgrammaticNavigation.current = false;
+      } else {
+        // An overlay was closed manually. Go back in history.
+        prevOverlaysCount.current = overlaysCount;
+        window.history.back();
+        return;
+      }
     }
 
     prevOverlaysCount.current = overlaysCount;
@@ -1137,6 +1401,7 @@ export default function App() {
       currentHistoryState.showCartDrawer !== showCartDrawer ||
       currentHistoryState.showWishlistDrawer !== showWishlistDrawer ||
       currentHistoryState.showLoginModal !== showLoginModal ||
+      currentHistoryState.showLogoutConfirm !== showLogoutConfirm ||
       JSON.stringify(currentHistoryState.invoiceOrder) !== JSON.stringify(invoiceOrder) ||
       currentHistoryState.expandedImage !== expandedImage ||
       JSON.stringify(currentHistoryState.activeReturnOrder) !== JSON.stringify(activeReturnOrder) ||
@@ -1156,7 +1421,7 @@ export default function App() {
     }
   }, [
     currentView, activeProduct, activeCategoryPage, activePanel, detailProduct,
-    showCartDrawer, showWishlistDrawer, showLoginModal, invoiceOrder,
+    showCartDrawer, showWishlistDrawer, showLoginModal, showLogoutConfirm, invoiceOrder,
     expandedImage, activeReturnOrder, showPolicyModal, showPrivacyModal,
     showShippingModal, showTermsModal, showAboutModal, showContactModal
   ]);
@@ -1169,6 +1434,106 @@ export default function App() {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4500);
   };
+
+  const registerPushNotifications = async (userId, userToken) => {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    try {
+      const { PushNotifications } = await import('@capacitor/push-notifications');
+      const { FCM } = await import('@capacitor-community/fcm');
+
+      let permStatus = await PushNotifications.checkPermissions();
+      if (permStatus.receive !== 'granted') {
+        permStatus = await PushNotifications.requestPermissions();
+      }
+
+      if (permStatus.receive !== 'granted') {
+        console.warn('Push notification permissions denied.');
+        return;
+      }
+
+      // Create custom notification channel for custom sound
+      if (Capacitor.getPlatform() === 'android') {
+        try {
+          await PushNotifications.createChannel({
+            id: 'nobaraa_notifications',
+            name: 'Nobaraa Notifications',
+            description: 'Notifications for orders, offers and updates',
+            sound: 'notification_sound',
+            importance: 5,
+            visibility: 1,
+            vibration: true,
+          });
+          console.log('Custom notification channel created successfully.');
+        } catch (channelErr) {
+          console.error('Failed to create notification channel:', channelErr);
+        }
+      }
+
+      await PushNotifications.register();
+      await PushNotifications.removeAllListeners();
+
+      PushNotifications.addListener('registration', async (tokenData) => {
+        try {
+          const fcmTokenData = await FCM.getToken();
+          const fcmToken = fcmTokenData.token;
+
+          if (userId && userToken) {
+            await fetch(`${API_BASE}/user/fcm-token`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userToken}`
+              },
+              body: JSON.stringify({ fcm_token: fcmToken })
+            });
+          }
+
+          // Subscribe to topic offers, products, all
+          await FCM.subscribeTo({ topic: 'all' });
+          if (activeShopId) {
+            await FCM.subscribeTo({ topic: `shop_${activeShopId}_all` });
+            await FCM.subscribeTo({ topic: `shop_${activeShopId}_offers` });
+            await FCM.subscribeTo({ topic: `shop_${activeShopId}_products` });
+          }
+        } catch (fcmError) {
+          console.error('FCM registration success handler error:', fcmError);
+        }
+      });
+
+      PushNotifications.addListener('registrationError', (error) => {
+        console.error('Push registration error: ', error);
+      });
+
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        addToast(notification.title || "Notification", notification.body || "", "info");
+        if (userId && userToken) {
+          loadUserNotifications();
+        }
+      });
+
+      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+        const savedUser = localStorage.getItem("user");
+        const savedToken = localStorage.getItem("token");
+        if (savedUser && savedToken) {
+          setCurrentView('user_dashboard');
+          setActivePanel('notifications');
+        }
+      });
+
+    } catch (e) {
+      console.error('Error during push notification initialization:', e);
+    }
+  };
+
+  // Initialize Push Notifications on mount or when auth/shop details change
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      registerPushNotifications(user?.id, token);
+    }
+  }, [user?.id, token, activeShopId]);
 
   const renderLogDescription = (action) => {
     if (action && action.startsWith('[SMTP]')) {
@@ -1379,6 +1744,11 @@ export default function App() {
 
     fetchShops();
 
+    // Safety fallback: Hide the entry loading screen after 5 seconds no matter what
+    const loaderTimer = setTimeout(() => {
+      setIsAppLoading(false);
+    }, 5000);
+
     // If we are on initial boot and have restored a product details view from history, refresh it in the background
     if (shouldRestoreFromHistory) {
       const state = window.history.state;
@@ -1419,6 +1789,10 @@ export default function App() {
         })
         .catch(err => console.error("Failed to load shared product", err));
     }
+
+    return () => {
+      clearTimeout(loaderTimer);
+    };
   }, [token]);
 
   // Load products when activeShopId, searchQuery, category, price changes
@@ -1494,9 +1868,36 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setProducts(data);
+        // Preload primary images of first few products to prevent visual pop-in
+        if (isAppLoading && (activeShopId || (shops && shops.length === 0))) {
+          const firstProducts = data.slice(0, 4);
+          const imagePromises = firstProducts.map(p => {
+            return new Promise((resolveImage) => {
+              const imgUrl = p.images && p.images[0];
+              if (!imgUrl) {
+                resolveImage();
+                return;
+              }
+              const img = new Image();
+              img.src = imgUrl;
+              img.onload = () => resolveImage();
+              img.onerror = () => resolveImage();
+            });
+          });
+
+          await Promise.race([
+            Promise.all(imagePromises),
+            new Promise(r => setTimeout(r, 1500))
+          ]);
+
+          setTimeout(() => {
+            setIsAppLoading(false);
+          }, 300);
+        }
       }
     } catch (e) {
       console.error(e);
+      if (isAppLoading) setIsAppLoading(false);
     } finally {
       setLoadingProducts(false);
     }
@@ -1553,6 +1954,7 @@ export default function App() {
   // USER ACTION HANDLERS
   const handleUserLogin = async (e) => {
     e.preventDefault();
+    setIsAuthLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -1569,6 +1971,7 @@ export default function App() {
         setToken(data.token);
         setUser(data.user);
         setRole(data.user.role);
+        isProgrammaticNavigation.current = true;
         setShowLoginModal(false);
         setLoginForm({ username: "", password: "" });
         addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
@@ -1589,11 +1992,14 @@ export default function App() {
       }
     } catch (err) {
       addToast("Server Error", "Could not complete login request.", "danger");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
   const handleUserRegister = async (e) => {
     e.preventDefault();
+    setIsAuthLoading(true);
     try {
       const res = await fetch(`${API_BASE}/user/register`, {
         method: 'POST',
@@ -1609,10 +2015,11 @@ export default function App() {
         setToken(data.token);
         setUser(data.user);
         setRole('user');
+        isProgrammaticNavigation.current = true;
         setShowLoginModal(false);
         setShowRegister(false);
         setRegisterForm({ username: "", email: "", password: "", name: "", contact_phone: "" });
-        addToast("Registration Success", "Account created successfully! Enjoy your 50 free SuperCoins.", "success");
+        addToast("Registration Success", "Account created successfully! Enjoy your 50 free Privilege Pearls.", "success");
 
         setCurrentView("opac");
         setActivePanel("orders");
@@ -1621,8 +2028,55 @@ export default function App() {
       }
     } catch (err) {
       addToast("Server Error", "Could not complete registration.", "danger");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!showLoginModal) {
+      setLoginForm({ username: "", password: "" });
+      setOtpEmail('');
+      setOtpPhone('');
+      setOtpCode('');
+      setOtpMethod(currentShop?.sms_enabled ? 'phone' : 'email');
+      setResendTimer(0);
+      setResendCount(0);
+      setOtpLoginStep('none');
+      setForgotPasswordStep('none');
+    }
+  }, [showLoginModal, currentShop?.sms_enabled]);
+
+  useEffect(() => {
+    let interval = null;
+    if (otpLoginStep === 'verify' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpLoginStep, resendTimer]);
+
+  useEffect(() => {
+    if (user && !user.contact_phone && user.name) {
+      setProfileName(user.name);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let interval = null;
+    const isProfileVerify = !!user && role === 'user' && !user.contact_phone && profileOtpStep === 'verify';
+    if (isProfileVerify && profileResendTimer > 0) {
+      interval = setInterval(() => {
+        setProfileResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [user, role, profileOtpStep, profileResendTimer]);
 
   useEffect(() => {
     if (!showLoginModal || loginRoleTab !== 'user') {
@@ -1643,6 +2097,7 @@ export default function App() {
         btn.addEventListener('click', async () => {
           try {
             await GoogleAuth.initialize();
+            setIsAuthLoading(true);
             const user = await GoogleAuth.signIn();
             const idToken = user.authentication.idToken;
             const res = await fetch(`${API_BASE}/user/google-login`, {
@@ -1661,6 +2116,7 @@ export default function App() {
             setToken(data.token);
             setUser(data.user);
             setRole(data.user.role);
+            isProgrammaticNavigation.current = true;
             setShowLoginModal(false);
             setLoginForm({ username: "", password: "" });
             addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
@@ -1669,6 +2125,8 @@ export default function App() {
           } catch (err) {
             console.error(err);
             addToast("Google Sign-In Cancelled", err.message || "Sign in cancelled.", "danger");
+          } finally {
+            setIsAuthLoading(false);
           }
         });
 
@@ -1701,6 +2159,7 @@ export default function App() {
       googleButtonRef.current.innerHTML = '';
 
       const handleCredentialResponse = async (response) => {
+        setIsAuthLoading(true);
         try {
           const res = await fetch(`${API_BASE}/user/google-login`, {
             method: 'POST',
@@ -1721,6 +2180,7 @@ export default function App() {
           setToken(data.token);
           setUser(data.user);
           setRole(data.user.role);
+          isProgrammaticNavigation.current = true;
           setShowLoginModal(false);
           setLoginForm({ username: "", password: "" });
           addToast("Authentication Success", `Logged in successfully as ${data.user.name || data.user.username}.`, "success");
@@ -1729,6 +2189,8 @@ export default function App() {
           setActivePanel("orders");
         } catch (err) {
           addToast("Server Error", "Could not complete Google sign-in.", "danger");
+        } finally {
+          setIsAuthLoading(false);
         }
       };
 
@@ -1757,11 +2219,31 @@ export default function App() {
     };
   }, [showLoginModal, loginRoleTab, showRegister]);
 
-  const handleLogout = async () => {
+  const executeLogout = async () => {
+    setShowLogoutConfirm(false);
     try {
       let endpoint = "/user/logout";
       if (role === 'admin') endpoint = "/admin/logout";
       if (role === 'super_admin') endpoint = "/super-admin/logout";
+
+      // If user logs out and is on mobile, delete the token from backend
+      if (role === 'user' && Capacitor.isNativePlatform()) {
+        try {
+          const { FCM } = await import('@capacitor-community/fcm');
+          const fcmTokenData = await FCM.getToken();
+          const fcmToken = fcmTokenData.token;
+          await fetch(`${API_BASE}/user/fcm-token`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ fcm_token: fcmToken })
+          });
+        } catch (err) {
+          console.error("Failed to delete FCM token on logout:", err);
+        }
+      }
 
       await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
@@ -1792,6 +2274,10 @@ export default function App() {
     }
 
     addToast("Session Closed", "You have logged out successfully.", "info");
+  };
+
+  const handleLogout = () => {
+    setShowLogoutConfirm(true);
   };
 
   // LOGGED IN USER SPECIFIC ROUTINES
@@ -1993,6 +2479,23 @@ export default function App() {
     } catch (e) { }
   };
 
+  const loadOrderTracking = async (orderId) => {
+    setLoadingTrackingIds(prev => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/user/orders/${orderId}/track`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setActiveTrackingData(prev => ({ ...prev, [orderId]: data }));
+      } else {
+        addToast("Tracking Unavailable", data.error || "Could not retrieve tracking details.", "warning");
+      }
+    } catch (e) {
+      addToast("Connection Error", "Failed to connect to tracking service.", "danger");
+    } finally {
+      setLoadingTrackingIds(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   const loadUserCustomizations = async () => {
     try {
       const res = await fetch(`${API_BASE}/user/customizations`, { headers: getHeaders() });
@@ -2042,6 +2545,23 @@ export default function App() {
         setUserNotifications(data);
       }
     } catch (e) { }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    setSelectedNotification(notif);
+    if (!notif.is_read) {
+      try {
+        const res = await fetch(`${API_BASE}/user/notifications/${notif.id}/read`, {
+          method: 'POST',
+          headers: getHeaders()
+        });
+        if (res.ok) {
+          setUserNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+        }
+      } catch (err) {
+        console.error("Mark notification read failed", err);
+      }
+    }
   };
 
   const handleAddToCart = async (productId, qty = 1, showToast = true) => {
@@ -2373,6 +2893,8 @@ export default function App() {
 
         const clearCheckoutFields = () => {
           setCheckoutData({ shipping_address: "", billing_phone: "", payment_method: "COD", coupon_code: "", use_super_coins: false, address_id: null });
+          setCouponInput("");
+          setAppliedCouponDetails(null);
           const wasCustom = !!activeCustomizationCheckout;
           setActiveCustomizationCheckout(null);
           refreshUserProfile();
@@ -2401,6 +2923,11 @@ export default function App() {
             });
           };
 
+          if (!data.razorpay_key_id || data.razorpay_key_id === "YOUR_RAZORPAY_KEY_ID" || data.razorpay_key_id.trim() === "") {
+            setShowPaymentWarningModal(true);
+            return;
+          }
+
           const sdkLoaded = await loadRazorpay();
           if (!sdkLoaded) {
             addToast("Payment Error", "Razorpay SDK failed to load. Please check your internet connection.", "danger");
@@ -2418,7 +2945,9 @@ export default function App() {
             name: currentShop ? currentShop.name : "Nobaraa",
             description: activeCustomizationCheckout
               ? `Customization Payment ${getDisplayCustomizationNumber(data.customization)}`
-              : `Order Payment ${getDisplayOrderNumber(data.order)}`,
+              : (data.order?.id === 'draft' && data.razorpay_order_id
+                ? `Order Payment ${data.razorpay_order_id.replace('order_', '')}`
+                : `Order Payment ${getDisplayOrderNumber(data.order)}`),
             handler: async function (paymentResponse) {
               try {
                 const verifyUrl = activeCustomizationCheckout
@@ -2476,7 +3005,8 @@ export default function App() {
               ondismiss: function () {
                 addToast("Payment Cancelled", "Payment window closed. You can try checking out again.", "warning");
               }
-            }
+            },
+            webview_intent: true
           };
 
           if (data.razorpay_order_id) {
@@ -2527,7 +3057,7 @@ export default function App() {
       if (activePanel === 'logs') loadAdminLogs();
       if (activePanel === 'messaging') loadAdminSmsLogs();
       if (activePanel === 'gst_report') loadGstReport(gstFilterDate, gstFilterMonth, gstFilterYear);
-      if (activePanel === 'customers') loadAdminCustomers();
+      if (activePanel === 'customers') { loadAdminCustomers(); loadAdminShop(); }
       if (activePanel === 'customizations') {
         loadAdminCustomizations();
         loadAdminCategories();
@@ -2576,6 +3106,39 @@ export default function App() {
         fetchShops();
       }
     } catch (e) { }
+  };
+
+  const fetchSmsTemplatePreview = async (templateKey, templateId, customSenderId = null) => {
+    const senderId = customSenderId !== null ? customSenderId : (adminShop?.sms_sender_id || '');
+    if (!senderId) {
+      addToast("Sender ID Required", "Please enter a Sender ID first to query the template.", "warning");
+      return;
+    }
+    if (!templateId) {
+      addToast("Template ID Required", "Please enter a DLT Template ID to query.", "warning");
+      return;
+    }
+
+    setFetchingSmsTemplates(prev => ({ ...prev, [templateKey]: true }));
+    try {
+      const apiKey = adminShop?.sms_api_key || '';
+      const res = await fetch(`${API_BASE}/admin/sms/fetch-template-content?sender_id=${encodeURIComponent(senderId)}&template_id=${encodeURIComponent(templateId)}&api_key=${encodeURIComponent(apiKey)}`, {
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSmsTemplatePreviews(prev => ({ ...prev, [templateKey]: data.content }));
+        addToast("Template Found", `DLT Template content synced successfully.`, "success");
+      } else {
+        setSmsTemplatePreviews(prev => ({ ...prev, [templateKey]: `Error: ${data.error || 'Not found'}` }));
+        addToast("Template Sync Failed", data.error || "Template not found in DLT Manager.", "danger");
+      }
+    } catch (err) {
+      setSmsTemplatePreviews(prev => ({ ...prev, [templateKey]: "Network error fetching template" }));
+      addToast("Network Error", "Failed to communicate with template sync service.", "danger");
+    } finally {
+      setFetchingSmsTemplates(prev => ({ ...prev, [templateKey]: false }));
+    }
   };
 
   const handleSendTestEmail = async () => {
@@ -2627,17 +3190,25 @@ export default function App() {
 
   const handleRequestOtp = async (e) => {
     e.preventDefault();
-    if (!otpEmail) return;
+    const isSmsEnabled = currentShop?.sms_enabled && loginRoleTab === 'user' && otpMethod === 'phone';
+    const identifier = isSmsEnabled ? otpPhone : otpEmail;
+    if (!identifier) return;
     setRequestingOtp(true);
     try {
+      const payload = isSmsEnabled
+        ? { phone: identifier, shop_id: activeShopId }
+        : { email: identifier, shop_id: activeShopId };
+
       const res = await fetch(`${API_BASE}/user/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: otpEmail, shop_id: activeShopId })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
-        addToast("OTP Sent", "OTP code sent to your email.", "success");
+        setResendTimer(30);
+        setResendCount(0);
+        addToast("OTP Sent", isSmsEnabled ? "OTP code sent to your mobile phone." : "OTP code sent to your email.", "success");
         setOtpLoginStep('verify');
       } else {
         addToast("OTP Request Failed", data.error || "Failed to request OTP.", "danger");
@@ -2649,14 +3220,176 @@ export default function App() {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (resendCount >= 4) {
+      addToast("Limit Reached", "You have reached the maximum OTP resend limit (4 times).", "danger");
+      return;
+    }
+    const isSmsEnabled = currentShop?.sms_enabled && loginRoleTab === 'user' && otpMethod === 'phone';
+    const identifier = isSmsEnabled ? otpPhone : otpEmail;
+    if (!identifier) return;
+
+    setRequestingOtp(true);
+    try {
+      const payload = isSmsEnabled
+        ? { phone: identifier, shop_id: activeShopId }
+        : { email: identifier, shop_id: activeShopId };
+
+      const res = await fetch(`${API_BASE}/user/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendCount(prev => prev + 1);
+        setResendTimer(30);
+        addToast("OTP Resent", isSmsEnabled ? "OTP code resent to your mobile phone." : "OTP code sent to your email.", "success");
+      } else {
+        addToast("OTP Resend Failed", data.error || "Failed to resend OTP.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Failed to send OTP resend request.", "danger");
+    } finally {
+      setRequestingOtp(false);
+    }
+  };
+
+  const handleRequestProfileOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!profilePhone || !profileName) {
+      addToast("Required Fields", "Full Name and Mobile Number are required.", "warning");
+      return;
+    }
+    setProfileSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/user/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: profilePhone,
+          shop_id: activeShopId,
+          purpose: 'link_phone'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileResendTimer(30);
+        setProfileResendCount(0);
+        setProfileOtpStep('verify');
+        addToast("OTP Sent", "Verification code has been sent to your mobile phone.", "success");
+      } else {
+        addToast("Verification Failed", data.error || "Failed to request verification code.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Network error. Failed to send OTP request.", "danger");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const handleResendProfileOtp = async () => {
+    if (profileResendCount >= 4) {
+      addToast("Limit Reached", "You have reached the maximum OTP resend limit (4 times).", "danger");
+      return;
+    }
+    if (!profilePhone) return;
+
+    setProfileSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/user/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: profilePhone,
+          shop_id: activeShopId,
+          purpose: 'link_phone'
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileResendCount(prev => prev + 1);
+        setProfileResendTimer(30);
+        addToast("OTP Sent", "A new verification code has been sent to your mobile phone.", "success");
+      } else {
+        addToast("OTP Resend Failed", data.error || "Failed to resend verification code.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Network error. Failed to send OTP request.", "danger");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
+  const handleVerifyAndSaveProfile = async (e) => {
+    if (e) e.preventDefault();
+    if (!profileOtpCode) {
+      addToast("Verification Code Required", "Please enter the 6-digit OTP code.", "warning");
+      return;
+    }
+    setProfileSubmitting(true);
+    try {
+      // Step 1: Verify OTP
+      const verifyRes = await fetch(`${API_BASE}/user/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: profilePhone,
+          otp_code: profileOtpCode
+        })
+      });
+      const verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        addToast("Invalid Code", verifyData.error || "Verification failed.", "danger");
+        setProfileSubmitting(false);
+        return;
+      }
+
+      // Step 2: Update user profile
+      const updateRes = await fetch(`${API_BASE}/user/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: profileName,
+          contact_phone: profilePhone,
+          shop_id: activeShopId
+        })
+      });
+      const updateData = await updateRes.json();
+      if (updateRes.ok) {
+        setUser(updateData.user);
+        addToast("Profile Completed", "Your profile details have been successfully saved.", "success");
+        setProfilePhone('');
+        setProfileOtpCode('');
+        setProfileOtpStep('request');
+      } else {
+        addToast("Save Failed", updateData.error || "Failed to update profile info.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", "Network error. Could not verify or save profile.", "danger");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
   const handleVerifyOtpLogin = async (e) => {
     e.preventDefault();
-    if (!otpEmail || !otpCode) return;
+    const isSmsEnabled = currentShop?.sms_enabled && loginRoleTab === 'user' && otpMethod === 'phone';
+    const identifier = isSmsEnabled ? otpPhone : otpEmail;
+    if (!identifier || !otpCode) return;
+    setIsAuthLoading(true);
     try {
+      const payload = isSmsEnabled
+        ? { phone: identifier, otp_code: otpCode, shop_id: activeShopId }
+        : { email: identifier, otp_code: otpCode, shop_id: activeShopId };
+
       const res = await fetch(`${API_BASE}/user/otp-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: otpEmail, otp_code: otpCode, shop_id: activeShopId })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (res.ok) {
@@ -2664,9 +3397,11 @@ export default function App() {
         setUser(data.user);
         setRole(data.user.role || 'user');
         localStorage.setItem("userToken", data.token);
+        isProgrammaticNavigation.current = true;
         setShowLoginModal(false);
         setOtpLoginStep('none');
         setOtpEmail('');
+        setOtpPhone('');
         setOtpCode('');
         addToast("Logged In", data.message || "Successfully logged in via OTP!", "success");
       } else {
@@ -2674,12 +3409,15 @@ export default function App() {
       }
     } catch (err) {
       addToast("Error", "OTP Verification failed.", "danger");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
   const handleRequestForgotPassword = async (e) => {
     e.preventDefault();
     if (!forgotEmail) return;
+    setIsAuthLoading(true);
     try {
       const res = await fetch(`${API_BASE}/user/forgot-password`, {
         method: 'POST',
@@ -2695,12 +3433,15 @@ export default function App() {
       }
     } catch (err) {
       addToast("Error", "An error occurred.", "danger");
+    } finally {
+      setIsAuthLoading(false);
     }
   };
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
     if (!forgotEmail || !forgotResetCode || !forgotNewPassword) return;
+    setIsAuthLoading(true);
     try {
       const res = await fetch(`${API_BASE}/user/reset-password`, {
         method: 'POST',
@@ -2719,6 +3460,31 @@ export default function App() {
       }
     } catch (err) {
       addToast("Error", "Password reset failed.", "danger");
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleSubscribeNewsletter = async () => {
+    if (!subscriberEmail || !subscriberEmail.trim()) {
+      addToast("Subscription", "Please enter a valid email address.", "warning");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/user/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: subscriberEmail.trim(), shop_id: activeShopId || 1 })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Boutique Newsletter", data.message || "Thank you for subscribing!", "success");
+        setSubscriberEmail("");
+      } else {
+        addToast("Boutique Newsletter", data.error || "Failed to subscribe.", "danger");
+      }
+    } catch (err) {
+      addToast("Boutique Newsletter", "Connection error subscribing to newsletter.", "danger");
     }
   };
 
@@ -2933,7 +3699,17 @@ export default function App() {
     try {
       const payload = { status: newStatus };
       if (newStatus === 'Dispatched') {
-        payload.tracking_info = `Dispatched via Hub Courier. Track ID: ${Math.floor(Math.random() * 90000) + 10000}`;
+        const courierName = window.prompt("Enter Courier Name:", "Delhivery");
+        if (courierName === null) return; // User cancelled
+        const trackingNum = window.prompt("Enter Tracking / AWB Number:");
+        if (trackingNum === null) return; // User cancelled
+
+        if (!courierName.trim() || !trackingNum.trim()) {
+          addToast("Input Error", "Courier name and tracking number are required to dispatch manually.", "warning");
+          return;
+        }
+
+        payload.tracking_info = `${courierName.trim()} AWB: ${trackingNum.trim()}`;
       }
       const res = await fetch(`${API_BASE}/admin/orders/${orderId}`, {
         method: 'PUT',
@@ -2966,6 +3742,86 @@ export default function App() {
         }
       } else {
         addToast("Booking Failed", data.error || "Could not book DTDC shipment.", "danger");
+      }
+    } catch (e) {
+      addToast("Error", "Network error while booking shipment.", "danger");
+    } finally {
+      setBookingShippingId(null);
+    }
+  };
+
+  const fetchShiprocketCourierRates = async (orderId, weightVal) => {
+    try {
+      setFetchingShiprocketRates(true);
+      setShiprocketRatesError("");
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/shipping-serviceability?weight_kg=${weightVal}`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Sort couriers by rate ascending (cheapest first)
+        const sorted = (data.available_couriers || []).sort((a, b) => parseFloat(a.rate || 0) - parseFloat(b.rate || 0));
+        setShiprocketCouriers(sorted);
+      } else {
+        setShiprocketRatesError(data.error || "Failed to fetch courier serviceability details.");
+      }
+    } catch (err) {
+      setShiprocketRatesError("Network error while checking courier rates.");
+    } finally {
+      setFetchingShiprocketRates(false);
+    }
+  };
+
+  const fetchShiprocketWalletBalance = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/admin/shipping-wallet-balance`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShiprocketWalletBalance(data.balance);
+      } else {
+        setShiprocketWalletBalance(null);
+      }
+    } catch (e) {
+      setShiprocketWalletBalance(null);
+    }
+  };
+
+  const handleBookShiprocketShipping = async (orderId, weight = 0.5, courierId = null) => {
+    if (courierId === null) {
+      const orderObj = adminOrders.find(o => o.id === orderId);
+      setShiprocketSelectorOrder(orderObj);
+      setShiprocketWeight(weight);
+      setShiprocketCouriers([]);
+      setShiprocketRatesError("");
+      setShiprocketWalletBalance(null);
+      fetchShiprocketCourierRates(orderId, weight);
+      fetchShiprocketWalletBalance();
+      return;
+    }
+
+    try {
+      setBookingShippingId(orderId);
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/book-shipping`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ weight_kg: weight, carrier: 'Shiprocket', courier_id: courierId })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const parts = data.order.tracking_info ? data.order.tracking_info.split('AWB:') : [];
+        const awb = parts.length > 0 ? parts[parts.length - 1].trim() : '';
+        addToast("Shipment Booked", `Shiprocket shipment booked. AWB: ${awb}`, "success");
+        loadAdminOrders();
+        setShiprocketSelectorOrder(null);
+        if (data.order.shipping_label_url) {
+          window.open(data.order.shipping_label_url, '_blank');
+        }
+      } else {
+        addToast("Booking Failed", data.error || "Could not book Shiprocket shipment.", "danger");
       }
     } catch (e) {
       addToast("Error", "Network error while booking shipment.", "danger");
@@ -3149,7 +4005,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Discount Code Created", `Coupon '${couponForm.code}' is now live.`, "success");
-        setCouponForm({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, is_active: true });
+        setCouponForm({ id: null, code: "", discount_percentage: "", max_discount: 1000, min_purchase: 0, expires_at: "", usage_limit: "", usage_limit_per_user: "", is_active: true });
         loadAdminCoupons();
       } else {
         const err = await res.json();
@@ -3222,7 +4078,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         addToast("Dispatched Campaign", data.message, "success");
-        setMessagingForm({ platform: "SMS", recipient: "All Customers", message: "" });
+        setMessagingForm({ platform: "SMS", recipient: "All Customers", message: "", title: "" });
         loadAdminSmsLogs();
       }
     } catch (e) { }
@@ -3301,6 +4157,40 @@ export default function App() {
       const data = await res.json();
       if (res.ok) setAdminCustomers(data);
     } catch (e) { }
+  };
+
+  const handleGrantPearls = async (e) => {
+    e.preventDefault();
+    if (!selectedCustomerForPearls) return;
+    const amount = parseInt(pearlsGrantAmount);
+    if (isNaN(amount) || amount <= 0) {
+      addToast("Invalid Amount", "Please enter a positive integer amount.", "warning");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${API_BASE}/admin/customers/${selectedCustomerForPearls.id}/grant-pearls`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          amount: amount,
+          reason: pearlsGrantReason.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast("Success", `Successfully granted ${amount} Privilege Pearls to ${selectedCustomerForPearls.name || selectedCustomerForPearls.username}.`, "success");
+        setShowGrantPearlsModal(false);
+        setSelectedCustomerForPearls(null);
+        setPearlsGrantAmount("");
+        setPearlsGrantReason("");
+        loadAdminCustomers();
+      } else {
+        addToast("Failed", data.error || "Failed to grant pearls.", "danger");
+      }
+    } catch (err) {
+      addToast("Error", err.message, "danger");
+    }
   };
 
   const loadAdminCustomizations = async () => {
@@ -3427,7 +4317,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Shop Activated", `Shop '${shopForm.name}' provisioned and set up successfully.`, "success");
-        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, welcome_super_coins: 50, signature_url: "", store_locator_link: "", gst_percentage: 18.0, gst_inclusive: false, sms_enabled: false, sms_dispatch_enabled: false, sms_delivery_enabled: false, sms_campaign_enabled: false, sms_sender_id: "", sms_otp_template_id: "", sms_dispatch_template_id: "", sms_delivery_template_id: "" });
         loadSuperShops();
       }
     } catch (e) { }
@@ -3443,7 +4333,7 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Global Settings Overwritten", "Shop details updated.", "success");
-        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false });
+        setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, welcome_super_coins: 50, signature_url: "", store_locator_link: "", gst_percentage: 18.0, gst_inclusive: false, sms_enabled: false, sms_dispatch_enabled: false, sms_delivery_enabled: false, sms_campaign_enabled: false, sms_sender_id: "", sms_otp_template_id: "", sms_dispatch_template_id: "", sms_delivery_template_id: "" });
         loadSuperShops();
       }
     } catch (e) { }
@@ -3511,7 +4401,11 @@ export default function App() {
     ? (activeCustomizationCheckout.quoted_price * activeCustomizationCheckout.quantity)
     : cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
   const checkoutSuperCoinDiscount = !activeCustomizationCheckout && checkoutData.use_super_coins ? checkoutSubtotal * 0.15 : 0;
-  const checkoutCouponDiscount = !activeCustomizationCheckout && checkoutData.coupon_code ? checkoutSubtotal * 0.05 : 0;
+  const checkoutCouponDiscount = useMemo(() => {
+    if (activeCustomizationCheckout || !checkoutData.coupon_code || !appliedCouponDetails) return 0;
+    const rawDiscount = (appliedCouponDetails.discount_percentage / 100.0) * checkoutSubtotal;
+    return Math.min(rawDiscount, appliedCouponDetails.max_discount ?? 1000.0);
+  }, [activeCustomizationCheckout, checkoutData.coupon_code, appliedCouponDetails, checkoutSubtotal]);
   const checkoutDiscountedAmount = Math.max(0, checkoutSubtotal - checkoutSuperCoinDiscount - checkoutCouponDiscount);
   const checkoutGstRate = currentShop?.gst_percentage ?? 18.0;
   const checkoutGstInclusive = currentShop?.gst_inclusive ?? false;
@@ -3566,8 +4460,79 @@ export default function App() {
     ? checkoutDiscountedAmount
     : checkoutDiscountedAmount + checkoutGstAmount) + checkoutShippingCharge;
 
+  // Fetch estimated delivery date when checkout pincode is entered/selected
+  useEffect(() => {
+    if (currentView !== 'checkout') {
+      setEstimatedDeliveryDate(null);
+      return;
+    }
+
+    let pincode = "";
+    if (checkoutData.address_id !== null) {
+      const activeSavedAddress = (user?.addresses || []).find(addr => addr.id === checkoutData.address_id);
+      pincode = activeSavedAddress?.pincode || "";
+    } else {
+      pincode = checkoutCustomAddress?.pincode || "";
+    }
+
+    pincode = pincode.trim();
+    if (pincode.length === 6 && !isNaN(pincode) && activeShopId) {
+      const fetchEstimate = async () => {
+        setLoadingDeliveryEstimate(true);
+        try {
+          const res = await fetch(`${API_BASE}/user/shipping-estimate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              shop_id: activeShopId,
+              pincode: pincode,
+              weight_kg: 0.5,
+              declared_value: checkoutDiscountedAmount,
+              is_cod: checkoutData.payment_method === 'COD'
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.estimated_delivery_date) {
+              setEstimatedDeliveryDate(data.estimated_delivery_date);
+            } else {
+              setEstimatedDeliveryDate(null);
+            }
+          } else {
+            setEstimatedDeliveryDate(null);
+          }
+        } catch (err) {
+          console.error("Error fetching shipping estimate:", err);
+          setEstimatedDeliveryDate(null);
+        } finally {
+          setLoadingDeliveryEstimate(false);
+        }
+      };
+
+      const delayDebounceFn = setTimeout(() => {
+        fetchEstimate();
+      }, 500);
+
+      return () => clearTimeout(delayDebounceFn);
+    } else {
+      setEstimatedDeliveryDate(null);
+    }
+  }, [currentView, checkoutData.address_id, checkoutCustomAddress.pincode, checkoutData.payment_method, checkoutDiscountedAmount, activeShopId, token, user?.addresses]);
+
   return (
     <div className="app-container">
+      {/* Premium Lavender Glassy Site Entry Loader */}
+      <div className={`initial-glass-loader ${!isAppLoading ? 'hide' : ''}`}>
+        <div className="loader-dots">
+          <span className="dot"></span>
+          <span className="dot"></span>
+          <span className="dot"></span>
+        </div>
+      </div>
+
       {/* Dynamic Toast Alerts Container */}
       <div style={{
         position: 'fixed',
@@ -3658,6 +4623,82 @@ export default function App() {
         </div>
       )}
 
+      {/* GRANT Privilege Pearls MODAL */}
+      {showGrantPearlsModal && selectedCustomerForPearls && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowGrantPearlsModal(false)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '480px',
+            maxWidth: '90%',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif"
+          }}>
+            <button onClick={() => setShowGrantPearlsModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <Gift size={24} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '1.4rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Grant Privilege Pearls</h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Reward customer loyalty directly</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleGrantPearls} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>Customer</label>
+                <input 
+                  type="text" 
+                  disabled 
+                  value={`${selectedCustomerForPearls.name} (${selectedCustomerForPearls.username})`}
+                  style={{ background: '#fcfbfe', border: '1px solid #e7e2ed', cursor: 'not-allowed', color: 'var(--text-muted)' }} 
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>Amount of Pearls</label>
+                <input 
+                  type="number" 
+                  required 
+                  min="1"
+                  step="1"
+                  placeholder="e.g. 50" 
+                  value={pearlsGrantAmount} 
+                  onChange={e => setPearlsGrantAmount(e.target.value)} 
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>Reason / Description</label>
+                <textarea 
+                  placeholder="e.g. Special loyalty reward bonus" 
+                  rows={3} 
+                  value={pearlsGrantReason} 
+                  onChange={e => setPearlsGrantReason(e.target.value)} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <button type="button" className="btn-secondary" onClick={() => setShowGrantPearlsModal(false)} style={{ flex: 1, justifyContent: 'center' }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
+                  Confirm Grant
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* CONTACT MODAL */}
       {showContactModal && (() => {
         const activeShop = shops.find(s => s.id === activeShopId);
@@ -3680,7 +4721,7 @@ export default function App() {
               fontFamily: "'Jost', sans-serif",
               overflow: 'hidden'
             }}>
-              <button onClick={() => setShowContactModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <button onClick={() => setShowContactModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justify: 'center', transition: 'all 0.2s' }}>
                 <X size={20} />
               </button>
 
@@ -3744,6 +4785,46 @@ export default function App() {
         );
       })()}
 
+      {/* NOTIFICATION DETAILS MODAL */}
+      {selectedNotification && (
+        <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setSelectedNotification(null)}>
+          <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '500px',
+            maxWidth: '90%',
+            padding: '32px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif"
+          }}>
+            <button onClick={() => setSelectedNotification(null)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+              <X size={20} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                <Bell size={24} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>{selectedNotification.title}</h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(selectedNotification.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '1rem', color: 'var(--text-main)', lineHeight: 1.6, marginBottom: '24px', whiteSpace: 'pre-wrap' }}>
+              {selectedNotification.message}
+            </div>
+
+            <div style={{ borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-primary" onClick={() => setSelectedNotification(null)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ABOUT NOBARAA MODAL */}
       {showAboutModal && (() => {
         const activeShop = shops.find(s => s.id === activeShopId);
@@ -3796,6 +4877,84 @@ export default function App() {
         );
       })()}
 
+      {/* STORE LOCATOR (GOOGLE MAP) MODAL */}
+      {showMapModal && (() => {
+        const activeShop = shops.find(s => s.id === activeShopId);
+        const mapLink = activeShop?.store_locator_link || "";
+        const embedUrl = getEmbedMapUrl(mapLink, activeShop?.address);
+        
+        return (
+          <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowMapModal(false)}>
+            <div className="glass-panel animate-fade-in" onClick={e => e.stopPropagation()} style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              width: '800px',
+              maxWidth: '90%',
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
+              position: 'relative',
+              fontFamily: "'Jost', sans-serif"
+            }}>
+              <button onClick={() => setShowMapModal(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                <X size={20} />
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
+                <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+                  <MapPin size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.6rem', color: '#2b0b57', fontWeight: 800, margin: 0, fontFamily: 'var(--font-serif)' }}>Store Locator</h2>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Visit the {activeShop?.name || "Nobaraa"} Boutique</p>
+                </div>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {embedUrl ? (
+                  <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid #f0e6fc', width: '100%', height: '400px', background: '#fafafc' }}>
+                    <iframe 
+                      src={embedUrl} 
+                      width="100%" 
+                      height="100%" 
+                      style={{ border: 0 }} 
+                      allowFullScreen="" 
+                      loading="lazy" 
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
+                  </div>
+                ) : (
+                  <div className="glass-panel" style={{
+                    padding: '30px',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(122, 78, 165, 0.12)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #fbf8ff 100%)',
+                    textAlign: 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '16px'
+                  }}>
+                    <MapPin size={40} style={{ color: '#7a4ea5' }} />
+                    <div>
+                      <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.3rem', color: '#2b0b57', margin: '0 0 8px 0' }}>Boutique Address</h4>
+                      <p style={{ fontSize: '0.95rem', color: '#555555', margin: 0, whiteSpace: 'pre-wrap', maxWidth: '500px', lineHeight: 1.5 }}>
+                        {activeShop?.address || "Address not configured yet."}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: '20px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button className="btn-primary" onClick={() => setShowMapModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* TERMS OF SERVICE MODAL */}
       {showTermsModal && (
         <div className="ad-modal-backdrop" style={{ zIndex: 12000, backgroundColor: 'rgba(43, 11, 87, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(8px)' }} onClick={() => setShowTermsModal(false)}>
@@ -3829,42 +4988,69 @@ export default function App() {
 
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Agreement to Terms</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Agreement & Binding Nature</h4>
                 <p style={{ margin: 0 }}>
-                  By accessing and purchasing from Nobaraa Boutique, you unconditionally agree to follow and be bound by these Terms of Service, all applicable laws, and regulations.
+                  By accessing, browsing, registering an account, or purchasing from Nobaraa Fashion (including all mobile applications and web storefronts), you unconditionally agree to comply with and be legally bound by these Terms of Service, along with our Privacy Policy and Shipping/Returns Policies. If you do not agree, please discontinue use of our platform immediately.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Accounts and Security</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. User Registration, Authentication & Security</h4>
                 <p style={{ margin: 0 }}>
-                  When you register a customer profile on our system, you are responsible for maintaining the privacy of your credentials. You agree to assume full accountability for all actions associated with your profile credentials.
+                  To place orders or customize products, you must create a customer profile. You are solely responsible for maintaining the strict confidentiality of your account password, OTPs, and access tokens. You agree to assume full legal and financial accountability for all orders, customization submissions, and activities associated with your credentials. Any unauthorized access must be reported to our support desk immediately.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Bespoke Orders and Tailoring</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Bespoke Customizations & Tailoring Specifications</h4>
                 <p style={{ margin: 0 }}>
-                  For customization orders:
+                  For all custom orders submitted via the Bespoke Customization interface:
                 </p>
                 <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
-                  <li>Customers must ensure accurate measurements are provided in the sizing fields.</li>
-                  <li>We are not responsible for fitting issues resulting from incorrect measurement inputs.</li>
-                  <li>As customized designs are custom tailored, they are strictly non-cancelable after 2 hours of payment confirmation.</li>
+                  <li>Customers must verify and submit highly accurate body measurements or styling options. We are not liable for fitting issues, color mismatch, or errors resulting from incorrect user input.</li>
+                  <li>Custom products are individually tailored to your personal requirements. Consequently, bespoke orders are strictly non-cancelable and non-refundable once the order enters the 'Tailoring' or 'Processing' status (typically 2 hours following payment confirmation).</li>
                 </ul>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Billing, Pricing & GST</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Product Descriptions, Pricing & Taxation (GST)</h4>
                 <p style={{ margin: 0 }}>
-                  All prices listed are inclusive of tax where noted. Standard GST and local delivery tariffs are computed automatically during cart checkout. We reserve the right to alter pricing and bulk order minimums without prior notification.
+                  We make every effort to display product colors, weave patterns, and specifications with absolute accuracy. However, digital screens can vary, and we cannot guarantee exact color rendering. All prices are listed in Indian Rupees (INR) and are inclusive of standard GST where specified. Delivery tariffs are calculated dynamically during checkout. We reserve the right to alter pricing, revise bulk order minimums, or discontinue products without prior notification.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Limitation of Liability</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Payment Terms & Settlement</h4>
                 <p style={{ margin: 0 }}>
-                  Nobaraa Boutique, its shops, and administrators shall not be liable for any indirect, incidental, or punitive damages arising from product misuse, delivery delays due to national emergencies, or database connection interruptions.
+                  All transactions must be completed in full before orders are dispatched. In the event of a Cash on Delivery (COD) order, you agree to settle the invoice amount in cash or digital payment at the exact time of delivery. Failed payments, fraud triggers, or chargebacks will lead to immediate order cancellation and temporary or permanent suspension of your user profile.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>6. Courier Delivery & Customer Cooperation</h4>
+                <p style={{ margin: 0 }}>
+                  Orders are handed over to premium third-party courier partners (DTDC, Delhivery, etc.). While we strive to meet estimated delivery timelines (3-5 days standard, 10-12 days customized), shipping delays arising from weather conditions, regulatory checks, strikes, or remote locations are beyond our direct control. The customer agrees to coordinate with courier agents to receive the parcel upon delivery.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>7. Intellectual Property Rights</h4>
+                <p style={{ margin: 0 }}>
+                  All content available on this platform, including website graphics, code structures, banner layouts, logo typography, product catalog images, and custom embroidery designs, is the exclusive intellectual property of Nobaraa Fashion. Copying, distributing, republishing, or extracting any materials without written authorization is strictly prohibited.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>8. Indemnification & Limitation of Liability</h4>
+                <p style={{ margin: 0 }}>
+                  Nobaraa Fashion, its shops, directors, and administrators shall not be held liable for any direct, indirect, incidental, or consequential damages resulting from: platform downtime, payment gateway failures, customer measurement errors, or courier delivery delays. The customer agrees to indemnify and hold us harmless from any claims, losses, or legal liabilities arising from a breach of these terms.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>9. Governing Law & Dispute Resolution</h4>
+                <p style={{ margin: 0 }}>
+                  These Terms of Service are governed by and construed in accordance with the laws of India. Any disputes, claims, or legal proceedings arising from your transactions or usage of this platform shall be subject to the exclusive jurisdiction of the competent courts in Salem, Tamil Nadu, India.
                 </p>
               </div>
             </div>
@@ -3909,41 +5095,37 @@ export default function App() {
 
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', display: 'flex', flexDirection: 'column', gap: '20px', lineHeight: 1.6, color: '#444' }}>
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Delivery Timelines</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Order Processing & Dispatch Timelines</h4>
                 <p style={{ margin: 0 }}>
-                  We strive to process and dispatch all orders promptly:
-                </p>
-                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
-                  <li><strong>Standard Orders</strong>: Dispatched within 24-48 hours. Delivery takes 3-5 business days depending on location.</li>
-                  <li><strong>Bespoke Customized Orders</strong>: Require an additional 5-7 business days for custom design, tailoring, and quality finishing before dispatch.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Shipping Charges</h4>
-                <p style={{ margin: 0 }}>
-                  Shipping fees are calculated dynamically based on total package weight, destination distance, and shipping speed (Standard vs Express). Any shipping promotions or free shipping thresholds will be automatically applied at checkout.
+                  All standard orders are processed and dispatched within 24 to 48 hours of order confirmation. Bespoke Customized orders require an additional 5 to 7 business days for handloom weaving, tailoring, and quality inspections before leaving our design hubs.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Courier Partners & Tracking</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Domestic Shipping & Transit Fees</h4>
                 <p style={{ margin: 0 }}>
-                  We deliver via trusted national shipping carriers (e.g. DTDC, Blue Dart, Delhivery). Once your order is dispatched, a tracking reference ID and link will be shared via email and updated in your order history dashboard.
+                  Shipping charges are calculated dynamically at checkout based on package weight, volume, and destination pincode. We offer free standard shipping on orders exceeding a specific cart threshold as displayed on our storefront. Original shipping charges are non-refundable under all circumstances.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Delivery Address Adjustments</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Premium Courier Partners & Live Tracking</h4>
                 <p style={{ margin: 0 }}>
-                  Address modifications can only be requested prior to dispatch. Once the parcel leaves our dispatch hub, address routing updates cannot be guaranteed.
+                  We partner exclusively with premium national logistics providers (including DTDC, Blue Dart, and Delhivery) to guarantee safe and timely delivery. A unique tracking ID and live tracking link will be provided via email, SMS, or within your User Dashboard under the Orders section once dispatched.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Damaged Shipments</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Transit Insurance & Package Tampering</h4>
                 <p style={{ margin: 0 }}>
-                  If you receive a package that shows visible tampering or physical damage, please refuse the delivery and immediately report the incident to our support team with photographic proof.
+                  All shipments are fully insured during transit. If you receive a package that shows visible signs of external damage, tampering, or tearing, do not accept the package. Please refuse the delivery and contact our Customer Care team immediately with photographic evidence so we can file a claim and process a replacement.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Delivery Address Modifications</h4>
+                <p style={{ margin: 0 }}>
+                  For security reasons, delivery address changes can only be accommodated before the order is dispatched. Once the order has been handed over to the courier partner, we cannot redirect the shipment.
                 </p>
               </div>
             </div>
@@ -3990,35 +5172,49 @@ export default function App() {
               <div>
                 <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>1. Information We Collect</h4>
                 <p style={{ margin: 0 }}>
-                  We collect personal details to facilitate your boutique experience, including your name, email address, phone number, shipping address, and customization choices (colors, sizing, notes).
+                  We collect personal and account information to provide and enhance your boutique shopping experience. This includes: identification details (name, email address, telephone number), shipping and billing addresses, custom sizing profiles, specialized design selections, transaction records, and device identifiers (such as IP addresses and browser configurations).
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. How We Use Your Data</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>2. Purpose and Usage of Data</h4>
                 <p style={{ margin: 0 }}>
-                  Your details are utilized to process and ship your orders, track boutique loyalty points (SuperCoins), personalize home screens, communicate delivery updates, and tailor custom garments.
+                  Your personal data is strictly processed to: process, verify, and deliver your orders; track and administer rewards points (Privilege Pearls); customize user interface layouts; generate relevant search results; send order dispatch and delivery status alerts (via email, SMS, and WhatsApp); and provide personalized support tickets.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Secure Payments</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>3. Payment Processing & Security</h4>
                 <p style={{ margin: 0 }}>
-                  All payment transactions are handled through secure gateways. We do not store credit card credentials, bank account passwords, or delicate financial details directly on our servers.
+                  Financial transactions are routed through industry-certified, secure payment gateways (e.g. Razorpay). We do not store, log, or transmit any sensitive credit card numbers, CVVs, net banking credentials, or UPI PINs on our servers. All transaction traffic is processed under strict SSL/TLS encryption.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Data Protection</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Third-Party Data Disclosures</h4>
                 <p style={{ margin: 0 }}>
-                  We implement commercial-grade encryption and access controls to secure customer databases and order tables against unauthorized leakages, edits, or theft.
+                  We do not sell, trade, or rent your personal information to third parties. We share limited, necessary data only with trusted service partners to execute operations (such as shipping details shared with DTDC/Blue Dart for logistics, and contact details with SMS/WhatsApp gateways for authentication and delivery alerts).
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Cookies and Analytics</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Data Retention & Erasure Rights</h4>
                 <p style={{ margin: 0 }}>
-                  Our site uses standard tracking tokens to preserve login sessions, remember recently viewed products, and store customization carts in local database states.
+                  We retain your account profile and transaction records only for as long as needed to fulfill orders and comply with statutory tax and financial auditing laws. Users have the right to request access to, correction of, or permanent deletion of their personal accounts and data by contacting our Support Desk.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>6. Cookies, Sessions & Local Storage</h4>
+                <p style={{ margin: 0 }}>
+                  We utilize cookies and secure local storage mechanisms to sustain your active login session, manage cart contents during checkout, maintain wishlist records, and save customized garment options. You may disable cookies in your browser, but it may degrade specific interactive elements.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>7. Policy Amendments & Notifications</h4>
+                <p style={{ margin: 0 }}>
+                  We reserve the right to modify this Privacy Policy to reflect security advancements or regulatory changes. Any updates will be posted here with a revised date, and critical policy changes will be highlighted via in-app banner announcements.
                 </p>
               </div>
             </div>
@@ -4067,11 +5263,6 @@ export default function App() {
                 <p style={{ margin: 0 }}>
                   We accept return requests on eligible products and categories within their designated return window duration. The return window is counted from the date and time of order delivery (marked as "Customer Received" status).
                 </p>
-                <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px', listStyleType: 'disc' }}>
-                  <li><strong>Shop-level Default</strong>: Items default to a 7-day return window unless specified otherwise by the shop settings.</li>
-                  <li><strong>Category-level Override</strong>: Overrides shop defaults according to specialized category rules.</li>
-                  <li><strong>Product-specific Setting</strong>: Product-level return window settings take the highest precedence.</li>
-                </ul>
               </div>
 
               <div>
@@ -4089,14 +5280,21 @@ export default function App() {
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Refund Process</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>4. Return Shipping & Courier Charges</h4>
                 <p style={{ margin: 0 }}>
-                  Once the return shipment is received and inspected by our warehouse quality assurance team, your refund will be processed. Approved refunds are returned to your original payment method (Credit/Debit Card, UPI, Net Banking) within <strong>5-7 business days</strong>. For Cash on Delivery (COD) orders, a store credit or direct bank transfer will be issued.
+                  Customers are solely responsible for paying their own shipping and courier costs for returning any items. All return courier charges are strictly non-refundable and must be borne in full by the customer. We recommend using a trackable courier service with shipping insurance, as Nobaraa Fashion is not liable for returned items lost, delayed, or damaged in transit. In cases where a reverse pickup is facilitated by us (subject to location and carrier availability), the direct courier fee will be deducted from your final refund amount.
                 </p>
               </div>
 
               <div>
-                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Late or Expired Returns</h4>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>5. Refund Process</h4>
+                <p style={{ margin: 0 }}>
+                  Once your return shipment is received at our facility and passes our quality assurance inspection (checking for original tags, packaging, and unused condition), the refund will be approved. The approved refund (excluding any return shipping or original delivery charges, if applicable) will be credited to your original payment method (Credit/Debit Card, UPI, Net Banking) within 5-7 business days. For Cash on Delivery (COD) orders, a store credit or direct bank transfer will be issued.
+                </p>
+              </div>
+
+              <div>
+                <h4 style={{ color: '#2b0b57', fontWeight: 700, margin: '0 0 8px 0', fontSize: '1.05rem' }}>6. Late or Expired Returns</h4>
                 <p style={{ margin: 0 }}>
                   Return buttons are dynamically disabled once the computed return window expires. No manual exceptions can be made on orders where the return period has elapsed.
                 </p>
@@ -4106,6 +5304,302 @@ export default function App() {
             <div style={{ marginTop: '24px', borderTop: '1px solid #f0e6fc', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
               <button className="btn-primary" onClick={() => setShowPolicyModal(false)} style={{ padding: '10px 24px', borderRadius: '12px', fontWeight: 700 }}>Understood</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPI PAYMENT UNAVAILABLE WARNING MODAL */}
+      {showPaymentWarningModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 13000,
+          backgroundColor: 'rgba(43, 11, 87, 0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backdropFilter: 'blur(10px)'
+        }} onClick={() => setShowPaymentWarningModal(false)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '450px',
+            maxWidth: '90%',
+            padding: '36px 32px',
+            boxShadow: '0 30px 60px rgba(43, 11, 87, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif"
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setShowPaymentWarningModal(false)} 
+              style={{ 
+                position: 'absolute', 
+                top: '20px', 
+                right: '20px', 
+                background: 'rgba(122, 78, 165, 0.1)', 
+                border: 'none', 
+                cursor: 'pointer', 
+                color: '#7a4ea5', 
+                borderRadius: '50%', 
+                width: '32px', 
+                height: '32px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(217, 83, 79, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: '#d9534f'
+              }}>
+                <ShieldAlert size={32} />
+              </div>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>
+                {isCodAvailable ? "UPI Unavailable" : "Payment Unavailable"}
+              </h3>
+              <div style={{ width: '40px', height: '3px', background: '#d9534f', margin: '8px auto 0', borderRadius: '2px' }} />
+              <p style={{ color: '#666666', fontSize: '0.92rem', marginTop: '16px', lineHeight: '1.5', marginBottom: 0 }}>
+                {isCodAvailable ? (
+                  <>This shop has not configured its online UPI payment gateway credentials (Razorpay). Please choose <strong>Cash on Delivery (COD)</strong> or contact the shop administrator.</>
+                ) : (
+                  <>Online UPI payment is currently not configured (Razorpay keys missing), and <strong>Cash on Delivery (COD) is unavailable</strong> for this shop or these order items. Please contact support.</>
+                )}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+              {isCodAvailable && (
+                <button 
+                  onClick={() => {
+                    setCheckoutData(prev => ({ ...prev, payment_method: "COD" }));
+                    setShowPaymentWarningModal(false);
+                    addToast("Payment Switched", "Switched payment method to Cash on Delivery (COD).", "info");
+                  }} 
+                  style={{
+                    background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '13px',
+                    borderRadius: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                  }}
+                >
+                  Switch to Cash on Delivery (COD) <ChevronRight size={18} />
+                </button>
+              )}
+              <button 
+                onClick={() => setShowPaymentWarningModal(false)}
+                style={{
+                  background: isCodAvailable ? 'transparent' : 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                  color: isCodAvailable ? '#666666' : 'white',
+                  border: isCodAvailable ? '1px solid #dddddd' : 'none',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: isCodAvailable ? 'none' : '0 8px 20px rgba(122, 78, 165, 0.2)'
+                }}
+              >
+                {isCodAvailable ? "Cancel" : "Close"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANDATORY PROFILE COMPLETION MODAL FOR GOOGLE & NEW USERS */}
+      {user && role === 'user' && !user.contact_phone && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 12000,
+          backgroundColor: 'rgba(43, 11, 87, 0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backdropFilter: 'blur(15px)'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            width: '450px',
+            maxWidth: '90%',
+            padding: '36px 32px',
+            boxShadow: '0 30px 60px rgba(43, 11, 87, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            position: 'relative',
+            fontFamily: "'Jost', sans-serif"
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2.1rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Complete Profile</h3>
+              <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '8px auto 0', borderRadius: '2px' }} />
+              <p style={{ color: '#666666', fontSize: '0.9rem', marginTop: '8px', marginBottom: 0 }}>
+                {profileOtpStep === 'request' ? 'Please enter your details to verify your mobile number.' : 'Enter the verification code sent to your phone.'}
+              </p>
+            </div>
+
+            {profileOtpStep === 'request' ? (
+              <form onSubmit={handleRequestProfileOtp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ position: 'relative' }}>
+                  <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={profileName}
+                    onChange={e => setProfileName(e.target.value)}
+                    className="nobaraa-login-input"
+                    required
+                  />
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Phone size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                  <input
+                    type="tel"
+                    placeholder="Mobile Number"
+                    value={profilePhone}
+                    onChange={e => setProfilePhone(e.target.value)}
+                    className="nobaraa-login-input"
+                    required
+                  />
+                </div>
+
+                <button type="submit" disabled={profileSubmitting} style={{
+                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '13px',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                  opacity: profileSubmitting ? 0.7 : 1
+                }}>
+                  {profileSubmitting ? 'Sending...' : 'Send Verification Code'} <ChevronRight size={18} />
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyAndSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ position: 'relative' }}>
+                  <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5', opacity: 0.5 }} />
+                  <input
+                    type="text"
+                    value={profileName}
+                    disabled
+                    className="nobaraa-login-input"
+                    style={{ opacity: 0.6, background: '#f8f9fa' }}
+                  />
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Phone size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5', opacity: 0.5 }} />
+                  <input
+                    type="tel"
+                    value={profilePhone}
+                    disabled
+                    className="nobaraa-login-input"
+                    style={{ opacity: 0.6, background: '#f8f9fa' }}
+                  />
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                  <input
+                    type="text"
+                    placeholder="6-digit OTP Code"
+                    value={profileOtpCode}
+                    onChange={e => setProfileOtpCode(e.target.value)}
+                    className="nobaraa-login-input"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '-4px' }}>
+                  <span
+                    onClick={() => { setProfileOtpStep('request'); setProfileOtpCode(''); }}
+                    style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Change Number
+                  </span>
+
+                  {profileResendTimer > 0 ? (
+                    <span style={{ color: '#888888' }}>
+                      Resend in <strong style={{ color: '#7a4ea5' }}>{profileResendTimer}s</strong>
+                    </span>
+                  ) : profileResendCount >= 4 ? (
+                    <span style={{ color: '#d9534f', fontWeight: 600 }}>
+                      Resend limit reached
+                    </span>
+                  ) : (
+                    <span
+                      onClick={handleResendProfileOtp}
+                      style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Resend OTP ({4 - profileResendCount} left)
+                    </span>
+                  )}
+                </div>
+
+                <button type="submit" disabled={profileSubmitting} style={{
+                  background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '13px',
+                  borderRadius: '12px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                  opacity: profileSubmitting ? 0.7 : 1
+                }}>
+                  {profileSubmitting ? 'Saving...' : 'Verify & Save'} <ChevronRight size={18} />
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -4211,7 +5705,7 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{
+                      <button type="submit" disabled={isAuthLoading} style={{
                         background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                         color: 'white',
                         border: 'none',
@@ -4219,15 +5713,24 @@ export default function App() {
                         borderRadius: '10px',
                         fontSize: '0.95rem',
                         fontWeight: 600,
-                        cursor: 'pointer',
+                        cursor: isAuthLoading ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                        opacity: isAuthLoading ? 0.75 : 1
                       }}>
-                        Send Reset Code <ChevronRight size={18} />
+                        {isAuthLoading ? (
+                          <div className="three-dots-loader">
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                          </div>
+                        ) : (
+                          <>Send Reset Code <ChevronRight size={18} /></>
+                        )}
                       </button>
                     </form>
                   ) : (
@@ -4267,7 +5770,7 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{
+                      <button type="submit" disabled={isAuthLoading} style={{
                         background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                         color: 'white',
                         border: 'none',
@@ -4275,15 +5778,24 @@ export default function App() {
                         borderRadius: '10px',
                         fontSize: '0.95rem',
                         fontWeight: 600,
-                        cursor: 'pointer',
+                        cursor: isAuthLoading ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                        opacity: isAuthLoading ? 0.75 : 1
                       }}>
-                        Reset Password <ChevronRight size={18} />
+                        {isAuthLoading ? (
+                          <div className="three-dots-loader">
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                          </div>
+                        ) : (
+                          <>Reset Password <ChevronRight size={18} /></>
+                        )}
                       </button>
                     </form>
                   )}
@@ -4298,25 +5810,84 @@ export default function App() {
                     <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', fontWeight: 700, color: '#2b0b57', margin: 0 }}>Login with OTP</h3>
                     <div style={{ width: '40px', height: '3px', background: '#7a4ea5', margin: '6px auto 0', borderRadius: '2px' }} />
                     <p style={{ color: '#666666', fontSize: '0.85rem', marginTop: '6px', marginBottom: 0 }}>
-                      {otpLoginStep === 'request' ? 'Request an OTP verification code' : 'Verify the OTP sent to your email'}
+                      {otpLoginStep === 'request'
+                        ? (otpMethod === 'phone' && currentShop?.sms_enabled ? 'Enter your mobile number to receive an OTP' : 'Request an OTP verification code')
+                        : (otpMethod === 'phone' && currentShop?.sms_enabled ? 'Verify the OTP sent to your mobile phone' : 'Verify the OTP sent to your email')}
                     </p>
                   </div>
 
                   {otpLoginStep === 'request' ? (
                     <form onSubmit={handleRequestOtp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {currentShop?.sms_enabled && (
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', background: '#f5edff', padding: '4px', borderRadius: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setOtpMethod('phone')}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              background: otpMethod === 'phone' ? '#7a4ea5' : 'transparent',
+                              color: otpMethod === 'phone' ? '#ffffff' : '#7a4ea5'
+                            }}
+                          >
+                            Phone Number
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setOtpMethod('email')}
+                            style={{
+                              flex: 1,
+                              padding: '8px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              background: otpMethod === 'email' ? '#7a4ea5' : 'transparent',
+                              color: otpMethod === 'email' ? '#ffffff' : '#7a4ea5'
+                            }}
+                          >
+                            Email Address
+                          </button>
+                        </div>
+                      )}
+
                       <div style={{ position: 'relative' }}>
-                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input
-                          type="email"
-                          placeholder="Email Address"
-                          value={otpEmail}
-                          onChange={e => setOtpEmail(e.target.value)}
-                          className="nobaraa-login-input"
-                          required
-                        />
+                        {otpMethod === 'phone' && currentShop?.sms_enabled ? (
+                          <>
+                            <Phone size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                            <input
+                              type="tel"
+                              placeholder="Mobile Number"
+                              value={otpPhone}
+                              onChange={e => setOtpPhone(e.target.value)}
+                              className="nobaraa-login-input"
+                              required
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                            <input
+                              type="email"
+                              placeholder="Email Address"
+                              value={otpEmail}
+                              onChange={e => setOtpEmail(e.target.value)}
+                              className="nobaraa-login-input"
+                              required
+                            />
+                          </>
+                        )}
                       </div>
 
-                      <button type="submit" disabled={requestingOtp} style={{
+                      <button type="submit" disabled={requestingOtp || isAuthLoading} style={{
                         background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                         color: 'white',
                         border: 'none',
@@ -4324,31 +5895,56 @@ export default function App() {
                         borderRadius: '10px',
                         fontSize: '0.95rem',
                         fontWeight: 600,
-                        cursor: 'pointer',
+                        cursor: (requestingOtp || isAuthLoading) ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
                         boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
-                        opacity: requestingOtp ? 0.7 : 1
+                        opacity: (requestingOtp || isAuthLoading) ? 0.7 : 1
                       }}>
-                        {requestingOtp ? 'Sending...' : 'Send OTP'} <ChevronRight size={18} />
+                        {(requestingOtp || isAuthLoading) ? (
+                          <div className="three-dots-loader">
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                          </div>
+                        ) : (
+                          <>Send OTP <ChevronRight size={18} /></>
+                        )}
                       </button>
                     </form>
                   ) : (
                     <form onSubmit={handleVerifyOtpLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ position: 'relative' }}>
-                        <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
-                        <input
-                          type="email"
-                          placeholder="Email Address"
-                          value={otpEmail}
-                          disabled
-                          className="nobaraa-login-input"
-                          style={{ opacity: 0.7 }}
-                          required
-                        />
+                        {otpMethod === 'phone' && currentShop?.sms_enabled ? (
+                          <>
+                            <Phone size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                            <input
+                              type="tel"
+                              placeholder="Mobile Number"
+                              value={otpPhone}
+                              disabled
+                              className="nobaraa-login-input"
+                              style={{ opacity: 0.7 }}
+                              required
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <User size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
+                            <input
+                              type="email"
+                              placeholder="Email Address"
+                              value={otpEmail}
+                              disabled
+                              className="nobaraa-login-input"
+                              style={{ opacity: 0.7 }}
+                              required
+                            />
+                          </>
+                        )}
                       </div>
                       <div style={{ position: 'relative' }}>
                         <Lock size={18} style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: '#7a4ea5' }} />
@@ -4362,7 +5958,26 @@ export default function App() {
                         />
                       </div>
 
-                      <button type="submit" style={{
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: '-4px', marginBottom: '4px' }}>
+                        {resendTimer > 0 ? (
+                          <span style={{ color: '#888888' }}>
+                            Resend OTP in <strong style={{ color: '#7a4ea5' }}>{resendTimer}s</strong>
+                          </span>
+                        ) : resendCount >= 4 ? (
+                          <span style={{ color: '#d9534f', fontWeight: 600 }}>
+                            Resend limit reached (max 4)
+                          </span>
+                        ) : (
+                          <span
+                            onClick={handleResendOtp}
+                            style={{ color: '#7a4ea5', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                          >
+                            Resend OTP ({4 - resendCount} left)
+                          </span>
+                        )}
+                      </div>
+
+                      <button type="submit" disabled={isAuthLoading} style={{
                         background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                         color: 'white',
                         border: 'none',
@@ -4370,15 +5985,24 @@ export default function App() {
                         borderRadius: '10px',
                         fontSize: '0.95rem',
                         fontWeight: 600,
-                        cursor: 'pointer',
+                        cursor: isAuthLoading ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                        boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                        opacity: isAuthLoading ? 0.75 : 1
                       }}>
-                        Verify & Login <ChevronRight size={18} />
+                        {isAuthLoading ? (
+                          <div className="three-dots-loader">
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                            <span className="dot"></span>
+                          </div>
+                        ) : (
+                          <>Verify & Login <ChevronRight size={18} /></>
+                        )}
                       </button>
                     </form>
                   )}
@@ -4444,7 +6068,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <button type="submit" style={{
+                    <button type="submit" disabled={isAuthLoading} style={{
                       background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                       color: 'white',
                       border: 'none',
@@ -4452,15 +6076,24 @@ export default function App() {
                       borderRadius: '10px',
                       fontSize: '0.95rem',
                       fontWeight: 600,
-                      cursor: 'pointer',
+                      cursor: isAuthLoading ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                      opacity: isAuthLoading ? 0.75 : 1
                     }}>
-                      Login <ChevronRight size={18} />
+                      {isAuthLoading ? (
+                        <div className="three-dots-loader">
+                          <span className="dot"></span>
+                          <span className="dot"></span>
+                          <span className="dot"></span>
+                        </div>
+                      ) : (
+                        <>Login <ChevronRight size={18} /></>
+                      )}
                     </button>
                   </form>
 
@@ -4508,7 +6141,7 @@ export default function App() {
                       <input type="text" placeholder="Phone Number (Optional)" value={registerForm.contact_phone} onChange={e => setRegisterForm(prev => ({ ...prev, contact_phone: e.target.value }))} className="nobaraa-login-input" />
                     </div>
 
-                    <button type="submit" style={{
+                    <button type="submit" disabled={isAuthLoading} style={{
                       background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)',
                       color: 'white',
                       border: 'none',
@@ -4516,12 +6149,21 @@ export default function App() {
                       borderRadius: '10px',
                       fontSize: '0.95rem',
                       fontWeight: 600,
-                      cursor: 'pointer',
+                      cursor: isAuthLoading ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s',
                       marginTop: '6px',
-                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)'
+                      boxShadow: '0 8px 20px rgba(122, 78, 165, 0.2)',
+                      opacity: isAuthLoading ? 0.75 : 1
                     }}>
-                      Sign Up
+                      {isAuthLoading ? (
+                        <div className="three-dots-loader">
+                          <span className="dot"></span>
+                          <span className="dot"></span>
+                          <span className="dot"></span>
+                        </div>
+                      ) : (
+                        <>Sign Up</>
+                      )}
                     </button>
                   </form>
 
@@ -4702,6 +6344,7 @@ export default function App() {
                 onClick={async () => {
                   if (returnReason && returnImageUrl) {
                     await handleRequestReturn(activeReturnOrder.id, returnReason, returnImageUrl);
+                    isProgrammaticNavigation.current = true;
                     setActiveReturnOrder(null);
                     setReturnReason("");
                     setReturnImageUrl("");
@@ -4847,7 +6490,7 @@ export default function App() {
                 </div>
                 {invoiceOrder.discount_amount > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
-                    <span>Promo Coupon{currentShop?.super_coin_enabled !== false ? " / Coins" : ""} Discount:</span>
+                    <span>Promo Coupon{currentShop?.super_coin_enabled !== false ? " / Pearls" : ""} Discount:</span>
                     <span>-₹{invoiceOrder.discount_amount.toFixed(2)}</span>
                   </div>
                 )}
@@ -4879,8 +6522,36 @@ export default function App() {
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-                <p>Thank you for shopping with {invoiceOrder.shop_name}! This is a computer generated invoice and requires no physical signature.</p>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.75rem', color: '#64748b' }}>
+                <div style={{ textAlign: 'left', maxWidth: '60%' }}>
+                  <p style={{ margin: 0 }}>Thank you for shopping with {invoiceOrder.shop_name}!</p>
+                  {(() => {
+                    const shopConfig = shops.find(s => s.id === invoiceOrder.shop_id);
+                    if (!shopConfig?.signature_url) {
+                      return (
+                        <p style={{ margin: '4px 0 0', fontStyle: 'italic' }}>This is a computer generated invoice and requires no physical signature.</p>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                {(() => {
+                  const shopConfig = shops.find(s => s.id === invoiceOrder.shop_id);
+                  if (shopConfig?.signature_url) {
+                    return (
+                      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <img 
+                          src={shopConfig.signature_url} 
+                          alt="Authorized Signature" 
+                          style={{ maxHeight: '50px', maxWidth: '140px', objectFit: 'contain' }} 
+                        />
+                        <div style={{ borderTop: '1px solid #cbd5e1', width: '120px', margin: '4px 0 0' }}></div>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>Authorized Signatory</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -5047,6 +6718,281 @@ export default function App() {
         </div>
       )}
 
+      {/* RENDER VIEW: LOGOUT CONFIRMATION MODAL */}
+      {showLogoutConfirm && (
+        <div
+          className="ad-modal-backdrop"
+          style={{
+            zIndex: 13000,
+            backdropFilter: 'blur(8px)',
+            background: 'rgba(43, 11, 87, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            className="glass-panel"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(122, 78, 165, 0.25)',
+              color: '#2b0b57',
+              width: '90%',
+              maxWidth: '420px',
+              padding: '32px 24px',
+              borderRadius: '20px',
+              textAlign: 'center',
+              boxShadow: '0 12px 40px rgba(122, 78, 165, 0.15)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px'
+            }}
+          >
+            {/* Warning Icon Emblem */}
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#fdf2f2',
+              border: '1px solid #fde2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#e84e7e',
+              marginBottom: '4px'
+            }}>
+              <ShieldAlert size={28} />
+            </div>
+
+            {/* Title */}
+            <h3 style={{
+              fontFamily: "var(--font-serif, 'Playfair Display', serif)",
+              fontSize: '1.45rem',
+              fontWeight: 700,
+              color: '#2b0b57',
+              margin: '0 auto'
+            }}>
+              Confirm Sign Out
+            </h3>
+
+            {/* Warning Message */}
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+              Are you sure you want to log out of your Nobaraa Fashion account? You will need to log back in to access your orders and dashboard.
+            </p>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '10px' }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="btn-secondary"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  border: '1px solid #dcdcdc'
+                }}
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={executeLogout}
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #e84e7e, #c73766)',
+                  border: 'none',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(232, 78, 126, 0.2)'
+                }}
+              >
+                Yes, Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RENDER VIEW: BILLING REGENERATE KEY CONFIRMATION MODAL */}
+      {showBillingRegenConfirm && (
+        <div
+          className="ad-modal-backdrop"
+          style={{
+            zIndex: 13000,
+            backdropFilter: 'blur(8px)',
+            background: 'rgba(43, 11, 87, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => {
+            setShowBillingRegenConfirm(false);
+            setBillingRegenPassword('');
+            setBillingRegenError('');
+          }}
+        >
+          <div
+            className="glass-panel"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(122, 78, 165, 0.25)',
+              color: '#2b0b57',
+              width: '90%',
+              maxWidth: '420px',
+              padding: '32px 24px',
+              borderRadius: '20px',
+              textAlign: 'center',
+              boxShadow: '0 12px 40px rgba(122, 78, 165, 0.15)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '16px'
+            }}
+          >
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: '#fdf2f2',
+              border: '1px solid #fde2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#e84e7e',
+              marginBottom: '4px'
+            }}>
+              <Lock size={28} />
+            </div>
+
+            <h3 style={{
+              fontFamily: "var(--font-serif, 'Playfair Display', serif)",
+              fontSize: '1.45rem',
+              fontWeight: 700,
+              color: '#2b0b57',
+              margin: '0 auto'
+            }}>
+              Verify Identity
+            </h3>
+
+            <p style={{ fontSize: '0.92rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+              To regenerate the Billing API Key, please enter your Administrator password.
+            </p>
+
+            <div style={{ width: '100%', textAlign: 'left' }}>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Admin Password</label>
+              <input
+                type="password"
+                placeholder="Enter password..."
+                value={billingRegenPassword}
+                onChange={e => {
+                  setBillingRegenPassword(e.target.value);
+                  setBillingRegenError('');
+                }}
+                style={{
+                  width: '100%',
+                  height: '38px',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.9rem'
+                }}
+              />
+              {billingRegenError && (
+                <p style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '6px', marginBottom: 0 }}>
+                  {billingRegenError}
+                </p>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: '10px' }}>
+              <button
+                onClick={() => {
+                  setShowBillingRegenConfirm(false);
+                  setBillingRegenPassword('');
+                  setBillingRegenError('');
+                }}
+                className="btn-secondary"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  border: '1px solid #dcdcdc'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!billingRegenPassword) {
+                    setBillingRegenError('Password is required.');
+                    return;
+                  }
+                  try {
+                    const res = await fetch(`${API_BASE}/admin/verify-password`, {
+                      method: 'POST',
+                      headers: getHeaders(),
+                      body: JSON.stringify({ password: billingRegenPassword })
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                      let randStr = '';
+                      for (let i = 0; i < 24; i++) {
+                        randStr += chars.charAt(Math.floor(Math.random() * chars.length));
+                      }
+                      const newKey = 'BILLING_' + randStr;
+                      setAdminShop(prev => ({ ...prev, billing_api_key: newKey }));
+                      
+                      setShowBillingRegenConfirm(false);
+                      setBillingRegenPassword('');
+                      setBillingRegenError('');
+                      addToast("Key Regenerated", "New Billing API Key generated. Remember to save your settings.", "success");
+                    } else {
+                      setBillingRegenError(resData.error || 'Password verification failed.');
+                    }
+                  } catch (err) {
+                    setBillingRegenError('Network error. Please try again.');
+                  }
+                }}
+                className="btn-primary"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #7a4ea5, #633b8a)',
+                  border: 'none',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(122, 78, 165, 0.2)'
+                }}
+              >
+                Verify & Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TRANSACTION DETAILS MODAL POPUP */}
       {activeTransactionOrder && (
         <div
@@ -5163,7 +7109,7 @@ export default function App() {
             <button className="ad-modal-close" onClick={() => setDetailProduct(null)}>
               <X size={18} />
             </button>
- 
+
             {/* Left side: Images */}
             <div className="product-detail-modal-left">
               <img
@@ -5171,7 +7117,7 @@ export default function App() {
                 alt={detailProduct.name}
                 style={{ width: '100%', height: '320px', objectFit: 'cover', borderRadius: '12px', transition: 'all 0.3s ease', boxShadow: '0 8px 24px rgba(122, 78, 165, 0.1)', border: '1px solid rgba(122, 78, 165, 0.08)' }}
               />
- 
+
               {/* Image gallery previews */}
               {detailProduct.images.length > 1 && (
                 <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -5199,7 +7145,7 @@ export default function App() {
                 </div>
               )}
             </div>
- 
+
             {/* Right side: Information */}
             <div className="product-detail-modal-right">
               <span className="badge" style={{ width: 'fit-content', background: 'rgba(122, 78, 165, 0.08)', color: '#7a4ea5', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '30px', padding: '6px 14px', fontSize: '0.75rem', letterSpacing: '1.2px', fontWeight: 700 }}>
@@ -5217,16 +7163,16 @@ export default function App() {
                   <Share2 size={18} />
                 </button>
               </div>
- 
+
               <div className="price-row" style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
                 <span className="current-price" style={{ fontSize: '1.8rem', color: '#2b0b57', fontWeight: 800 }}>₹{detailProduct.price.toFixed(2)}</span>
                 {detailProduct.original_price > detailProduct.price && (
                   <span className="original-price" style={{ fontSize: '1.1rem', color: '#a0aec0', textDecoration: 'line-through' }}>₹{detailProduct.original_price.toFixed(2)}</span>
                 )}
               </div>
- 
+
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6 }}>{detailProduct.description}</p>
- 
+
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.82rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(154, 132, 200, 0.08)', color: '#7a4ea5', padding: '8px 16px', borderRadius: '30px', fontWeight: 600, border: '1px solid rgba(154, 132, 200, 0.15)' }}>
                   <Clock size={14} /> Stock Status: {detailProduct.stock > 0 ? `${detailProduct.stock} Available` : "Out of Stock"}
@@ -5237,7 +7183,7 @@ export default function App() {
                   </div>
                 )}
               </div>
- 
+
               {/* Order checkout buttons */}
               <div style={{ display: 'flex', gap: '14px', marginTop: '8px' }}>
                 <button
@@ -5406,7 +7352,7 @@ export default function App() {
           onClick={() => { setCurrentView("opac"); setActiveCategoryPage(null); setSelectedCategory(""); }}
         >
           <img src="/nobaraa_logo_emblem.png" alt="Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
-          <span className="navbar-brand-name" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem', color: '#222222', letterSpacing: '0.5px' }}>
+          <span className="navbar-brand-name" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: '1.75rem', color: '#222222', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
             Nobaraa Fashion
           </span>
         </div>
@@ -5525,8 +7471,8 @@ export default function App() {
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#666666', fontWeight: 500 }}>Customer Wallet</p>
                   {currentShop?.super_coin_enabled !== false && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                      <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)' }}>
-                        ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                      <div style={{ display: 'flex', alignItems: 'center', background: '#f5f0fa', color: '#7a4ea5', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)' }}>
+                        <PearlIcon size={12} style={{ marginRight: '4px' }} /> {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Privilege Pearls
                       </div>
                     </div>
                   )}
@@ -5830,33 +7776,33 @@ export default function App() {
       {currentView === 'checkout' && (
         <div style={{ minHeight: '100vh', background: '#f8f9fa', display: 'flex', flexDirection: 'column' }}>
           {/* Minimalist Header for Focus */}
-          <header style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: isMobile ? '15px 16px' : '20px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => setCurrentView('opac')}>
-              <NobaraaLogo size={40} color="#2b0b57" />
-              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: isMobile ? '1.25rem' : '1.4rem', color: '#2b0b57' }}>Nobaraa Checkout</span>
+          <header style={{ background: '#fff', borderBottom: '1px solid #e0e0e0', padding: isExtraSmall ? '12px 10px' : (isMobile ? '15px 16px' : '20px 40px'), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isExtraSmall ? '6px' : '12px', cursor: 'pointer' }} onClick={() => setCurrentView('opac')}>
+              <NobaraaLogo size={isExtraSmall ? 32 : 40} color="#2b0b57" />
+              <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: isExtraSmall ? '1.05rem' : (isMobile ? '1.25rem' : '1.4rem'), color: '#2b0b57' }}>Nobaraa Checkout</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666' }}>
-              <Lock size={18} />
-              <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Secure Checkout</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isExtraSmall ? '4px' : '8px', color: '#666' }}>
+              <Lock size={isExtraSmall ? 14 : 18} />
+              <span style={{ fontSize: isExtraSmall ? '0.8rem' : '0.95rem', fontWeight: 600 }}>Secure</span>
             </div>
           </header>
 
-          <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isMobile ? '20px 12px' : '40px 20px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: isMobile ? '24px' : '32px', alignItems: 'start', flex: 1 }}>
+          <main style={{ maxWidth: '1200px', margin: '0 auto', width: '100%', padding: isExtraSmall ? '12px 8px' : (isMobile ? '20px 12px' : '40px 20px'), display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: isMobile ? '24px' : '32px', alignItems: 'start', flex: 1 }}>
 
             {/* Left Column: Checkout Steps */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
               {/* Step 1: Delivery Address */}
-              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ background: '#fff', borderRadius: '8px', padding: isExtraSmall ? '16px 12px' : '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>1</div>
                   <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Delivery Address</h2>
                 </div>
-                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ paddingLeft: isExtraSmall ? '0px' : (isMobile ? '24px' : '48px'), display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {user && user.addresses && user.addresses.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '12px', fontWeight: 600 }}>Choose a saved address:</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: isExtraSmall ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
                         {user.addresses.map((addr) => {
                           const isSelected = checkoutData.address_id === addr.id;
                           const isLastUsed = user.last_used_address_id === addr.id;
@@ -5983,8 +7929,8 @@ export default function App() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {/* 1. Phone & Pincode side-by-side */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {/* 1. Phone & Pincode side-by-side or stacked on extra small */}
+                      <div style={{ display: 'grid', gridTemplateColumns: isExtraSmall ? '1fr' : '1fr 1fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Billing Phone Number</label>
                           <input
@@ -6078,8 +8024,8 @@ export default function App() {
                         />
                       </div>
 
-                      {/* 5. Town/City & State */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {/* 5. Town/City & State side-by-side or stacked on extra small */}
+                      <div style={{ display: 'grid', gridTemplateColumns: isExtraSmall ? '1fr' : '1fr 1fr', gap: '12px' }}>
                         <div>
                           <label style={{ fontSize: '0.85rem', color: '#444', display: 'block', marginBottom: '4px', fontWeight: 600 }}>Town/City</label>
                           <input
@@ -6211,12 +8157,12 @@ export default function App() {
               </div>
 
               {/* Step 2: Payment Method */}
-              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ background: '#fff', borderRadius: '8px', padding: isExtraSmall ? '16px 12px' : '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>2</div>
                   <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Payment Method</h2>
                 </div>
-                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ paddingLeft: isExtraSmall ? '0px' : (isMobile ? '24px' : '48px'), display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                   {/* Payment Options */}
                   <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', overflow: 'hidden' }}>
@@ -6269,17 +8215,17 @@ export default function App() {
                   )}
 
                   {currentShop?.super_coin_enabled !== false && (
-                    <div style={{ padding: '16px', border: '1px dashed var(--coin-gold)', background: '#fffdf5', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ padding: '16px', border: '1px dashed #7a4ea5', background: '#fbf9fc', borderRadius: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <Award style={{ color: 'var(--coin-gold)' }} size={24} />
+                        <PearlIcon size={24} />
                         <div>
-                          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#222', display: 'block' }}>Redeem SuperCoins</span>
+                          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#222', display: 'block' }}>Redeem Privilege Pearls</span>
                           <span style={{ fontSize: '0.85rem', color: '#666' }}>Deduct up to 30% of your cart value immediately.</span>
                         </div>
                       </div>
                       <input
                         type="checkbox"
-                        style={{ width: '22px', height: '22px', accentColor: 'var(--coin-gold)' }}
+                        style={{ width: '22px', height: '22px', accentColor: '#7a4ea5' }}
                         checked={checkoutData.use_super_coins}
                         onChange={e => setCheckoutData(prev => ({ ...prev, use_super_coins: e.target.checked }))}
                       />
@@ -6288,24 +8234,103 @@ export default function App() {
 
                   <div>
                     <label style={{ fontSize: '0.9rem', color: '#444', display: 'block', marginBottom: '8px', fontWeight: 600 }}>Promo Coupon Code (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="Enter code..."
-                      value={checkoutData.coupon_code}
-                      onChange={e => setCheckoutData(prev => ({ ...prev, coupon_code: e.target.value.toUpperCase() }))}
-                      style={{ width: '50%', minWidth: '200px', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', fontSize: '0.95rem' }}
-                    />
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        placeholder="Enter code..."
+                        value={couponInput}
+                        onChange={e => setCouponInput(e.target.value.toUpperCase())}
+                        style={{ flex: 1, minWidth: '0', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', fontSize: '0.95rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const promoCode = couponInput.trim().toUpperCase();
+                          if (!promoCode) {
+                            addToast("Coupon Error", "Please enter a coupon code first.", "warning");
+                            return;
+                          }
+                          try {
+                            const res = await fetch(`${API_BASE}/user/coupons/${activeShopId}`, {
+                              headers: getHeaders()
+                            });
+                            if (!res.ok) {
+                              addToast("Coupon Error", "Failed to fetch coupon details.", "danger");
+                              return;
+                            }
+                            const couponsList = await res.json();
+                            const coupon = couponsList.find(c => c.code.toUpperCase() === promoCode && c.is_active);
+                            if (!coupon) {
+                              addToast("Coupon Error", "Invalid or inactive coupon code.", "danger");
+                              return;
+                            }
+                            if (checkoutSubtotal < coupon.min_purchase) {
+                              addToast("Coupon Error", `Coupon requires a minimum purchase of ₹${coupon.min_purchase}.`, "warning");
+                              return;
+                            }
+                            setAppliedCouponDetails(coupon);
+                            setCheckoutData(prev => ({ ...prev, coupon_code: coupon.code }));
+                            addToast("Coupon Applied", `Coupon code '${coupon.code}' (${coupon.discount_percentage}% discount) has been applied successfully!`, "success");
+                          } catch (err) {
+                            console.error("Apply coupon error", err);
+                            addToast("Coupon Error", "An error occurred while validating the coupon.", "danger");
+                          }
+                        }}
+                        className="btn-primary"
+                        style={{
+                          height: '42px',
+                          padding: '0 20px',
+                          fontSize: '0.9rem',
+                          background: '#7a4ea5',
+                          borderColor: '#7a4ea5',
+                          borderRadius: '4px',
+                          fontWeight: 700,
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        Apply
+                      </button>
+                      {checkoutData.coupon_code && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCheckoutData(prev => ({ ...prev, coupon_code: "" }));
+                            setCouponInput("");
+                            setAppliedCouponDetails(null);
+                            addToast("Coupon Removed", "Coupon code removed.", "info");
+                          }}
+                          className="btn-secondary"
+                          style={{
+                            height: '42px',
+                            padding: '0 16px',
+                            fontSize: '0.85rem',
+                            borderRadius: '4px',
+                            border: '1px solid #dcdcdc'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {checkoutData.coupon_code && appliedCouponDetails && (
+                      <p style={{ fontSize: '0.8rem', color: '#22c55e', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Check size={14} /> Coupon applied: {checkoutData.coupon_code} ({appliedCouponDetails.discount_percentage}% discount active)
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Step 3: Review Items */}
-              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ background: '#fff', borderRadius: '8px', padding: isExtraSmall ? '16px 12px' : '24px', border: '1px solid #e0e0e0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#2b0b57', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>3</div>
                   <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0, color: '#222', fontFamily: 'var(--font-serif)' }}>Review Items and Delivery</h2>
                 </div>
-                <div style={{ paddingLeft: '48px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ paddingLeft: isExtraSmall ? '0px' : (isMobile ? '24px' : '48px'), display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '16px' }}>
                     <h3 style={{ fontSize: '1.1rem', color: '#388e3c', margin: '0 0 16px 0', fontWeight: 600 }}>Guaranteed Free Delivery</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -6314,7 +8339,7 @@ export default function App() {
                           <img
                             src={activeCustomizationCheckout.product_image || null}
                             alt={activeCustomizationCheckout.product_name}
-                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }}
+                            style={{ width: isExtraSmall ? '64px' : '80px', height: isExtraSmall ? '64px' : '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                             <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>
@@ -6343,7 +8368,7 @@ export default function App() {
                       ) : (
                         cart.map(ci => (
                           <div key={ci.id} style={{ display: 'flex', gap: '16px' }}>
-                            <img src={ci.product.images[0] || null} alt={ci.product.name} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
+                            <img src={ci.product.images[0] || null} alt={ci.product.name} style={{ width: isExtraSmall ? '64px' : '80px', height: isExtraSmall ? '64px' : '80px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #f0f0f0' }} />
                             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                               <div style={{ fontWeight: 700, color: '#222', fontSize: '1rem', marginBottom: '4px' }}>{ci.product.name}</div>
                               <div style={{ color: '#c5a059', fontWeight: 700, fontSize: '1.1rem' }}>₹{ci.product.price.toFixed(2)}</div>
@@ -6361,7 +8386,7 @@ export default function App() {
 
             {/* Right Column: Order Summary (Amazon style sticky box) */}
             <div style={{ position: 'sticky', top: '24px' }}>
-              <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '8px', padding: isExtraSmall ? '16px 12px' : '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <button
                   className="btn-primary"
                   onClick={handlePlaceOrder}
@@ -6373,6 +8398,43 @@ export default function App() {
                 <div style={{ fontSize: '0.8rem', color: '#666', textAlign: 'center', lineHeight: '1.4' }}>
                   By placing your order, you agree to Nobaraa's privacy notice and conditions of use.
                 </div>
+
+                {/* Real-time Estimated Delivery Date (EDD) */}
+                {(loadingDeliveryEstimate || estimatedDeliveryDate) && (
+                  <div style={{
+                    background: '#f8f4fc',
+                    border: '1px solid #e2d7ed',
+                    borderRadius: '6px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginTop: '4px'
+                  }}>
+                    <Truck size={20} style={{ color: '#7a4ea5', flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.85rem', color: '#333', lineHeight: 1.4, textAlign: 'left' }}>
+                      {loadingDeliveryEstimate ? (
+                        <span style={{ color: '#666', fontStyle: 'italic' }}>Calculating estimated delivery...</span>
+                      ) : (
+                        <>
+                          <span style={{ fontWeight: 500, color: '#555' }}>Estimated Delivery: </span>
+                          <span style={{ fontWeight: 700, color: '#7a4ea5' }}>
+                            {(() => {
+                              try {
+                                const d = new Date(estimatedDeliveryDate);
+                                if (isNaN(d.getTime())) return estimatedDeliveryDate;
+                                d.setDate(d.getDate() + 1);
+                                return d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                              } catch (e) {
+                                return estimatedDeliveryDate;
+                              }
+                            })()}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ borderTop: '1px solid #e0e0e0', margin: '0' }}></div>
 
@@ -6391,7 +8453,7 @@ export default function App() {
                   </div>
                   {!activeCustomizationCheckout && checkoutData.use_super_coins && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: '#388e3c' }}>
-                      <span>SuperCoin Discount:</span>
+                      <span>Privilege Pearls Discount:</span>
                       <span>-₹{(cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0) * 0.15).toFixed(2)}</span>
                     </div>
                   )}
@@ -6487,6 +8549,7 @@ export default function App() {
               {activeProduct.bulk_sale_price && activeProduct.min_quantity && (
                 <div className="product-detail-purchase-toggle" style={{ marginTop: '20px', display: 'flex', gap: '0', border: '2px solid rgba(122,78,165,0.25)', borderRadius: '12px', overflow: 'hidden', background: '#f9f5ff' }}>
                   <button
+                    className="product-detail-toggle-btn"
                     onClick={() => setPurchaseMode('single')}
                     style={{
                       flex: 1, padding: '12px 16px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.5px', transition: 'all 0.2s ease',
@@ -6498,8 +8561,9 @@ export default function App() {
                     <ShoppingBag size={16} /> Single Unit
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, opacity: 0.85 }}>₹{activeProduct.price?.toFixed(2)}</span>
                   </button>
-                  <div style={{ width: '1px', background: 'rgba(122,78,165,0.2)' }} />
+                  <div className="product-detail-purchase-toggle-divider" style={{ width: '1px', background: 'rgba(122,78,165,0.2)' }} />
                   <button
+                    className="product-detail-toggle-btn"
                     onClick={() => setPurchaseMode('bulk')}
                     style={{
                       flex: 1, padding: '12px 16px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.5px', transition: 'all 0.2s ease',
@@ -6629,7 +8693,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
                 <div>
                   <h1 className="product-detail-title" style={{ fontSize: '2rem', color: '#2b0b57', fontWeight: 700, margin: '0 0 12px 0', fontFamily: 'var(--font-serif)' }}>{activeProduct.name}</h1>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     {(() => {
                       const reviews = activeProduct.reviews || [];
                       const avgRating = reviews.length > 0
@@ -6661,7 +8725,7 @@ export default function App() {
                 <div style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }}>
                   {purchaseMode === 'bulk' ? 'Bulk / Wholesale Price' : 'Special price'}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
+                <div className="product-detail-price-container" style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
                   <span className="product-detail-price-text" style={{ fontSize: '2.4rem', fontWeight: 700, color: '#222222', lineHeight: 1 }}>
                     ₹{purchaseMode === 'bulk' && activeProduct.bulk_sale_price
                       ? activeProduct.bulk_sale_price.toFixed(2)
@@ -6718,7 +8782,7 @@ export default function App() {
               )}
 
               {/* Specs & Description */}
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', fontSize: '0.95rem', color: '#444', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
+              <div className="product-detail-specs" style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px', fontSize: '0.95rem', color: '#444', borderTop: '1px solid #f0f0f0', paddingTop: '20px' }}>
                 <div style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Description</div>
                 <div style={{ lineHeight: '1.6' }}>{activeProduct.description}</div>
 
@@ -6735,7 +8799,7 @@ export default function App() {
 
               {/* Ratings and Reviews */}
               <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: '24px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div className="product-detail-reviews-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>Ratings & Reviews</h2>
                   {role === 'user' && (
                     <button className="btn-secondary" style={{ padding: '8px 16px', borderRadius: '8px' }} onClick={() => document.getElementById("review-form-flipkart")?.scrollIntoView({ behavior: "smooth" })}>Rate Product</button>
@@ -6796,7 +8860,7 @@ export default function App() {
                             <h4 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', color: '#2b0b57', fontWeight: 800, fontFamily: 'var(--font-serif)' }}>Write a Review</h4>
 
                             {/* Interactive star selector */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                            <div className="product-detail-rating-select-container" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
                               <span style={{ fontSize: '0.95rem', color: '#444', fontWeight: 600 }}>Your Rating:</span>
                               <div style={{ display: 'flex', gap: '8px' }}>
                                 {[1, 2, 3, 4, 5].map(starIndex => (
@@ -7078,24 +9142,48 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Category Description below the Cover Image */}
-                <div style={{
-                  maxWidth: '800px',
-                  margin: '0 auto 30px',
-                  padding: isMobile ? '0 16px' : '0 24px',
-                  textAlign: 'center'
-                }}>
-                  <p style={{
-                    fontSize: isMobile ? '0.9rem' : '1.05rem',
-                    color: '#555555',
-                    lineHeight: '1.6',
-                    fontFamily: "'Jost', sans-serif",
-                    margin: 0,
-                    wordBreak: 'break-word'
-                  }}>
-                    {activeCategoryPage.description || `Indulge in our exquisite collection of premium ${activeCategoryPage.name} sarees. Masterfully hand-draped and woven for your grand festive celebrations.`}
-                  </p>
-                </div>
+                {/* Category Description below the Cover Image (Styled Theme Points - Only Saved, No Hardcoded) */}
+                {activeCategoryPage.show_description && activeCategoryPage.description && (() => {
+                  const points = activeCategoryPage.description.split(/[.]/).map(s => s.trim()).filter(s => s.length > 0);
+                  return (
+                    <div style={{
+                      maxWidth: '650px',
+                      margin: '0 auto 30px',
+                      padding: isMobile ? '0 16px' : '0 24px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}>
+                      {points.map((pt, idx) => (
+                        <div key={idx} style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '12px',
+                          background: 'linear-gradient(135deg, rgba(122, 78, 165, 0.06) 0%, rgba(122, 78, 165, 0.02) 100%)',
+                          border: '1px solid rgba(122, 78, 165, 0.12)',
+                          padding: '10px 16px',
+                          borderRadius: '12px',
+                          boxShadow: '0 2px 8px rgba(122, 78, 165, 0.02)',
+                          textAlign: 'left'
+                        }}>
+                          <Sparkles size={16} color="#7a4ea5" style={{ flexShrink: 0, marginTop: '3px' }} />
+                          <span style={{
+                            fontSize: isMobile ? '0.88rem' : '0.96rem',
+                            color: '#2b0b57',
+                            lineHeight: '1.45',
+                            fontWeight: 500,
+                            fontFamily: "'Jost', sans-serif",
+                            flex: 1,
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere'
+                          }}>
+                            {pt}.
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
                 {/* Dedicated Category Product Catalog Grid */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '16px', padding: isMobile ? '0 12px' : '0' }}>
@@ -7343,7 +9431,6 @@ export default function App() {
                                         )}
                                         <div style={{ position: 'relative', zIndex: 2, color: '#ffffff' }}>
                                           <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.25rem', fontWeight: 800, margin: 0, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>{c.name}</h4>
-                                          {c.description && <p style={{ margin: '4px 0 0 0', fontSize: '0.72rem', opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{c.description}</p>}
                                           <span style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>Shop Collection <ChevronRight size={10} /></span>
                                         </div>
                                       </div>
@@ -7582,20 +9669,6 @@ export default function App() {
                                         }}>
                                           {c.name}
                                         </span>
-                                        {c.show_description && c.description && (
-                                          <p style={{
-                                            fontFamily: "'Jost', sans-serif",
-                                            fontSize: '0.82rem',
-                                            color: '#666666',
-                                            textAlign: 'center',
-                                            marginTop: '6px',
-                                            marginBottom: '0',
-                                            lineHeight: 1.4,
-                                            maxWidth: '260px'
-                                          }}>
-                                            {c.description}
-                                          </p>
-                                        )}
                                         <span style={{
                                           fontFamily: "'Jost', sans-serif",
                                           fontWeight: 800,
@@ -7909,20 +9982,6 @@ export default function App() {
                                   }}>
                                     {c.name}
                                   </span>
-                                  {c.show_description && c.description && (
-                                    <p style={{
-                                      fontFamily: "'Jost', sans-serif",
-                                      fontSize: '0.82rem',
-                                      color: '#666666',
-                                      textAlign: 'center',
-                                      marginTop: '6px',
-                                      marginBottom: '0',
-                                      lineHeight: 1.4,
-                                      maxWidth: '260px'
-                                    }}>
-                                      {c.description}
-                                    </p>
-                                  )}
                                   <span style={{
                                     fontFamily: "'Jost', sans-serif",
                                     fontWeight: 800,
@@ -8108,29 +10167,29 @@ export default function App() {
 
                 {/* Flipkart-style Hero Banner Carousel */}
                 {opacBanners && opacBanners.length > 0 && (
-                  <div className="glass-panel animate-fade-in" style={{ height: '280px', borderRadius: '4px', overflow: 'hidden', position: 'relative', marginTop: '40px', marginBottom: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                  <div className="glass-panel animate-fade-in" style={{ height: isExtraSmall ? '240px' : (isMobile ? '260px' : '280px'), borderRadius: '4px', overflow: 'hidden', position: 'relative', marginTop: isMobile ? '20px' : '40px', marginBottom: '24px', border: '1px solid var(--border-subtle)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                     <img
                       src={opacBanners[currentSlide]?.image}
                       alt=""
                       style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.85)', cursor: 'pointer' }}
                       onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }}
                     />
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px', color: '#ffffff' }}>
-                      <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: '0.75rem', fontWeight: 800, marginBottom: '12px' }}>BOUTIQUE SPECIALS</span>
-                      <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: '2.2rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.title}</h2>
-                      <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem', maxWidth: '500px', marginBottom: '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.subtitle}</p>
-                      <button className="btn-primary" onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }} style={{ width: 'fit-content', padding: '10px 24px' }}>
-                        {opacBanners[currentSlide]?.actionText} <ChevronRight size={18} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: isMobile ? 'rgba(0, 0, 0, 0.55)' : 'linear-gradient(to right, rgba(0, 0, 0, 0.7) 35%, transparent)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isExtraSmall ? '16px' : (isMobile ? '24px' : '40px'), color: '#ffffff' }}>
+                      <span className="badge badge-success" style={{ width: 'fit-content', background: 'var(--accent-primary)', color: '#ffffff', fontSize: isExtraSmall ? '0.65rem' : '0.75rem', fontWeight: 800, marginBottom: isExtraSmall ? '6px' : '12px' }}>BOUTIQUE SPECIALS</span>
+                      <h2 style={{ fontFamily: 'var(--font-serif)', fontWeight: 700, fontSize: isExtraSmall ? '1.25rem' : (isMobile ? '1.6rem' : '2.2rem'), textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', textShadow: '0 2px 4px rgba(0,0,0,0.4)', lineHeight: 1.2 }}>{opacBanners[currentSlide]?.title}</h2>
+                      <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: isExtraSmall ? '0.8rem' : (isMobile ? '0.95rem' : '1.1rem'), maxWidth: '500px', marginBottom: isExtraSmall ? '10px' : '20px', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>{opacBanners[currentSlide]?.subtitle}</p>
+                      <button className="btn-primary" onClick={() => { setCurrentView("customization"); setActiveCategoryPage(null); setSelectedCategory(""); }} style={{ width: 'fit-content', padding: isExtraSmall ? '6px 12px' : '10px 24px', fontSize: isExtraSmall ? '0.75rem' : '0.9rem' }}>
+                        {opacBanners[currentSlide]?.actionText} <ChevronRight size={isExtraSmall ? 14 : 18} />
                       </button>
                     </div>
 
                     {/* Slider Dots */}
-                    <div style={{ position: 'absolute', bottom: '16px', right: '24px', display: 'flex', gap: '8px', zIndex: 10 }}>
+                    <div style={{ position: 'absolute', bottom: isExtraSmall ? '10px' : '16px', right: isExtraSmall ? '12px' : '24px', display: 'flex', gap: '8px', zIndex: 10 }}>
                       {opacBanners.map((_, idx) => (
                         <div
                           key={idx}
                           onClick={() => setCurrentSlide(idx)}
-                          style={{ width: '10px', height: '10px', borderRadius: '50%', background: currentSlide === idx ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', transition: 'background 0.3s' }}
+                          style={{ width: isExtraSmall ? '8px' : '10px', height: isExtraSmall ? '8px' : '10px', borderRadius: '50%', background: currentSlide === idx ? 'var(--accent-primary)' : 'rgba(255, 255, 255, 0.5)', cursor: 'pointer', transition: 'background 0.3s' }}
                         />
                       ))}
                     </div>
@@ -8142,7 +10201,7 @@ export default function App() {
 
 
           {/* FEATURES BAR / WHY CHOOSE NOBARAA */}
-          {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} />}
+          {currentView === 'opac' && !activeCategoryPage && <FeaturesBar isMobile={isMobile} currentShop={currentShop} />}
 
           {/* PREMIUM DEEP LUXURY NOBARAA FOOTER */}
           <footer style={{ background: '#130525', padding: '80px 80px 40px', borderTop: 'none', fontFamily: "'Jost', sans-serif", color: '#e0d1f5', position: 'relative', marginTop: '60px' }}>
@@ -8158,11 +10217,13 @@ export default function App() {
                   <input
                     type="email"
                     placeholder="Enter your email address"
+                    value={subscriberEmail}
+                    onChange={e => setSubscriberEmail(e.target.value)}
                     style={{ width: '100%', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)', borderRadius: '30px', color: '#ffffff', fontSize: '0.85rem', fontFamily: "'Jost', sans-serif", outline: 'none' }}
                   />
                   <button
                     style={{ width: '100%', background: 'linear-gradient(135deg, #7a4ea5 0%, #56337a 100%)', color: '#ffffff', padding: '14px 20px', border: 'none', borderRadius: '30px', fontSize: '0.85rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', cursor: 'pointer', boxShadow: '0 6px 16px rgba(122, 78, 165, 0.25)', transition: 'transform 0.2s' }}
-                    onClick={() => alert("Thank you for subscribing to our boutique newsletter! Your 10% coupon code is: NOBARAA10")}
+                    onClick={handleSubscribeNewsletter}
                     onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                   >
@@ -8213,7 +10274,28 @@ export default function App() {
                       href="#"
                       onClick={e => {
                         e.preventDefault();
-                        if (link === 'About Nobaraa') {
+                        if (link === 'Home') {
+                          setCurrentView("opac");
+                          setActiveProduct(null);
+                          setActiveCategoryPage(null);
+                          setSelectedCategory("");
+                          setSearchQuery("");
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        } else if (link === 'Shop Collections') {
+                          setCurrentView("opac");
+                          setActiveProduct(null);
+                          setActiveCategoryPage(null);
+                          setSelectedCategory("");
+                          setSearchQuery("");
+                          setTimeout(() => {
+                            const el = document.getElementById("catalog-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 100);
+                        } else if (link === 'Store Locator') {
+                          setShowMapModal(true);
+                        } else if (link === 'About Nobaraa') {
                           setShowAboutModal(true);
                         }
                       }}
@@ -8414,7 +10496,7 @@ export default function App() {
                 {currentShop?.super_coin_enabled !== false && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <div style={{ background: '#f5f0fa', color: '#7a4ea5', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid rgba(122, 78, 165, 0.15)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      ✨ {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Coins
+                      <PearlIcon size={12} style={{ marginRight: '4px' }} /> {userDashboardData?.super_coins !== undefined ? userDashboardData.super_coins : 250} Privilege Pearls
                     </div>
                   </div>
                 )}
@@ -8429,8 +10511,13 @@ export default function App() {
               <span className={`sidebar-link ${activePanel === 'orders' ? 'active' : ''}`} onClick={() => setActivePanel("orders")}>
                 <ShoppingBag size={18} /> Order History
               </span>
-              <span className={`sidebar-link ${activePanel === 'notifications' ? 'active' : ''}`} onClick={() => setActivePanel("notifications")}>
+              <span className={`sidebar-link ${activePanel === 'notifications' ? 'active' : ''}`} onClick={() => setActivePanel("notifications")} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Bell size={18} /> Notifications
+                {activeUserNotifications.filter(n => !n.is_read).length > 0 && (
+                  <span style={{ marginLeft: 'auto', background: '#7a4ea5', color: '#fff', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold' }}>
+                    {activeUserNotifications.filter(n => !n.is_read).length}
+                  </span>
+                )}
               </span>
               <span className={`sidebar-link ${activePanel === 'help_center' ? 'active' : ''}`} onClick={() => setActivePanel("help_center")}>
                 <HelpCircle size={18} /> Support Ticket Center
@@ -8917,19 +11004,269 @@ export default function App() {
 
                           {/* Logistics info */}
                           {o.tracking_info && (
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              padding: '12px 16px',
-                              background: 'rgba(154, 132, 200, 0.05)',
-                              borderRadius: '10px',
-                              border: '1px solid rgba(154, 132, 200, 0.15)',
-                              fontSize: '0.8rem',
-                              color: 'var(--accent-primary)'
-                            }}>
-                              <Truck size={16} />
-                              <span>Logistics Tracking: <strong style={{ fontWeight: 700 }}>{o.tracking_info}</strong></span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '10px',
+                                padding: '12px 16px',
+                                background: 'rgba(154, 132, 200, 0.05)',
+                                borderRadius: '10px',
+                                border: '1px solid rgba(154, 132, 200, 0.15)',
+                                fontSize: '0.8rem',
+                                color: 'var(--accent-primary)'
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <Truck size={16} />
+                                  <span>Logistics Tracking: <strong style={{ fontWeight: 700 }}>{o.tracking_info}</strong></span>
+                                </div>
+                                {o.shiprocket_shipment_id && (
+                                  <button
+                                    onClick={() => {
+                                      if (activeTrackingData[o.id]) {
+                                        // Collapse it
+                                        setActiveTrackingData(prev => {
+                                          const copy = { ...prev };
+                                          delete copy[o.id];
+                                          return copy;
+                                        });
+                                      } else {
+                                        loadOrderTracking(o.id);
+                                      }
+                                    }}
+                                    className="btn-secondary"
+                                    style={{
+                                      padding: '4px 10px',
+                                      fontSize: '0.7rem',
+                                      borderRadius: '6px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      height: '28px',
+                                      margin: 0
+                                    }}
+                                    disabled={loadingTrackingIds[o.id]}
+                                  >
+                                    {loadingTrackingIds[o.id] ? (
+                                      <>Loading...</>
+                                    ) : activeTrackingData[o.id] ? (
+                                      <>Hide Tracking</>
+                                    ) : (
+                                      <>Track Live Shipment</>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Live Tracking Information Card */}
+                              {activeTrackingData[o.id] && (() => {
+                                const tr = activeTrackingData[o.id];
+                                const currentStatus = (tr.status || '').toLowerCase();
+
+                                // Determine progress steps:
+                                // Status Codes: 1: Ordered, 2: Shipped, 3: In Transit, 4: Out for Delivery, 5: Delivered
+                                let step = 1;
+                                if (currentStatus.includes('shipped')) step = 2;
+                                else if (currentStatus.includes('transit')) step = 3;
+                                else if (currentStatus.includes('out') || currentStatus.includes('delivery')) step = 4;
+                                else if (currentStatus.includes('delivered') || currentStatus.includes('receive')) step = 5;
+
+                                return (
+                                  <div style={{
+                                    background: 'rgba(255, 255, 255, 0.8)',
+                                    border: '1px solid rgba(154, 132, 200, 0.2)',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '20px',
+                                    boxShadow: '0 4px 12px rgba(122, 78, 165, 0.05)',
+                                    animation: 'slideDown 0.3s ease-out'
+                                  }}>
+                                    {/* Courier name and ETD */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderBottom: '1px solid #f3ecfb', paddingBottom: '12px' }}>
+                                      <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Partner: </span>
+                                        <strong style={{ fontSize: '0.85rem', color: '#2b0b57' }}>{tr.courier_name || 'Shiprocket Partner'}</strong>
+                                      </div>
+                                      {tr.etd && (
+                                        <div>
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Est. Delivery: </span>
+                                          <strong style={{ fontSize: '0.85rem', color: 'var(--accent-success)' }}>
+                                            {new Date(tr.etd).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                          </strong>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Progress line */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', margin: '15px 0' }}>
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: '12px',
+                                        left: '5%',
+                                        right: '5%',
+                                        height: '4px',
+                                        background: '#e9e3f3',
+                                        zIndex: 1
+                                      }} />
+                                      <div style={{
+                                        position: 'absolute',
+                                        top: '12px',
+                                        left: '5%',
+                                        width: `${(Math.min(5, step) - 1) * 22.5}%`,
+                                        height: '4px',
+                                        background: 'linear-gradient(90deg, #7c3aed, #e84e7e)',
+                                        zIndex: 1,
+                                        transition: 'width 0.5s ease-in-out'
+                                      }} />
+
+                                      {/* Steps */}
+                                      {[
+                                        { s: 1, label: 'Ordered' },
+                                        { s: 2, label: 'Shipped' },
+                                        { s: 3, label: 'In Transit' },
+                                        { s: 4, label: 'Out for Delivery' },
+                                        { s: 5, label: 'Delivered' }
+                                      ].map(item => {
+                                        const isCompleted = step >= item.s;
+                                        const isActive = step === item.s;
+                                        return (
+                                          <div key={item.s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '20%', zIndex: 2 }}>
+                                            <div style={{
+                                              width: '24px',
+                                              height: '24px',
+                                              borderRadius: '50%',
+                                              background: isCompleted ? (item.s === 5 ? '#10b981' : '#7c3aed') : '#ffffff',
+                                              border: isCompleted ? 'none' : '2px solid #cbd5e1',
+                                              boxShadow: isActive ? '0 0 0 4px rgba(124, 58, 237, 0.2)' : 'none',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              color: isCompleted ? '#ffffff' : '#94a3b8',
+                                              fontSize: '0.65rem',
+                                              fontWeight: 'bold',
+                                              transition: 'all 0.3s ease'
+                                            }}>
+                                              {isCompleted ? '✓' : item.s}
+                                            </div>
+                                            <span style={{
+                                              fontSize: '0.65rem',
+                                              fontWeight: isActive || isCompleted ? '700' : '500',
+                                              color: isActive ? '#2b0b57' : isCompleted ? '#7c3aed' : '#94a3b8',
+                                              marginTop: '6px',
+                                              textAlign: 'center'
+                                            }}>{item.label}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* Agent Card */}
+                                    {tr.delivery_agent_phone && (
+                                      <div style={{
+                                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(124, 58, 237, 0.04) 100%)',
+                                        border: '1px solid rgba(16, 185, 129, 0.15)',
+                                        borderRadius: '10px',
+                                        padding: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '12px'
+                                      }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                          <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '50%',
+                                            background: '#e0f2fe',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#0284c7'
+                                          }}>
+                                            <User size={20} />
+                                          </div>
+                                          <div>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Delivery Associate Assigned</span>
+                                            <strong style={{ fontSize: '0.85rem', color: '#2b0b57' }}>{tr.delivery_agent_name || 'Courier Agent'}</strong>
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={`tel:${tr.delivery_agent_phone}`}
+                                          style={{
+                                            padding: '6px 14px',
+                                            fontSize: '0.75rem',
+                                            color: '#ffffff',
+                                            background: '#10b981',
+                                            borderRadius: '8px',
+                                            fontWeight: 700,
+                                            textDecoration: 'none',
+                                            boxShadow: '0 4px 10px rgba(16, 185, 129, 0.15)',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                          }}
+                                        >
+                                          📞 Call Agent
+                                        </a>
+                                      </div>
+                                    )}
+
+                                    {/* Tracking scans timeline */}
+                                    <div>
+                                      <h5 style={{ fontSize: '0.75rem', color: '#2b0b57', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700, marginBottom: '10px' }}>Tracking History</h5>
+                                      <div style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '12px',
+                                        maxHeight: '200px',
+                                        overflowY: 'auto',
+                                        paddingRight: '6px'
+                                      }}>
+                                        {tr.scans && tr.scans.length > 0 ? (
+                                          tr.scans.map((scan, idx) => (
+                                            <div key={idx} style={{
+                                              display: 'flex',
+                                              gap: '12px',
+                                              fontSize: '0.75rem',
+                                              borderLeft: '2px solid #e9e3f3',
+                                              paddingLeft: '14px',
+                                              position: 'relative',
+                                              paddingBottom: idx === tr.scans.length - 1 ? 0 : '10px'
+                                            }}>
+                                              {/* Dot */}
+                                              <div style={{
+                                                position: 'absolute',
+                                                left: '-5px',
+                                                top: '4px',
+                                                width: '8px',
+                                                height: '8px',
+                                                borderRadius: '50%',
+                                                background: idx === 0 ? '#e84e7e' : '#cbd5e1',
+                                                border: idx === 0 ? '2px solid #ffffff' : 'none'
+                                              }} />
+                                              <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '4px' }}>
+                                                  <strong style={{ color: idx === 0 ? '#e84e7e' : 'var(--text-main)', fontWeight: idx === 0 ? '700' : '600' }}>{scan.activity}</strong>
+                                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{scan.date}</span>
+                                                </div>
+                                                {scan.location && (
+                                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>📍 {scan.location}</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>No tracking updates available yet.</div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
 
@@ -8987,31 +11324,109 @@ export default function App() {
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h2>
-                    <button
-                      onClick={async () => {
-                        const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
-                        if (res.ok) {
-                          addToast("Marked Read", "All notifications cleared.", "info");
-                          loadUserNotifications();
-                        }
-                      }}
-                      className="btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                    >
-                      Clear Unread Bullets
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={async () => {
+                          const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
+                          if (res.ok) {
+                            addToast("Marked Read", "All notifications marked as read.", "info");
+                            loadUserNotifications();
+                          }
+                        }}
+                        className="btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                      >
+                        Mark All Read
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm("Are you sure you want to clear all notifications? This will clear them from your screen.")) {
+                            try {
+                              const res = await fetch(`${API_BASE}/user/notifications`, { method: 'DELETE', headers: getHeaders() });
+                              if (res.ok) {
+                                const visibleIds = activeUserNotifications.map(n => n.id);
+                                const updatedDeleted = [...deletedNotifications, ...visibleIds];
+                                localStorage.setItem("deletedNotifications", JSON.stringify(updatedDeleted));
+                                setDeletedNotifications(updatedDeleted);
+                                addToast("Cleared", "All notifications cleared.", "info");
+                                loadUserNotifications();
+                              }
+                            } catch (err) {
+                              console.error("Clear notifications failed", err);
+                            }
+                          }
+                        }}
+                        className="btn-danger"
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#ef4444', borderColor: '#ef4444', color: '#fff', borderRadius: '4px' }}
+                      >
+                        Clear All
+                      </button>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    {userNotifications.length > 0 ? (
-                      userNotifications.map(n => (
-                        <div key={n.id} className="glass-panel" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', background: n.is_read ? 'var(--bg-card)' : 'rgba(99,102,241,0.06)' }}>
-                          <Bell style={{ color: n.is_read ? 'var(--text-muted)' : 'var(--accent-primary)' }} />
-                          <div>
-                            <h5 style={{ fontWeight: 800, fontSize: '0.95rem' }}>{n.title}</h5>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{n.message}</p>
+                    {activeUserNotifications.length > 0 ? (
+                      activeUserNotifications.map(n => (
+                        <div
+                          key={n.id}
+                          className="glass-panel hover-card"
+                          onClick={() => handleNotificationClick(n)}
+                          style={{
+                            padding: '16px',
+                            display: 'flex',
+                            gap: '16px',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            background: n.is_read ? 'var(--bg-card)' : 'rgba(122, 78, 165, 0.06)',
+                            borderLeft: n.is_read ? '1px solid var(--border-subtle)' : '4px solid #7a4ea5',
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
+                          }}
+                        >
+                          <Bell style={{ color: n.is_read ? 'var(--text-muted)' : '#7a4ea5' }} size={20} />
+                          <div style={{ flexGrow: 1, minWidth: 0 }}>
+                            <h5 style={{ fontWeight: n.is_read ? 600 : 800, fontSize: '0.95rem', color: n.is_read ? 'var(--text-main)' : '#2b0b57', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                              {n.title}
+                              {!n.is_read && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7a4ea5', display: 'inline-block' }} />}
+                            </h5>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', marginBottom: '4px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              {n.message}
+                            </p>
                             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{new Date(n.created_at).toLocaleString()}</span>
                           </div>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm("Clear this notification?")) {
+                                try {
+                                  const res = await fetch(`${API_BASE}/user/notifications/${n.id}`, { method: 'DELETE', headers: getHeaders() });
+                                  if (res.ok) {
+                                    const updatedDeleted = [...deletedNotifications, n.id];
+                                    localStorage.setItem("deletedNotifications", JSON.stringify(updatedDeleted));
+                                    setDeletedNotifications(updatedDeleted);
+                                    addToast("Cleared", "Notification cleared.", "info");
+                                    loadUserNotifications();
+                                  }
+                                } catch (err) {
+                                  console.error("Clear single notification failed", err);
+                                }
+                              }
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              padding: '8px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginLeft: '8px'
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       ))
                     ) : (
@@ -9686,36 +12101,6 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Logo Image</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {adminShop.logo_url && (
-                        <img src={adminShop.logo_url} alt="Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
-                      )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
-                        onChange={e => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            handleUploadFile(file, (url) => {
-                              setAdminShop(prev => ({ ...prev, logo_url: url }));
-                            });
-                          }
-                        }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Image path URL (automatically filled after upload)"
-                        value={adminShop.logo_url}
-                        onChange={e => setAdminShop(prev => ({ ...prev, logo_url: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="admin-grid-2col">
-                  <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Email</label>
                     <input
                       type="email"
@@ -9723,6 +12108,9 @@ export default function App() {
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_email: e.target.value }))}
                     />
                   </div>
+                </div>
+
+                <div className="admin-grid-2col" style={{ marginTop: '16px' }}>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Contact Phone</label>
                     <input
@@ -9730,6 +12118,66 @@ export default function App() {
                       value={adminShop.contact_phone}
                       onChange={e => setAdminShop(prev => ({ ...prev, contact_phone: e.target.value }))}
                     />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '16px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Branding Assets</h4>
+                  <div className="admin-grid-2col">
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Logo Image</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {adminShop.logo_url && (
+                          <img src={adminShop.logo_url} alt="Logo Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border-subtle)' }} />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                          onChange={e => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              handleUploadFile(file, (url) => {
+                                setAdminShop(prev => ({ ...prev, logo_url: url }));
+                              });
+                            }
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Image path URL (automatically filled after upload)"
+                          value={adminShop.logo_url}
+                          onChange={e => setAdminShop(prev => ({ ...prev, logo_url: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Authorized Signature (Displayed on Invoices)</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {adminShop.signature_url && (
+                          <img src={adminShop.signature_url} alt="Signature Preview" style={{ height: '60px', width: '150px', objectFit: 'contain', borderRadius: '4px', border: '1px solid var(--border-subtle)', background: '#f8fafc' }} />
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ border: 'none', padding: '4px 0', cursor: 'pointer' }}
+                          onChange={e => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              handleUploadFile(file, (url) => {
+                                setAdminShop(prev => ({ ...prev, signature_url: url }));
+                              });
+                            }
+                          }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Signature path URL (automatically filled after upload)"
+                          value={adminShop.signature_url || ""}
+                          onChange={e => setAdminShop(prev => ({ ...prev, signature_url: e.target.value }))}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -9749,6 +12197,16 @@ export default function App() {
                     value={adminShop.address || ""}
                     onChange={e => setAdminShop(prev => ({ ...prev, address: e.target.value }))}
                     rows={3}
+                  />
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Store Locator Link (Google Map Link / Embed Iframe HTML)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter Google Map Share Link or Embed Iframe HTML"
+                    value={adminShop.store_locator_link || ""}
+                    onChange={e => setAdminShop(prev => ({ ...prev, store_locator_link: e.target.value }))}
                   />
                 </div>
 
@@ -9789,6 +12247,27 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {adminShop.super_coin_enabled && (
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '16px' }}>
+                    <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Privilege Pearls Configuration</h4>
+                    <div className="admin-grid-2col">
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Welcome Gift Pearls (Gifted on Sign Up)</label>
+                        <input
+                          type="number"
+                          value={adminShop.welcome_super_coins !== undefined && adminShop.welcome_super_coins !== null ? adminShop.welcome_super_coins : 50}
+                          onChange={e => setAdminShop(prev => ({ ...prev, welcome_super_coins: parseInt(e.target.value) || 0 }))}
+                          required
+                          min="0"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                          Define how many free Privilege Pearls are automatically gifted to a new customer on registration.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '16px' }}>
                   <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Shipping Charges Configuration</h4>
@@ -9913,11 +12392,215 @@ export default function App() {
                 <div className="admin-grid-2col">
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Fast2SMS platform API Key</label>
-                    <input
-                      type="text"
-                      value={adminShop.sms_api_key}
-                      onChange={e => setAdminShop(prev => ({ ...prev, sms_api_key: e.target.value }))}
-                    />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <input
+                        type={showSmsApiKey ? "text" : "password"}
+                        value={adminShop.sms_api_key || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, sms_api_key: e.target.value }))}
+                        style={{ fontFamily: 'monospace', height: '38px', paddingRight: '65px', width: '100%' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSmsApiKey(!showSmsApiKey)}
+                        style={{
+                          position: 'absolute',
+                          right: '35px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0
+                        }}
+                        title={showSmsApiKey ? "Hide Key" : "Show Key"}
+                      >
+                        {showSmsApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adminShop.sms_api_key) {
+                            navigator.clipboard.writeText(adminShop.sms_api_key);
+                            addToast("Copied", "SMS API Key copied to clipboard!", "success");
+                          }
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0
+                        }}
+                        title="Copy Key"
+                      >
+                        <Copy size={18} />
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px', padding: '10px', background: 'rgba(122, 78, 165, 0.05)', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#7a4ea5' }}>SMS Notification Channels</span>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          id="sms_enabled"
+                          checked={!!adminShop.sms_enabled}
+                          onChange={e => setAdminShop(prev => ({ ...prev, sms_enabled: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="sms_enabled" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>
+                          Enable OTP SMS (Login/Signup Verification)
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          id="sms_dispatch_enabled"
+                          checked={!!adminShop.sms_dispatch_enabled}
+                          onChange={e => setAdminShop(prev => ({ ...prev, sms_dispatch_enabled: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="sms_dispatch_enabled" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>
+                          Enable Order Dispatch SMS Notifications
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          id="sms_delivery_enabled"
+                          checked={!!adminShop.sms_delivery_enabled}
+                          onChange={e => setAdminShop(prev => ({ ...prev, sms_delivery_enabled: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="sms_delivery_enabled" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>
+                          Enable Order Delivery SMS Notifications
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="checkbox"
+                          id="sms_campaign_enabled"
+                          checked={!!adminShop.sms_campaign_enabled}
+                          onChange={e => setAdminShop(prev => ({ ...prev, sms_campaign_enabled: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <label htmlFor="sms_campaign_enabled" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', cursor: 'pointer' }}>
+                          Enable Campaign Section SMS Broadcasting
+                        </label>
+                      </div>
+
+                      <div style={{ borderTop: '1px solid rgba(122, 78, 165, 0.15)', paddingTop: '10px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-main)' }}>DLT Registration Details (For India SMS Regulations)</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Sender ID (6-Char Header)</label>
+                            <input
+                              type="text"
+                              maxLength={6}
+                              placeholder="e.g. NOBARA"
+                              value={adminShop.sms_sender_id || ""}
+                              onChange={e => setAdminShop(prev => ({ ...prev, sms_sender_id: e.target.value.toUpperCase() }))}
+                              style={{ padding: '6px', fontSize: '0.8rem' }}
+                            />
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', margin: 0 }}>OTP DLT Template ID</label>
+                              {adminShop.sms_otp_template_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => fetchSmsTemplatePreview('otp', adminShop.sms_otp_template_id)}
+                                  disabled={fetchingSmsTemplates['otp']}
+                                  style={{ background: 'none', border: 'none', color: '#7a4ea5', fontSize: '0.65rem', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                                >
+                                  {fetchingSmsTemplates['otp'] ? 'Syncing...' : 'Sync Content'}
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="DLT Template ID"
+                              value={adminShop.sms_otp_template_id || ""}
+                              onChange={e => setAdminShop(prev => ({ ...prev, sms_otp_template_id: e.target.value }))}
+                              style={{ padding: '6px', fontSize: '0.8rem' }}
+                            />
+                            {smsTemplatePreviews['otp'] && (
+                              <div style={{ marginTop: '4px', padding: '6px', background: 'rgba(122, 78, 165, 0.05)', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-main)', wordBreak: 'break-word' }}>
+                                <strong>Text Preview:</strong> {smsTemplatePreviews['otp']}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', margin: 0 }}>Dispatch DLT Template ID</label>
+                              {adminShop.sms_dispatch_template_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => fetchSmsTemplatePreview('dispatch', adminShop.sms_dispatch_template_id)}
+                                  disabled={fetchingSmsTemplates['dispatch']}
+                                  style={{ background: 'none', border: 'none', color: '#7a4ea5', fontSize: '0.65rem', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                                >
+                                  {fetchingSmsTemplates['dispatch'] ? 'Syncing...' : 'Sync Content'}
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="DLT Template ID"
+                              value={adminShop.sms_dispatch_template_id || ""}
+                              onChange={e => setAdminShop(prev => ({ ...prev, sms_dispatch_template_id: e.target.value }))}
+                              style={{ padding: '6px', fontSize: '0.8rem' }}
+                            />
+                            {smsTemplatePreviews['dispatch'] && (
+                              <div style={{ marginTop: '4px', padding: '6px', background: 'rgba(122, 78, 165, 0.05)', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-main)', wordBreak: 'break-word' }}>
+                                <strong>Text Preview:</strong> {smsTemplatePreviews['dispatch']}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                              <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', margin: 0 }}>Delivery DLT Template ID</label>
+                              {adminShop.sms_delivery_template_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => fetchSmsTemplatePreview('delivery', adminShop.sms_delivery_template_id)}
+                                  disabled={fetchingSmsTemplates['delivery']}
+                                  style={{ background: 'none', border: 'none', color: '#7a4ea5', fontSize: '0.65rem', padding: 0, cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                                >
+                                  {fetchingSmsTemplates['delivery'] ? 'Syncing...' : 'Sync Content'}
+                                </button>
+                              )}
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="DLT Template ID"
+                              value={adminShop.sms_delivery_template_id || ""}
+                              onChange={e => setAdminShop(prev => ({ ...prev, sms_delivery_template_id: e.target.value }))}
+                              style={{ padding: '6px', fontSize: '0.8rem' }}
+                            />
+                            {smsTemplatePreviews['delivery'] && (
+                              <div style={{ marginTop: '4px', padding: '6px', background: 'rgba(122, 78, 165, 0.05)', border: '1px solid rgba(122, 78, 165, 0.15)', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--text-main)', wordBreak: 'break-word' }}>
+                                <strong>Text Preview:</strong> {smsTemplatePreviews['delivery']}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          Note: If Sender ID and Template IDs are provided, the system will automatically use the DLT SMS route. Otherwise, it falls back to the Quick SMS route.
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>WhatsApp Campaign API Secret</label>
@@ -9966,28 +12649,103 @@ export default function App() {
                 </div>
 
                 <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '20px' }}>
-                  <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Desktop POS Billing App Integration</h4>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
-                    <div style={{ flex: 1 }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Billing API Key</label>
+                  <h4 style={{ fontWeight: 800, marginBottom: '6px', color: '#7a4ea5' }}>Shiprocket Courier Integration</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                    Configure your Shiprocket API credentials to register shipments, assign AWBs, and print labels.
+                  </p>
+                  <div className="admin-grid-2col">
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shiprocket Email / Username</label>
                       <input
                         type="text"
-                        placeholder="Generate an API key for your desktop app..."
-                        value={adminShop.billing_api_key || ""}
-                        onChange={e => setAdminShop(prev => ({ ...prev, billing_api_key: e.target.value }))}
-                        style={{ fontFamily: 'monospace', height: '38px' }}
+                        placeholder="e.g. store@email.com"
+                        value={adminShop.shiprocket_email || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, shiprocket_email: e.target.value }))}
                       />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shiprocket Password</label>
+                      <input
+                        type="password"
+                        placeholder="Shiprocket Password..."
+                        value={adminShop.shiprocket_password || ""}
+                        onChange={e => setAdminShop(prev => ({ ...prev, shiprocket_password: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '12px' }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Shiprocket Pickup Location Name</label>
+                    <input
+                      type="text"
+                      placeholder="Primary"
+                      value={adminShop.shiprocket_pickup_location || ""}
+                      onChange={e => setAdminShop(prev => ({ ...prev, shiprocket_pickup_location: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '20px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px' }}>Desktop POS Billing App Integration</h4>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Billing API Key</label>
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type={showBillingApiKey ? "text" : "password"}
+                          placeholder="Generate an API key for your desktop app..."
+                          value={adminShop.billing_api_key || ""}
+                          onChange={e => setAdminShop(prev => ({ ...prev, billing_api_key: e.target.value }))}
+                          style={{ fontFamily: 'monospace', height: '38px', paddingRight: '65px', width: '100%' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowBillingApiKey(!showBillingApiKey)}
+                          style={{
+                            position: 'absolute',
+                            right: '35px',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text-muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0
+                          }}
+                          title={showBillingApiKey ? "Hide Key" : "Show Key"}
+                        >
+                          {showBillingApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (adminShop.billing_api_key) {
+                              navigator.clipboard.writeText(adminShop.billing_api_key);
+                              addToast("Copied", "API Key copied to clipboard!", "success");
+                            }
+                          }}
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--text-muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0
+                          }}
+                          title="Copy Key"
+                        >
+                          <Copy size={18} />
+                        </button>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => {
-                        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                        let randStr = '';
-                        for (let i = 0; i < 24; i++) {
-                          randStr += chars.charAt(Math.floor(Math.random() * chars.length));
-                        }
-                        const newKey = 'BILLING_' + randStr;
-                        setAdminShop(prev => ({ ...prev, billing_api_key: newKey }));
+                        setShowBillingRegenConfirm(true);
                       }}
                       className="btn-secondary"
                       style={{ height: '38px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', whiteSpace: 'nowrap', border: '1px solid #7a4ea5', color: '#7a4ea5' }}
@@ -10204,7 +12962,7 @@ export default function App() {
                         id: 3,
                         image: "https://images.unsplash.com/photo-1608748010899-18f300247112?w=1200&auto=format&fit=crop&q=80",
                         title: "NOBARAA PRIVILEGE FEST",
-                        subtitle: "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
+                        subtitle: "Earn Privilege Pearls & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
                         actionText: "View Wallet"
                       }
                     ]).map((banner, index, arr) => (
@@ -10388,7 +13146,7 @@ export default function App() {
                           id: 3,
                           image: "https://images.unsplash.com/photo-1608748010899-18f300247112?w=1200&auto=format&fit=crop&q=80",
                           title: "NOBARAA PRIVILEGE FEST",
-                          subtitle: "Earn SuperCoins & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
+                          subtitle: "Earn Privilege Pearls & Redeem Up to 30% Extra Savings on Every Elegant Drape.",
                           actionText: "View Wallet"
                         }
                       ];
@@ -10728,7 +13486,7 @@ export default function App() {
                       onChange={e => setCategoryForm(prev => ({ ...prev, show_description: e.target.checked }))}
                     />
                     <label htmlFor="show_description" style={{ fontSize: '0.82rem', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 500 }}>
-                      Show Category Description on Home Screen
+                      Show Category Description inside Category Page
                     </label>
                   </div>
                   <button type="submit" className="btn-primary" style={{ justifyContent: 'center' }}>
@@ -10792,7 +13550,7 @@ export default function App() {
                                   borderRadius: '10px',
                                   fontWeight: 600
                                 }}>
-                                  On Home Screen
+                                  Description Active
                                 </span>
                               )}
                             </div>
@@ -10998,10 +13756,10 @@ export default function App() {
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
 
                 {/* Add product form */}
-                <form onSubmit={handleSaveProduct} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleSaveProduct} className="glass-panel admin-config-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <h3 style={{ fontWeight: 800 }}>{productForm.id ? "Edit Product Catalog Item" : "Publish New Product"}</h3>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                  <div className="admin-grid-2-1col" style={{ display: 'grid', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Product Title Name</label>
                       <input
@@ -11034,7 +13792,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+                  <div className="admin-grid-autofit" style={{ display: 'grid', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Sale Price (₹)</label>
                       <input
@@ -11074,7 +13832,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="admin-grid-2col" style={{ display: 'grid', gap: '16px' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Promo Code (Specific discount)</label>
                       <input
@@ -11096,7 +13854,7 @@ export default function App() {
                   </div>
 
                   {/* Billing POS Integration Codes */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
+                  <div className="admin-grid-4col" style={{ display: 'grid', gap: '16px', background: 'rgba(122,78,165,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(122,78,165,0.1)' }}>
                     <div>
                       <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>SKU Code (POS Inventory)</label>
                       <input
@@ -11144,7 +13902,7 @@ export default function App() {
                       <h4 style={{ fontWeight: 800, fontSize: '0.95rem', color: '#2b0b57', margin: 0 }}>Bulk / Wholesale Pricing</h4>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>(Optional — leave blank to disable bulk mode)</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="admin-grid-2col" style={{ display: 'grid', gap: '16px' }}>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Bulk Sale Price (₹)</label>
                         <input
@@ -11254,7 +14012,7 @@ export default function App() {
                       </div>
 
                       {/* Add New Color Form */}
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <div className="admin-form-color-row" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                         <div style={{ flex: 2 }}>
                           <input
                             type="text"
@@ -12055,6 +14813,26 @@ export default function App() {
                                             <Truck size={12} />
                                             {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
                                           </button>
+                                          <button
+                                            onClick={() => handleBookShiprocketShipping(o.id, 0.5)}
+                                            className="btn-primary"
+                                            disabled={bookingShippingId === o.id}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '0.75rem',
+                                              background: '#2b0b57',
+                                              borderColor: '#2b0b57',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              gap: '6px',
+                                              width: '100%',
+                                              maxWidth: '160px'
+                                            }}
+                                          >
+                                            <Truck size={12} />
+                                            {bookingShippingId === o.id ? 'Booking...' : 'Book Shiprocket'}
+                                          </button>
                                         </div>
                                       )}
                                     </>
@@ -12093,6 +14871,26 @@ export default function App() {
                                       >
                                         <Truck size={12} />
                                         {bookingShippingId === o.id ? 'Booking...' : 'Book DTDC'}
+                                      </button>
+                                      <button
+                                        onClick={() => handleBookShiprocketShipping(o.id, 0.5)}
+                                        className="btn-primary"
+                                        disabled={bookingShippingId === o.id}
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '0.75rem',
+                                          background: '#2b0b57',
+                                          borderColor: '#2b0b57',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '6px',
+                                          width: '100%',
+                                          maxWidth: '160px'
+                                        }}
+                                      >
+                                        <Truck size={12} />
+                                        {bookingShippingId === o.id ? 'Booking...' : 'Book Shiprocket'}
                                       </button>
                                     </div>
                                   )}
@@ -12326,6 +15124,211 @@ export default function App() {
                   </div>
                 )}
 
+                {/* Shiprocket Courier Selector Modal */}
+                {shiprocketSelectorOrder && (
+                  <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(8px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1100,
+                    padding: '20px'
+                  }}>
+                    <div className="glass-panel animate-fade-in" style={{
+                      width: '100%',
+                      maxWidth: '650px',
+                      maxHeight: '90vh',
+                      overflowY: 'auto',
+                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                      color: '#2b0b57',
+                      padding: '28px',
+                      position: 'relative',
+                      boxShadow: '0 20px 50px rgba(43, 11, 87, 0.3)',
+                      border: '1px solid rgba(43, 11, 87, 0.2)',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '20px'
+                    }}>
+                      <style>{`
+                        @keyframes custom-spin {
+                          from { transform: rotate(0deg); }
+                          to { transform: rotate(360deg); }
+                        }
+                      `}</style>
+                      <button
+                        onClick={() => setShiprocketSelectorOrder(null)}
+                        style={{
+                          position: 'absolute',
+                          top: '20px',
+                          right: '20px',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '20px',
+                          cursor: 'pointer',
+                          color: '#2b0b57',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        &times;
+                      </button>
+
+                      <h3 style={{
+                        margin: 0,
+                        color: '#2b0b57',
+                        fontWeight: '700',
+                        fontSize: '1.25rem',
+                        borderBottom: '2px solid rgba(43, 11, 87, 0.1)',
+                        paddingBottom: '12px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>Select Shipping Courier (Shiprocket)</span>
+                        {shiprocketWalletBalance !== null && (
+                          <span style={{
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            background: 'rgba(43, 11, 87, 0.08)',
+                            color: '#2b0b57',
+                            padding: '4px 12px',
+                            borderRadius: '20px'
+                          }}>
+                            Wallet Balance: ₹{shiprocketWalletBalance.toFixed(2)}
+                          </span>
+                        )}
+                      </h3>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.875rem', backgroundColor: 'rgba(43, 11, 87, 0.03)', padding: '16px', borderRadius: '8px' }}>
+                        <div style={{ flex: '1 1 200px' }}>
+                          <strong>Order ID:</strong> #{shiprocketSelectorOrder.id} ({shiprocketSelectorOrder.online_order_number || 'N/A'})
+                        </div>
+                        <div style={{ flex: '1 1 200px' }}>
+                          <strong>Customer:</strong> {shiprocketSelectorOrder.customer?.name || shiprocketSelectorOrder.user_name || 'Customer'}
+                        </div>
+                        <div style={{ flex: '1 1 100%' }}>
+                          <strong>Shipping Address:</strong> {shiprocketSelectorOrder.shipping_address}
+                        </div>
+                        <div style={{ flex: '1 1 200px' }}>
+                          <strong>Value:</strong> ₹{shiprocketSelectorOrder.final_amount}
+                        </div>
+                        <div style={{ flex: '1 1 200px' }}>
+                          <strong>Payment:</strong> {shiprocketSelectorOrder.payment_method}
+                        </div>
+                      </div>
+
+                      {/* Weight Config */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <label style={{ fontSize: '0.875rem', fontWeight: '600' }}>Package Weight (kg):</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          value={shiprocketWeight}
+                          onChange={(e) => setShiprocketWeight(parseFloat(e.target.value) || 0.5)}
+                          style={{
+                            width: '100px',
+                            padding: '8px',
+                            borderRadius: '6px',
+                            border: '1px solid #ccc',
+                            fontSize: '0.875rem',
+                            backgroundColor: '#fff',
+                            color: '#2b0b57'
+                          }}
+                        />
+                        <button
+                          onClick={() => fetchShiprocketCourierRates(shiprocketSelectorOrder.id, shiprocketWeight)}
+                          className="btn-primary"
+                          disabled={fetchingShiprocketRates}
+                          style={{
+                            padding: '8px 16px',
+                            fontSize: '0.875rem',
+                            background: '#2b0b57',
+                            borderColor: '#2b0b57',
+                          }}
+                        >
+                          {fetchingShiprocketRates ? 'Fetching...' : 'Fetch Rates'}
+                        </button>
+                      </div>
+
+                      {/* Loading / Error / Data */}
+                      {fetchingShiprocketRates && (
+                        <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                          <div style={{ width: '2rem', height: '2rem', border: '3px solid #2b0b57', borderRightColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'custom-spin 1s linear infinite' }}></div>
+                          <p style={{ marginTop: '12px', fontSize: '0.875rem', margin: 0 }}>Fetching delivery partner rates...</p>
+                        </div>
+                      )}
+
+                      {shiprocketRatesError && (
+                        <div style={{ padding: '12px 16px', backgroundColor: '#fbebeb', color: '#c0392b', borderRadius: '8px', fontSize: '0.875rem', border: '1px solid #f5c2c2' }}>
+                          <strong>Error:</strong> {shiprocketRatesError}
+                        </div>
+                      )}
+
+                      {!fetchingShiprocketRates && !shiprocketRatesError && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '2px solid rgba(43, 11, 87, 0.1)', textAlign: 'left' }}>
+                                  <th style={{ padding: '10px' }}>Courier Partner</th>
+                                  <th style={{ padding: '10px' }}>Est. Delivery</th>
+                                  <th style={{ padding: '10px' }}>Rate</th>
+                                  <th style={{ padding: '10px', textAlign: 'right' }}>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {shiprocketCouriers.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#777' }}>
+                                      No courier partners available. Try adjusting weight or checking address.
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  shiprocketCouriers.map((c) => (
+                                    <tr key={c.courier_company_id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                      <td style={{ padding: '12px 10px', fontWeight: '600' }}>
+                                        {c.courier_name}
+                                      </td>
+                                      <td style={{ padding: '12px 10px' }}>
+                                        {c.etd || 'N/A'}
+                                      </td>
+                                      <td style={{ padding: '12px 10px', fontWeight: '700', color: '#2b0b57' }}>
+                                        ₹{parseFloat(c.rate || 0).toFixed(2)}
+                                      </td>
+                                      <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                                        <button
+                                          onClick={() => handleBookShiprocketShipping(shiprocketSelectorOrder.id, shiprocketWeight, c.courier_company_id)}
+                                          className="btn-primary"
+                                          disabled={bookingShippingId === shiprocketSelectorOrder.id}
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '0.75rem',
+                                            background: '#2b0b57',
+                                            borderColor: '#2b0b57'
+                                          }}
+                                        >
+                                          Book Now
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 
@@ -12499,7 +15502,7 @@ export default function App() {
                           <th>Name</th>
                           <th>Email</th>
                           <th>Contact Phone</th>
-                          <th>SuperCoins Balance</th>
+                          <th>Privilege Pearls Balance</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -12510,7 +15513,9 @@ export default function App() {
                             <td style={{ fontWeight: 'bold' }}>{item.name || item.username}</td>
                             <td>{item.email}</td>
                             <td>{item.contact_phone || 'N/A'}</td>
-                            <td style={{ color: '#d4af37', fontWeight: 'bold' }}>{item.super_coins}</td>
+                            <td style={{ color: '#7a4ea5', fontWeight: 'bold' }}>
+                              <PearlIcon size={14} /> {item.super_coins} Pearls
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -12699,7 +15704,7 @@ export default function App() {
                   headers = ["Order ID", "Date", "Customer Name", "Items", "Final Amount", "Status", "Payment Method"];
                 } else if (tab === 'new_users') {
                   dataList = reports.new_users || [];
-                  headers = ["User ID", "Registration Date", "Name", "Email", "Phone", "SuperCoins Balance"];
+                  headers = ["User ID", "Registration Date", "Name", "Email", "Phone", "Privilege Pearls Balance"];
                 } else if (tab === 'online') {
                   dataList = reports.online_payments || [];
                   headers = ["Order ID", "Date", "Customer Name", "Razorpay Payment ID", "Final Amount", "Status"];
@@ -13527,6 +16532,36 @@ export default function App() {
                     />
                   </div>
 
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Expiry Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        value={couponForm.expires_at || ""}
+                        onChange={e => setCouponForm(prev => ({ ...prev, expires_at: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Total Usage Limit</label>
+                      <input
+                        type="number"
+                        placeholder="Unlimited"
+                        value={couponForm.usage_limit || ""}
+                        onChange={e => setCouponForm(prev => ({ ...prev, usage_limit: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Limit Per Account / User</label>
+                    <input
+                      type="number"
+                      placeholder="Unlimited (e.g. 1 for one-time use per user)"
+                      value={couponForm.usage_limit_per_user || ""}
+                      onChange={e => setCouponForm(prev => ({ ...prev, usage_limit_per_user: e.target.value }))}
+                    />
+                  </div>
+
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="checkbox"
@@ -13553,6 +16588,9 @@ export default function App() {
                           <th>Value (%)</th>
                           <th>Min Spend</th>
                           <th>Max Cap</th>
+                          <th>Expiry</th>
+                          <th>Usages</th>
+                          <th>Limit Per User</th>
                           <th>State</th>
                           <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
@@ -13564,10 +16602,13 @@ export default function App() {
                             <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>{cp.discount_percentage}%</td>
                             <td>₹{cp.min_purchase}</td>
                             <td>₹{cp.max_discount}</td>
+                            <td style={{ fontSize: '0.85rem' }}>{cp.expires_at ? new Date(cp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : "No Expiry"}</td>
+                            <td>{cp.used_count} / {cp.usage_limit || "∞"}</td>
+                            <td>{cp.usage_limit_per_user || "∞"}</td>
                             <td>{cp.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-danger">Disabled</span>}</td>
                             <td style={{ textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setCouponForm(cp)} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
+                                <button onClick={() => setCouponForm({ ...cp, expires_at: cp.expires_at ? cp.expires_at.substring(0, 16) : "", usage_limit: cp.usage_limit ?? "", usage_limit_per_user: cp.usage_limit_per_user ?? "" })} className="btn-secondary" style={{ padding: '6px' }}><Edit2 size={12} /></button>
                                 <button onClick={() => handleDeleteCoupon(cp.id)} className="btn-danger" style={{ padding: '6px' }}><Trash2 size={12} /></button>
                               </div>
                             </td>
@@ -13647,6 +16688,7 @@ export default function App() {
                       >
                         <option value="SMS">Fast2SMS (SMS)</option>
                         <option value="WhatsApp">WhatsApp Business</option>
+                        <option value="FCM">Firebase Push Notification (FCM)</option>
                       </select>
                     </div>
                     <div>
@@ -13661,6 +16703,20 @@ export default function App() {
                       </select>
                     </div>
                   </div>
+
+                  {messagingForm.platform === 'FCM' && (
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Notification Title</label>
+                      <input
+                        type="text"
+                        placeholder="Enter notification title..."
+                        value={messagingForm.title || ""}
+                        onChange={e => setMessagingForm(prev => ({ ...prev, title: e.target.value }))}
+                        required
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', outline: 'none' }}
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Message Text</label>
@@ -13950,42 +17006,69 @@ export default function App() {
             )}
 
             {/* Customers list panel */}
-            {activePanel === 'customers' && (
-              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Customer Base Manager</h2>
-                <div className="responsive-table-container glass-panel">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Display Name</th>
-                        <th>Username ID</th>
-                        <th>Email Contact</th>
-                        <th>Phone</th>
-                        <th>Orders Count</th>
-                        <th>Total Purchase spend</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {adminCustomers.map(cust => (
-                        <tr key={cust.id}>
-                          <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{cust.name}</td>
-                          <td>{cust.username}</td>
-                          <td>{cust.email}</td>
-                          <td>{cust.contact_phone || "none"}</td>
-                          <td style={{ fontWeight: 'bold' }}>{cust.total_orders} sales</td>
-                          <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>₹{cust.total_spent.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                      {adminCustomers.length === 0 && (
+            {activePanel === 'customers' && (() => {
+              const showPearls = adminShop && adminShop.super_coin_enabled;
+              return (
+                <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Customer Base Manager</h2>
+                  <div className="responsive-table-container glass-panel">
+                    <table>
+                      <thead>
                         <tr>
-                          <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No buyers recorded in this shop database yet.</td>
+                          <th>Display Name</th>
+                          <th>Username ID</th>
+                          <th>Email Contact</th>
+                          <th>Phone</th>
+                          <th>Orders Count</th>
+                          <th>Total Purchase spend</th>
+                          {showPearls && <th>Privilege Pearls Balance</th>}
+                          {showPearls && <th style={{ textAlign: 'center' }}>Actions</th>}
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {adminCustomers.map(cust => (
+                          <tr key={cust.id}>
+                            <td style={{ fontWeight: 'bold', color: 'var(--text-main)' }}>{cust.name}</td>
+                            <td>{cust.username}</td>
+                            <td>{cust.email}</td>
+                            <td>{cust.contact_phone || "none"}</td>
+                            <td style={{ fontWeight: 'bold' }}>{cust.total_orders} sales</td>
+                            <td style={{ fontWeight: 'bold', color: 'var(--accent-secondary)' }}>₹{cust.total_spent.toFixed(2)}</td>
+                            {showPearls && (
+                              <td style={{ color: '#7a4ea5', fontWeight: 'bold' }}>
+                                <PearlIcon size={14} /> {cust.super_coins || 0} Pearls
+                              </td>
+                            )}
+                            {showPearls && (
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="btn-primary"
+                                  style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                  onClick={() => {
+                                    setSelectedCustomerForPearls(cust);
+                                    setPearlsGrantAmount("");
+                                    setPearlsGrantReason("");
+                                    setShowGrantPearlsModal(true);
+                                  }}
+                                >
+                                  <Gift size={12} /> Grant Pearls
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                        {adminCustomers.length === 0 && (
+                          <tr>
+                            <td colSpan={showPearls ? 8 : 6} style={{ textAlign: 'center', padding: '24px' }}>No buyers recorded in this shop database yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {activePanel === 'customizations' && (
               <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -14164,7 +17247,7 @@ export default function App() {
                           value={(adminShop && adminShop.customization_min_quantity) || 1}
                           onChange={e => {
                             const val = Math.max(1, parseInt(e.target.value) || 1);
-                            setAdminShop(prev => ({ ...prev, customization_min_quantity: val }));
+                            setAdminShop(prev => prev ? { ...prev, customization_min_quantity: val } : prev);
                           }}
                           style={{
                             flex: 1,
@@ -14178,6 +17261,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (!adminShop) return;
                             try {
                               const res = await fetch(`${API_BASE}/admin/shop`, {
                                 method: 'PUT',
@@ -14221,7 +17305,7 @@ export default function App() {
                           value={(adminShop && adminShop.return_window_days !== undefined && adminShop.return_window_days !== null) ? adminShop.return_window_days : 7}
                           onChange={e => {
                             const val = Math.max(0, parseInt(e.target.value) || 0);
-                            setAdminShop(prev => ({ ...prev, return_window_days: val }));
+                            setAdminShop(prev => prev ? { ...prev, return_window_days: val } : prev);
                           }}
                           style={{
                             flex: 1,
@@ -14235,6 +17319,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (!adminShop) return;
                             try {
                               const res = await fetch(`${API_BASE}/admin/shop`, {
                                 method: 'PUT',
@@ -14272,7 +17357,7 @@ export default function App() {
 
                       {/* List of current colors */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                        {(adminShop.color_palette || []).map((color, idx) => (
+                        {(adminShop?.color_palette || []).map((color, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#fcfaff', borderRadius: '8px', border: '1px solid #f0e6fc' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ display: 'inline-block', width: '16px', height: '16px', borderRadius: '50%', background: color.hex, border: '1px solid #ddd' }} />
@@ -14282,8 +17367,9 @@ export default function App() {
                             <button
                               type="button"
                               onClick={() => {
+                                if (!adminShop) return;
                                 const updatedPalette = (adminShop.color_palette || []).filter((_, i) => i !== idx);
-                                setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                                setAdminShop(prev => prev ? { ...prev, color_palette: updatedPalette } : prev);
                               }}
                               style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', padding: 0 }}
                             >
@@ -14291,7 +17377,7 @@ export default function App() {
                             </button>
                           </div>
                         ))}
-                        {(adminShop.color_palette || []).length === 0 && (
+                        {(adminShop?.color_palette || []).length === 0 && (
                           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>No colors added yet.</p>
                         )}
                       </div>
@@ -14329,6 +17415,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => {
+                            if (!adminShop) return;
                             const nameInput = document.getElementById("new-color-name");
                             const hexInput = document.getElementById("new-color-hex");
                             if (!nameInput || !nameInput.value.trim()) {
@@ -14344,7 +17431,7 @@ export default function App() {
                               hex: hexInput.value.trim()
                             };
                             const updatedPalette = [...(adminShop.color_palette || []), newColor];
-                            setAdminShop(prev => ({ ...prev, color_palette: updatedPalette }));
+                            setAdminShop(prev => prev ? { ...prev, color_palette: updatedPalette } : prev);
                             nameInput.value = "";
                           }}
                           className="btn-secondary"
@@ -14357,6 +17444,7 @@ export default function App() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (!adminShop) return;
                             try {
                               const res = await fetch(`${API_BASE}/admin/shop`, {
                                 method: 'PUT',
@@ -14657,7 +17745,7 @@ export default function App() {
               </div>
             </div>
 
-            <span className={`sidebar-link ${activePanel === 'shop_creation' ? 'active' : ''}`} onClick={() => { setActivePanel("shop_creation"); setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, gst_percentage: 18.0, gst_inclusive: false }); }}>
+            <span className={`sidebar-link ${activePanel === 'shop_creation' ? 'active' : ''}`} onClick={() => { setActivePanel("shop_creation"); setShopForm({ id: null, name: "", logo_url: "", contact_email: "", contact_phone: "", privacy_policy: "", address: "", sms_api_key: "", whatsapp_api_key: "", razorpay_key_id: "", razorpay_key_secret: "", super_coin_enabled: true, super_coin_ratio: 10, welcome_super_coins: 50, signature_url: "", store_locator_link: "", gst_percentage: 18.0, gst_inclusive: false, sms_enabled: false, sms_dispatch_enabled: false, sms_delivery_enabled: false, sms_campaign_enabled: false, sms_sender_id: "", sms_otp_template_id: "", sms_dispatch_template_id: "", sms_delivery_template_id: "" }); }}>
               <Plus size={18} /> Shop Provisioning
             </span>
             <span className={`sidebar-link ${activePanel === 'admin_creation' ? 'active' : ''}`} onClick={() => setActivePanel("admin_creation")}>
@@ -14763,6 +17851,16 @@ export default function App() {
                     />
                   </div>
 
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Store Locator Link (Google Map Link / Embed HTML)</label>
+                    <input
+                      type="text"
+                      placeholder="Enter Google Map Share Link or Embed HTML"
+                      value={shopForm.store_locator_link || ""}
+                      onChange={e => setShopForm(prev => ({ ...prev, store_locator_link: e.target.value }))}
+                    />
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                       <input
@@ -14771,10 +17869,90 @@ export default function App() {
                         checked={shopForm.super_coin_enabled}
                         onChange={e => setShopForm(prev => ({ ...prev, super_coin_enabled: e.target.checked }))}
                       />
-                      <span style={{ fontSize: '0.75rem' }}>Enable Super Coins</span>
+                      <span style={{ fontSize: '0.75rem' }}>Enable Privilege Pearls</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px' }}
+                        checked={shopForm.sms_enabled}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_enabled: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Enable OTP SMS</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px' }}
+                        checked={shopForm.sms_dispatch_enabled}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_dispatch_enabled: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Enable Dispatch SMS</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px' }}
+                        checked={shopForm.sms_delivery_enabled}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_delivery_enabled: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Enable Delivery SMS</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: '18px', height: '18px' }}
+                        checked={shopForm.sms_campaign_enabled}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_campaign_enabled: e.target.checked }))}
+                      />
+                      <span style={{ fontSize: '0.75rem' }}>Enable Campaign SMS</span>
+                    </div>
+                  </div>
+
+                  {/* SMS configuration details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Sender ID / Header</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={shopForm.sms_sender_id || ""}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_sender_id: e.target.value.toUpperCase() }))}
+                      />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Ratio spent per coin (₹)</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>OTP DLT Template ID</label>
+                      <input
+                        type="text"
+                        value={shopForm.sms_otp_template_id || ""}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_otp_template_id: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Dispatch DLT Template ID</label>
+                      <input
+                        type="text"
+                        value={shopForm.sms_dispatch_template_id || ""}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_dispatch_template_id: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Delivery DLT Template ID</label>
+                      <input
+                        type="text"
+                        value={shopForm.sms_delivery_template_id || ""}
+                        onChange={e => setShopForm(prev => ({ ...prev, sms_delivery_template_id: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  {/* SuperCoins & GST fields */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', borderTop: '1px dashed var(--border-subtle)', paddingTop: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Ratio spent per Privilege Pearl (₹)</label>
                       <input
                         type="number"
                         value={shopForm.super_coin_ratio}
@@ -14782,7 +17960,15 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>GST Percentage (%)</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Welcome Gift Pearls</label>
+                      <input
+                        type="number"
+                        value={shopForm.welcome_super_coins !== undefined && shopForm.welcome_super_coins !== null ? shopForm.welcome_super_coins : 50}
+                        onChange={e => setShopForm(prev => ({ ...prev, welcome_super_coins: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>GST Percentage (%)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -14793,7 +17979,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>GST Tax Type</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>GST Tax Type</label>
                       <select
                         value={shopForm.gst_inclusive ? 'inclusive' : 'exclusive'}
                         onChange={e => setShopForm(prev => ({ ...prev, gst_inclusive: e.target.value === 'inclusive' }))}
@@ -14819,8 +18005,8 @@ export default function App() {
                         <div style={{ flexGrow: 1 }}>
                           <h4 style={{ fontWeight: 800 }}>{s.name}</h4>
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Email: {s.contact_email} | Phone: {s.contact_phone}</p>
-                          <span className={`badge ${s.super_coin_enabled ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '6px', fontSize: '0.65rem' }}>
-                            Coins: {s.super_coin_enabled ? `Ratio ₹${s.super_coin_ratio}` : "Disabled"}
+                          <span className={`badge ${s.super_coin_enabled ? 'badge-success' : 'badge-danger'}`} style={{ marginTop: '6px', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <PearlIcon size={10} style={{ marginRight: 0 }} /> Privilege Pearls: {s.super_coin_enabled ? `Ratio ₹${s.super_coin_ratio}` : "Disabled"}
                           </span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
@@ -15146,7 +18332,7 @@ export default function App() {
                         <th>Display Name</th>
                         <th>Email Address</th>
                         <th>Contact Phone</th>
-                        <th>Super Coins</th>
+                        <th>Privilege Pearls</th>
                         <th>Date Registered</th>
                         <th style={{ textAlign: 'center' }}>Actions</th>
                       </tr>
@@ -15175,8 +18361,8 @@ export default function App() {
                             <td>{c.email}</td>
                             <td>{c.contact_phone || <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>N/A</span>}</td>
                             <td>
-                              <span className="badge badge-success" style={{ fontWeight: 'bold' }}>
-                                {c.super_coins} Coins
+                              <span className="badge" style={{ fontWeight: 'bold', background: 'rgba(122, 78, 165, 0.15)', color: '#7a4ea5', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <PearlIcon size={12} /> {c.super_coins} Pearls
                               </span>
                             </td>
                             <td>{c.created_at ? new Date(c.created_at).toLocaleString() : 'N/A'}</td>
@@ -15212,81 +18398,63 @@ export default function App() {
 
       {/* PREMIUM SLIDING CART DRAWER OVERLAY */}
       {showCartDrawer && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 10000,
-          display: 'flex',
-          justifyContent: 'flex-end'
-        }} onClick={() => setShowCartDrawer(false)}>
-          <div style={{
-            width: '460px',
-            maxWidth: '100%',
-            height: '100%',
-            backgroundColor: '#ffffff',
-            color: '#111111',
-            boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.15)',
-            display: 'flex',
-            flexDirection: 'column',
-            animation: 'slideLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
+        <div className="drawer-overlay" onClick={() => setShowCartDrawer(false)}>
+          <div className="premium-drawer" onClick={e => e.stopPropagation()}>
             {/* Drawer Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eeeeee', paddingBottom: '16px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <ShoppingBag size={22} style={{ color: '#111111' }} />
-                <h3 style={{ fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>Shopping Bag ({cart.length})</h3>
+            <div className="drawer-header-cart">
+              <div className="drawer-title-container">
+                <ShoppingBag size={22} style={{ color: '#7a4ea5' }} />
+                <h3 className="drawer-title">Shopping Bag ({cart.length})</h3>
               </div>
-              <button onClick={() => setShowCartDrawer(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888888', transition: 'color 0.2s' }}>
-                <X size={24} />
+              <button onClick={() => setShowCartDrawer(false)} className="drawer-close-btn" title="Close Drawer">
+                <X size={22} />
               </button>
             </div>
 
             {/* Drawer Body (Scrollable Cart items list) */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '4px' }}>
+            <div className="drawer-body">
               {cart.length > 0 ? (
                 cart.map(ci => (
-                  <div key={ci.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
-                    <img src={ci.product.images[0] || null} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
-                    <div style={{ flexGrow: 1 }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{ci.product.name}</h4>
-                      <span style={{ fontSize: '0.75rem', color: '#888888', display: 'block', marginBottom: '8px' }}>Store: {ci.product.shop_id}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #dddddd', borderRadius: '4px' }}>
-                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}>-</button>
-                          <span style={{ padding: '0 8px', fontSize: '0.85rem', fontWeight: 600 }}>{ci.quantity}</span>
-                          <button style={{ border: 'none', background: 'none', padding: '4px 8px', cursor: 'pointer', fontSize: '0.85rem' }} onClick={() => handleAddToCart(ci.product_id, ci.quantity + 1, false)}>+</button>
+                  <div key={ci.id} className="drawer-item">
+                    <img src={ci.product.images[0] || null} alt={ci.product.name} className="drawer-item-img" />
+                    <div className="drawer-item-info">
+                      <h4 className="drawer-item-name">{ci.product.name}</h4>
+                      <span className="drawer-item-shop">Store: {ci.product.shop_id}</span>
+                      <div className="drawer-item-actions">
+                        <div className="drawer-qty-selector">
+                          <button className="drawer-qty-btn" onClick={() => handleAddToCart(ci.product_id, Math.max(1, ci.quantity - 1), false)}>-</button>
+                          <span className="drawer-qty-val">{ci.quantity}</span>
+                          <button className="drawer-qty-btn" onClick={() => handleAddToCart(ci.product_id, ci.quantity + 1, false)}>+</button>
                         </div>
-                        <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111' }}>₹{ci.product.price * ci.quantity}</span>
+                        <span className="drawer-item-price">₹{ci.product.price * ci.quantity}</span>
                       </div>
                     </div>
-                    <button onClick={() => handleRemoveFromCart(ci.id)} style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', alignSelf: 'center' }}>
+                    <button onClick={() => handleRemoveFromCart(ci.id)} className="drawer-remove-btn" title="Remove Item">
                       <Trash2 size={18} />
                     </button>
                   </div>
                 ))
               ) : (
-                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#888888', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                  <ShoppingBag size={48} style={{ color: '#cccccc' }} />
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>Your shopping bag is empty.</p>
-                  <button onClick={() => setShowCartDrawer(false)} style={{ border: '1px solid #111111', background: 'none', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>Continue Shopping</button>
+                <div className="drawer-empty-state animate-fade-in">
+                  <div className="drawer-empty-circle-cart">
+                    <ShoppingBag size={42} style={{ color: '#7a4ea5' }} />
+                  </div>
+                  <p className="drawer-empty-text">Your shopping bag is empty</p>
+                  <p className="drawer-empty-subtext">Find beautiful designs and add them to your bag.</p>
+                  <button onClick={() => setShowCartDrawer(false)} className="drawer-btn-empty-cart">Continue Shopping</button>
                 </div>
               )}
             </div>
 
             {/* Drawer Footer (Subtotal and Action buttons) */}
             {cart.length > 0 && (
-              <div style={{ borderTop: '1px solid #eeeeee', paddingTop: '20px', marginTop: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 500, color: '#888888' }}>Estimated Subtotal</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111111' }}>₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)}</span>
+              <div className="drawer-footer">
+                <div className="drawer-footer-row">
+                  <span className="drawer-footer-label">Estimated Subtotal</span>
+                  <span className="drawer-footer-value">₹{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0)}</span>
                 </div>
                 <button onClick={() => {
+                  isProgrammaticNavigation.current = true;
                   setShowCartDrawer(false);
                   if (role === 'user') {
                     setCurrentView("user_dashboard");
@@ -15296,7 +18464,7 @@ export default function App() {
                     setShowLoginModal(true);
                     addToast("Checkout", "Please log in to finalize your purchase order.", "warning");
                   }
-                }} style={{ width: '100%', backgroundColor: '#000000', color: '#ffffff', border: 'none', padding: '16px', fontSize: '0.9rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '2px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                }} className="drawer-checkout-btn">
                   Proceed to Checkout <ChevronRight size={18} />
                 </button>
               </div>
@@ -15307,67 +18475,48 @@ export default function App() {
 
       {/* PREMIUM SLIDING WISHLIST DRAWER OVERLAY */}
       {showWishlistDrawer && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0, 0, 0, 0.6)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 10000,
-          display: 'flex',
-          justifyContent: 'flex-end'
-        }} onClick={() => setShowWishlistDrawer(false)}>
-          <div style={{
-            width: '460px',
-            maxWidth: '100%',
-            height: '100%',
-            backgroundColor: '#ffffff',
-            color: '#111111',
-            boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.15)',
-            display: 'flex',
-            flexDirection: 'column',
-            animation: 'slideLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-            padding: '24px'
-          }} onClick={e => e.stopPropagation()}>
+        <div className="drawer-overlay" onClick={() => setShowWishlistDrawer(false)}>
+          <div className="premium-drawer" onClick={e => e.stopPropagation()}>
             {/* Drawer Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eeeeee', paddingBottom: '16px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <Heart size={22} style={{ color: '#ff4d4f', fill: '#ff4d4f' }} />
-                <h3 style={{ fontWeight: 800, fontSize: '1.25rem', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>My Wishlist ({wishlist.length})</h3>
+            <div className="drawer-header-wishlist">
+              <div className="drawer-title-container">
+                <Heart size={22} style={{ color: '#e84e7e', fill: '#e84e7e' }} />
+                <h3 className="drawer-title">My Wishlist ({wishlist.length})</h3>
               </div>
-              <button onClick={() => setShowWishlistDrawer(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888888', transition: 'color 0.2s' }}>
-                <X size={24} />
+              <button onClick={() => setShowWishlistDrawer(false)} className="drawer-close-btn" title="Close Drawer">
+                <X size={22} />
               </button>
             </div>
 
             {/* Drawer Body (Scrollable items list) */}
-            <div style={{ flexGrow: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '4px' }}>
+            <div className="drawer-body">
               {wishlist.length > 0 ? (
                 wishlist.map(wi => (
-                  <div key={wi.id} style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #f6f6f6', paddingBottom: '16px', alignItems: 'center' }}>
-                    <img src={wi.product.images[0] || null} alt="" style={{ width: '80px', height: '100px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #eeeeee' }} />
-                    <div style={{ flexGrow: 1 }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#111111', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wi.product.name}</h4>
-                      <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#111111', display: 'block', marginBottom: '12px' }}>₹{wi.product.price}</span>
+                  <div key={wi.id} className="drawer-item">
+                    <img src={wi.product.images[0] || null} alt={wi.product.name} className="drawer-item-img" />
+                    <div className="drawer-item-info">
+                      <h4 className="drawer-item-name">{wi.product.name}</h4>
+                      <span className="drawer-item-price">₹{wi.product.price}</span>
                       <button onClick={() => {
                         handleAddToCart(wi.product_id);
                         handleRemoveFromWishlist(wi.id);
-                      }} style={{ backgroundColor: '#111111', color: '#ffffff', border: 'none', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      }} className="drawer-wishlist-add-bag">
                         Add To Bag <ShoppingBag size={12} />
                       </button>
                     </div>
-                    <button onClick={() => handleRemoveFromWishlist(wi.id)} style={{ background: 'none', border: 'none', color: '#ff4d4f', cursor: 'pointer', alignSelf: 'center' }}>
+                    <button onClick={() => handleRemoveFromWishlist(wi.id)} className="drawer-remove-btn" title="Remove Item">
                       <Trash2 size={18} />
                     </button>
                   </div>
                 ))
               ) : (
-                <div style={{ textAlign: 'center', padding: '60px 24px', color: '#888888', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                  <Heart size={48} style={{ color: '#cccccc' }} />
-                  <p style={{ margin: 0, fontSize: '0.95rem' }}>Your wishlist is empty.</p>
-                  <button onClick={() => setShowWishlistDrawer(false)} style={{ border: '1px solid #111111', background: 'none', padding: '8px 16px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer' }}>Browse Products</button>
+                <div className="drawer-empty-state animate-fade-in">
+                  <div className="drawer-empty-circle-wishlist">
+                    <Heart size={42} style={{ color: '#e84e7e', fill: '#e84e7e' }} />
+                  </div>
+                  <p className="drawer-empty-text">Your wishlist is empty</p>
+                  <p className="drawer-empty-subtext">Pin items you love to save them for later.</p>
+                  <button onClick={() => setShowWishlistDrawer(false)} className="drawer-btn-empty-wishlist">Browse Products</button>
                 </div>
               )}
             </div>
@@ -15682,13 +18831,13 @@ export default function App() {
                   {((customizingProduct?.custom_colors && customizingProduct.custom_colors.length > 0)
                     ? customizingProduct.custom_colors
                     : (currentShop?.color_palette || [
-                        { "name": "Royal Gold", "hex": "#D4AF37" },
-                        { "name": "Noble Lavender", "hex": "#7a4ea5" },
-                        { "name": "Crimson Ruby", "hex": "#E84E7E" },
-                        { "name": "Midnight Indigo", "hex": "#2b0b57" },
-                        { "name": "Forest Green", "hex": "#228B22" },
-                        { "name": "Turquoise Teal", "hex": "#008080" }
-                      ])
+                      { "name": "Royal Gold", "hex": "#D4AF37" },
+                      { "name": "Noble Lavender", "hex": "#7a4ea5" },
+                      { "name": "Crimson Ruby", "hex": "#E84E7E" },
+                      { "name": "Midnight Indigo", "hex": "#2b0b57" },
+                      { "name": "Forest Green", "hex": "#228B22" },
+                      { "name": "Turquoise Teal", "hex": "#008080" }
+                    ])
                   ).map((c, idx) => {
                     const isSelected = selectedCustomColor?.hex === c.hex;
                     return (

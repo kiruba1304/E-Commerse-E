@@ -74,11 +74,22 @@ def create_shop():
         privacy_policy=data.get('privacy_policy', 'Default Privacy Policy'),
         address=data.get('address', ''),
         sms_api_key=data.get('sms_api_key', ''),
+        sms_enabled=bool(data.get('sms_enabled', False)),
+        sms_dispatch_enabled=bool(data.get('sms_dispatch_enabled', False)),
+        sms_delivery_enabled=bool(data.get('sms_delivery_enabled', False)),
+        sms_campaign_enabled=bool(data.get('sms_campaign_enabled', False)),
+        sms_sender_id=data.get('sms_sender_id', ''),
+        sms_otp_template_id=data.get('sms_otp_template_id', ''),
+        sms_dispatch_template_id=data.get('sms_dispatch_template_id', ''),
+        sms_delivery_template_id=data.get('sms_delivery_template_id', ''),
         whatsapp_api_key=data.get('whatsapp_api_key', ''),
         razorpay_key_id=data.get('razorpay_key_id', ''),
         razorpay_key_secret=data.get('razorpay_key_secret', ''),
         super_coin_enabled=data.get('super_coin_enabled', True),
         super_coin_ratio=data.get('super_coin_ratio', 10),
+        welcome_super_coins=data.get('welcome_super_coins', 50),
+        signature_url=data.get('signature_url', ''),
+        store_locator_link=data.get('store_locator_link', ''),
         gst_percentage=float(data.get('gst_percentage', 18.0)),
         gst_inclusive=bool(data.get('gst_inclusive', False)),
         shipping_enabled=bool(data.get('shipping_enabled', False)),
@@ -132,6 +143,22 @@ def update_shop(shop_id):
     # API credentials updates
     if 'sms_api_key' in data:
         shop.sms_api_key = data['sms_api_key']
+    if 'sms_enabled' in data:
+        shop.sms_enabled = bool(data['sms_enabled'])
+    if 'sms_dispatch_enabled' in data:
+        shop.sms_dispatch_enabled = bool(data['sms_dispatch_enabled'])
+    if 'sms_delivery_enabled' in data:
+        shop.sms_delivery_enabled = bool(data['sms_delivery_enabled'])
+    if 'sms_campaign_enabled' in data:
+        shop.sms_campaign_enabled = bool(data['sms_campaign_enabled'])
+    if 'sms_sender_id' in data:
+        shop.sms_sender_id = data['sms_sender_id']
+    if 'sms_otp_template_id' in data:
+        shop.sms_otp_template_id = data['sms_otp_template_id']
+    if 'sms_dispatch_template_id' in data:
+        shop.sms_dispatch_template_id = data['sms_dispatch_template_id']
+    if 'sms_delivery_template_id' in data:
+        shop.sms_delivery_template_id = data['sms_delivery_template_id']
     if 'whatsapp_api_key' in data:
         shop.whatsapp_api_key = data['whatsapp_api_key']
     if 'razorpay_key_id' in data:
@@ -144,6 +171,12 @@ def update_shop(shop_id):
         shop.super_coin_enabled = bool(data['super_coin_enabled'])
     if 'super_coin_ratio' in data:
         shop.super_coin_ratio = int(data['super_coin_ratio'])
+    if 'welcome_super_coins' in data:
+        shop.welcome_super_coins = int(data['welcome_super_coins']) if data['welcome_super_coins'] is not None else 50
+    if 'signature_url' in data:
+        shop.signature_url = data['signature_url']
+    if 'store_locator_link' in data:
+        shop.store_locator_link = data['store_locator_link']
     if 'gst_percentage' in data:
         shop.gst_percentage = float(data['gst_percentage'])
     if 'gst_inclusive' in data:

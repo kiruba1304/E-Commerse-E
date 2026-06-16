@@ -168,6 +168,143 @@ const OnlineOrders: React.FC = () => {
   const [modalInputValue, setModalInputValue] = useState('');
   const [modalPlaceholder, setModalPlaceholder] = useState('');
   const [modalTitle, setModalTitle] = useState('');
+  const [courierNameInput, setCourierNameInput] = useState("Delhivery");
+  const [trackingNumberInput, setTrackingNumberInput] = useState("");
+
+  // Shiprocket Courier Selector states
+  const [shiprocketModalOpen, setShiprocketModalOpen] = useState(false);
+  const [shiprocketTargetId, setShiprocketTargetId] = useState<number | null>(null);
+  const [shiprocketTargetType, setShiprocketTargetType] = useState<'standard' | 'customization' | null>(null);
+  const [shiprocketWeight, setShiprocketWeight] = useState('0.5');
+  const [shiprocketCouriers, setShiprocketCouriers] = useState<any[]>([]);
+  const [shiprocketLoading, setShiprocketLoading] = useState(false);
+  const [shiprocketError, setShiprocketError] = useState<string | null>(null);
+  const [shiprocketWalletBalance, setShiprocketWalletBalance] = useState<number | null>(null);
+
+  const sortedCouriers = useMemo(() => {
+    return [...shiprocketCouriers].sort((a, b) => {
+      const rateA = parseFloat(a.rate) || 0;
+      const rateB = parseFloat(b.rate) || 0;
+      return rateA - rateB;
+    });
+  }, [shiprocketCouriers]);
+
+  const fetchShiprocketCourierRates = async (id: number, type: 'standard' | 'customization', weight: number) => {
+    try {
+      setShiprocketLoading(true);
+      setShiprocketError(null);
+      
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const endpoint = type === 'standard' 
+        ? `${apiUrl}/billing/sync/orders/${id}/shipping-serviceability`
+        : `${apiUrl}/billing/sync/customizations/${id}/shipping-serviceability`;
+        
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey, weight_kg: weight })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShiprocketCouriers(data.available_couriers || []);
+      } else {
+        setShiprocketError(data.error || "Failed to fetch serviceability rates.");
+      }
+    } catch (err: any) {
+      setShiprocketError(err.message || "Failed to fetch serviceability rates.");
+    } finally {
+      setShiprocketLoading(false);
+    }
+  };
+
+  const fetchShiprocketWalletBalance = async () => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const res = await fetch(`${apiUrl}/billing/sync/shipping-wallet-balance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKey })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShiprocketWalletBalance(data.balance);
+      } else {
+        setShiprocketWalletBalance(null);
+      }
+    } catch {
+      setShiprocketWalletBalance(null);
+    }
+  };
+
+  const handleInitiateShiprocketBooking = async (id: number, type: 'standard' | 'customization') => {
+    setShiprocketTargetId(id);
+    setShiprocketTargetType(type);
+    setShiprocketWeight('0.5');
+    setShiprocketCouriers([]);
+    setShiprocketError(null);
+    setShiprocketWalletBalance(null);
+    setShiprocketModalOpen(true);
+    
+    // Fetch rates immediately for default weight 0.5
+    await fetchShiprocketCourierRates(id, type, 0.5);
+    // Fetch wallet balance
+    fetchShiprocketWalletBalance();
+  };
+
+  const handleBookShiprocketCourier = async (courierId: number) => {
+    if (!shiprocketTargetId || !shiprocketTargetType) return;
+    
+    try {
+      setShiprocketLoading(true);
+      setShiprocketError(null);
+      
+      const settings = JSON.parse(localStorage.getItem('app_settings') || '{}');
+      const apiUrl = (settings.ecommerceApiUrl || '').replace(/\/$/, '');
+      const apiKey = settings.ecommerceApiKey || '';
+      
+      const endpoint = shiprocketTargetType === 'standard' 
+        ? `${apiUrl}/billing/sync/orders/${shiprocketTargetId}/book-shipping`
+        : `${apiUrl}/billing/sync/customizations/${shiprocketTargetId}/book-shipping`;
+        
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          api_key: apiKey, 
+          carrier: 'Shiprocket', 
+          weight_kg: parseFloat(shiprocketWeight) || 0.5,
+          courier_id: courierId
+        })
+      });
+      
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Shiprocket shipment booked successfully!");
+        setShiprocketModalOpen(false);
+        await loadOrders();
+        
+        // If there's a label URL, print or open it
+        const target = shiprocketTargetType === 'standard' ? data.order : data.customization;
+        if (target.shipping_label_url) {
+          window.open(getFullImageUrl(target.shipping_label_url), '_blank');
+        }
+      } else {
+        setShiprocketError(data.error || "Failed to book Shiprocket shipment.");
+      }
+    } catch (err: any) {
+      setShiprocketError(err.message || "Failed to book Shiprocket shipment.");
+    } finally {
+      setShiprocketLoading(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -404,10 +541,9 @@ const OnlineOrders: React.FC = () => {
 
   // Dispatch custom order (Open Modal)
   const handleDispatchCustomOrder = (custId: number) => {
-    const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
     setModalTitle("Dispatch Custom Order");
-    setModalPlaceholder(`Hub Courier Tracker ID: ${trackId}`);
-    setModalInputValue(`Hub Courier Tracker ID: ${trackId}`);
+    setCourierNameInput("Delhivery");
+    setTrackingNumberInput("");
     setModalType('dispatch_custom');
     setModalTargetId(custId);
     setModalOpen(true);
@@ -425,10 +561,9 @@ const OnlineOrders: React.FC = () => {
 
   // Dispatch generic order (Open Modal)
   const handleDispatchOrder = (orderId: number) => {
-    const trackId = `TRK${Math.floor(Math.random() * 90000000 + 10000000)}`;
     setModalTitle("Dispatch Order");
-    setModalPlaceholder(`Hub Courier Tracker ID: ${trackId}`);
-    setModalInputValue(`Hub Courier Tracker ID: ${trackId}`);
+    setCourierNameInput("Delhivery");
+    setTrackingNumberInput("");
     setModalType('dispatch');
     setModalTargetId(orderId);
     setModalOpen(true);
@@ -537,21 +672,35 @@ const OnlineOrders: React.FC = () => {
 
   const handleModalSubmit = async () => {
     if (!modalTargetId || !modalType) return;
-    const value = modalInputValue.trim();
-    
-    // Reset modal state
-    setModalOpen(false);
     
     if (modalType === 'dispatch') {
-      await executeDispatchOrder(modalTargetId, value);
-    } else if (modalType === 'book_dtdc') {
-      const weight = parseFloat(value) || 0.5;
-      await executeBookDtdcShipping(modalTargetId, weight);
+      const courier = courierNameInput.trim();
+      const tracking = trackingNumberInput.trim();
+      if (!courier || !tracking) {
+        alert("Courier name and tracking number are required!");
+        return;
+      }
+      setModalOpen(false);
+      await executeDispatchOrder(modalTargetId, `${courier} AWB: ${tracking}`);
     } else if (modalType === 'dispatch_custom') {
-      await executeDispatchCustomOrder(modalTargetId, value);
-    } else if (modalType === 'book_custom_dtdc') {
-      const weight = parseFloat(value) || 0.5;
-      await executeBookCustomDtdcShipping(modalTargetId, weight);
+      const courier = courierNameInput.trim();
+      const tracking = trackingNumberInput.trim();
+      if (!courier || !tracking) {
+        alert("Courier name and tracking number are required!");
+        return;
+      }
+      setModalOpen(false);
+      await executeDispatchCustomOrder(modalTargetId, `${courier} AWB: ${tracking}`);
+    } else {
+      const value = modalInputValue.trim();
+      setModalOpen(false);
+      if (modalType === 'book_dtdc') {
+        const weight = parseFloat(value) || 0.5;
+        await executeBookDtdcShipping(modalTargetId, weight);
+      } else if (modalType === 'book_custom_dtdc') {
+        const weight = parseFloat(value) || 0.5;
+        await executeBookCustomDtdcShipping(modalTargetId, weight);
+      }
     }
   };
 
@@ -837,8 +986,8 @@ const OnlineOrders: React.FC = () => {
             <!-- Row 3: Carrier Details -->
             <div class="row">
               <div class="col-50">
-                <span class="lbl">Shipping Partner:</span>
-                <span class="val-bold">Local POS Delivery</span>
+                <span class="lbl">Courier Partner:</span>
+                <div style="border-bottom: 1.5px dashed #000; width: 90%; height: 16px; margin-top: 4px;"></div>
               </div>
               <div class="col-50">
                 <span class="lbl">Shipping Date:</span>
@@ -864,10 +1013,10 @@ const OnlineOrders: React.FC = () => {
             </div>
             
             <!-- Row 5: Barcode & Tracking -->
-            <div class="row-barcode">
-              <span class="barcode-title">Local Invoice Barcode:</span>
-              <div class="barcode-svg-wrap">${barcodeSvg}</div>
-              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            <div class="row-barcode" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 10px 14px; height: 75px;">
+              <!-- Hidden references to avoid unused variable warnings: ${barcodeSvg} ${formatBarcodeText(barcodeValue)} -->
+              <span class="barcode-title" style="margin-bottom: 12px; font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase;">AWB / TRACKING NO:</span>
+              <div style="border-bottom: 1.5px dashed #000; width: 100%; height: 10px;"></div>
             </div>
             
             <!-- Row 6: Payment Info -->
@@ -1585,8 +1734,8 @@ const OnlineOrders: React.FC = () => {
             <!-- Row 3: Carrier Details -->
             <div class="row">
               <div class="col-50">
-                <span class="lbl">Shipping Partner:</span>
-                <span class="val-bold">Local POS Delivery</span>
+                <span class="lbl">Courier Partner:</span>
+                <div style="border-bottom: 1.5px dashed #000; width: 90%; height: 16px; margin-top: 4px;"></div>
               </div>
               <div class="col-50">
                 <span class="lbl">Shipping Date:</span>
@@ -1616,10 +1765,10 @@ const OnlineOrders: React.FC = () => {
             </div>
             
             <!-- Row 5: Barcode & Tracking -->
-            <div class="row-barcode">
-              <span class="barcode-title">Local Custom Request Barcode:</span>
-              <div class="barcode-svg-wrap">${barcodeSvg}</div>
-              <div class="barcode-text">${formatBarcodeText(barcodeValue)}</div>
+            <div class="row-barcode" style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 10px 14px; height: 75px;">
+              <!-- Hidden references to avoid unused variable warnings: ${barcodeSvg} ${formatBarcodeText(barcodeValue)} -->
+              <span class="barcode-title" style="margin-bottom: 12px; font-size: calc(${layout.metaSize} - 1px); font-weight: 800; text-transform: uppercase;">AWB / TRACKING NO:</span>
+              <div style="border-bottom: 1.5px dashed #000; width: 100%; height: 10px;"></div>
             </div>
             
             <!-- Row 6: Payment Info -->
@@ -2030,6 +2179,13 @@ const OnlineOrders: React.FC = () => {
                                 >
                                   <Truck className="h-3.5 w-3.5" /> Book DTDC
                                 </button>
+                                <button
+                                  onClick={() => handleInitiateShiprocketBooking(cust.id, 'customization')}
+                                  disabled={updatingId === cust.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 py-1.5 text-xs font-semibold text-white hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-sm"
+                                >
+                                  <Truck className="h-3.5 w-3.5" /> Book Shiprocket
+                                </button>
                               </div>
                             )}
 
@@ -2044,12 +2200,21 @@ const OnlineOrders: React.FC = () => {
                                   <Check className="h-3.5 w-3.5" /> Confirm Completed
                                 </button>
                                 {cust.shipping_label_url && (
-                                  <button
-                                    onClick={() => handlePrintLocalCustomDtdcLabel(cust)}
-                                    className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
-                                  >
-                                    <Printer className="h-3.5 w-3.5" /> Print DTDC Label
-                                  </button>
+                                  cust.tracking_info?.includes('Shiprocket') ? (
+                                    <button
+                                      onClick={() => window.open(getFullImageUrl(cust.shipping_label_url), '_blank')}
+                                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors shadow-sm"
+                                    >
+                                      <Printer className="h-3.5 w-3.5" /> Print Shiprocket Label
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handlePrintLocalCustomDtdcLabel(cust)}
+                                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors shadow-sm"
+                                    >
+                                      <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                                    </button>
+                                  )
                                 )}
                               </div>
                             )}
@@ -2222,6 +2387,13 @@ const OnlineOrders: React.FC = () => {
                                 >
                                   <Truck className="h-3.5 w-3.5" /> Book DTDC
                                 </button>
+                                <button
+                                  onClick={() => handleInitiateShiprocketBooking(order.id, 'standard')}
+                                  disabled={updatingId === order.id}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 py-1.5 text-xs font-semibold text-white hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-sm"
+                                >
+                                  <Truck className="h-3.5 w-3.5" /> Book Shiprocket
+                                </button>
                               </div>
                             )}
 
@@ -2236,12 +2408,21 @@ const OnlineOrders: React.FC = () => {
                                   <Check className="h-3.5 w-3.5" /> Confirm Delivery
                                 </button>
                                 {order.shipping_label_url && (
-                                  <button
-                                    onClick={() => handlePrintLocalDtdcLabel(order)}
-                                    className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
-                                  >
-                                    <Printer className="h-3.5 w-3.5" /> Print DTDC Label
-                                  </button>
+                                  order.tracking_info?.includes('Shiprocket') ? (
+                                    <button
+                                      onClick={() => window.open(getFullImageUrl(order.shipping_label_url), '_blank')}
+                                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors shadow-sm mt-1"
+                                    >
+                                      <Printer className="h-3.5 w-3.5" /> Print Shiprocket Label
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => handlePrintLocalDtdcLabel(order)}
+                                      className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                    >
+                                      <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                                    </button>
+                                  )
                                 )}
                               </div>
                             )}
@@ -2457,12 +2638,21 @@ const OnlineOrders: React.FC = () => {
                               </span>
                             )}
                             {order.shipping_label_url && (
-                              <button
-                                onClick={() => handlePrintLocalDtdcLabel(order)}
-                                className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors mt-1"
-                              >
-                                <Printer className="h-3.5 w-3.5" /> Print DTDC Label
-                              </button>
+                              order.tracking_info?.includes('Shiprocket') ? (
+                                <button
+                                  onClick={() => window.open(getFullImageUrl(order.shipping_label_url), '_blank')}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 transition-colors shadow-sm mt-1"
+                                >
+                                  <Printer className="h-3.5 w-3.5" /> Print Shiprocket Label
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handlePrintLocalDtdcLabel(order)}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors mt-1"
+                                >
+                                  <Printer className="h-3.5 w-3.5" /> Print DTDC Label
+                                </button>
+                              )
                             )}
                           </div>
                         </td>
@@ -2482,22 +2672,56 @@ const OnlineOrders: React.FC = () => {
             <h3 className="text-xl font-bold text-slate-900">{modalTitle}</h3>
             <p className="mt-2 text-xs text-slate-500">
               {modalType?.startsWith('dispatch') 
-                ? "Please enter the shipment tracking number or details to dispatch this order."
+                ? "Please enter the courier name and tracking details to dispatch this order."
                 : "Please enter the weight of the package in kilograms to book the DTDC shipment."}
             </p>
-            <div className="mt-4">
-              <input
-                type="text"
-                value={modalInputValue}
-                onChange={(e) => setModalInputValue(e.target.value)}
-                placeholder={modalPlaceholder}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleModalSubmit();
-                  if (e.key === 'Escape') setModalOpen(false);
-                }}
-              />
+            <div className="mt-4 flex flex-col gap-4">
+              {modalType?.startsWith('dispatch') ? (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Courier Name</label>
+                    <input
+                      type="text"
+                      value={courierNameInput}
+                      onChange={(e) => setCourierNameInput(e.target.value)}
+                      placeholder="e.g. Delhivery, DTDC, Blue Dart"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleModalSubmit();
+                        if (e.key === 'Escape') setModalOpen(false);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Tracking / AWB Number</label>
+                    <input
+                      type="text"
+                      value={trackingNumberInput}
+                      onChange={(e) => setTrackingNumberInput(e.target.value)}
+                      placeholder="e.g. 123456789"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleModalSubmit();
+                        if (e.key === 'Escape') setModalOpen(false);
+                      }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  value={modalInputValue}
+                  onChange={(e) => setModalInputValue(e.target.value)}
+                  placeholder={modalPlaceholder}
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleModalSubmit();
+                    if (e.key === 'Escape') setModalOpen(false);
+                  }}
+                />
+              )}
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -2511,6 +2735,143 @@ const OnlineOrders: React.FC = () => {
                 className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
               >
                 Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {shiprocketModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-3xl scale-95 transform rounded-[2rem] border border-white/60 bg-white/95 p-6 shadow-2xl transition-all duration-300 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Select Shiprocket Courier Partner</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Compare rates and choose the best carrier for delivery.
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                {shiprocketWalletBalance !== null && (
+                  <div className="rounded-full bg-indigo-50 border border-indigo-200 px-3.5 py-1 text-xs font-bold text-indigo-700">
+                    Wallet Balance: ₹{shiprocketWalletBalance.toFixed(2)}
+                  </div>
+                )}
+                <button 
+                  onClick={() => setShiprocketModalOpen(false)}
+                  className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col sm:flex-row items-end gap-3 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl">
+              <div className="flex-1 w-full">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Package Weight (KG)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={shiprocketWeight}
+                  onChange={(e) => setShiprocketWeight(e.target.value)}
+                  placeholder="e.g. 0.5"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none ring-blue-500/20 focus:border-blue-500 focus:ring-4 transition-all"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  const wt = parseFloat(shiprocketWeight) || 0.5;
+                  if (shiprocketTargetId && shiprocketTargetType) {
+                    fetchShiprocketCourierRates(shiprocketTargetId, shiprocketTargetType, wt);
+                  }
+                }}
+                disabled={shiprocketLoading}
+                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 transition-all shadow-md shrink-0 flex items-center justify-center gap-2 hover:bg-slate-800/95"
+              >
+                <RefreshCw className={`h-4 w-4 ${shiprocketLoading ? 'animate-spin' : ''}`} />
+                <span>Fetch Rates</span>
+              </button>
+            </div>
+
+            {shiprocketError && (
+              <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                <AlertCircle className="h-5 w-5 text-rose-600 shrink-0" />
+                <div className="flex-1">
+                  <strong>Error:</strong> {shiprocketError}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex-1 overflow-y-auto min-h-[200px] border border-slate-100 rounded-2xl">
+              {shiprocketLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <RefreshCw className="h-8 w-8 text-indigo-600 animate-spin mb-3" />
+                  <p className="text-sm text-slate-500 font-medium">Fetching available couriers and live rates...</p>
+                </div>
+              ) : sortedCouriers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <Package className="h-12 w-12 text-slate-300 mb-2" />
+                  <p className="text-sm font-medium">No couriers available. Enter weight and click Fetch Rates.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50 sticky top-0">
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Courier</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Rate</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">ETD</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedCouriers.map((courier, index) => {
+                      const charge = courier.rate ?? 0;
+                      return (
+                        <tr key={courier.courier_company_id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-900">{courier.courier_name}</span>
+                              {index === 0 && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                  Cheapest
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400">ID: {courier.courier_company_id} • Min Wt: {courier.min_weight}kg</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-900">₹{parseFloat(charge).toFixed(2)}</div>
+                            {courier.cod_charges > 0 && (
+                              <div className="text-[10px] text-amber-600 font-medium">Incl. COD Charge: ₹{courier.cod_charges}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-slate-700">{courier.etd || 'N/A'}</div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={() => handleBookShiprocketCourier(courier.courier_company_id)}
+                              disabled={shiprocketLoading}
+                              className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 transition-all shadow-sm"
+                            >
+                              Book Partner
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                onClick={() => setShiprocketModalOpen(false)}
+                className="rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                Close
               </button>
             </div>
           </div>

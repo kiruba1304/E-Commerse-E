@@ -8,12 +8,29 @@ import random
 from datetime import datetime, timezone, timedelta
 
 from flask import Blueprint, request, jsonify
-from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog, OTPVerification, CustomizationOrder
+from models import db, User, Shop, Product, Category, Order, OrderItem, CartItem, WishlistItem, Review, Coupon, HelpTicket, Notification, SystemLog, OTPVerification, CustomizationOrder, NewsletterSubscription
 from auth_middleware import generate_token, token_required, role_required
 from mail_sender import send_shop_email
+from sms_helper import send_sms_via_fast2sms, log_sms_action
 
 
 user_bp = Blueprint('user', __name__)
+
+def check_and_deactivate_coupon(coupon):
+    if not coupon.is_active:
+        return False
+    now = datetime.now()
+    deactivate = False
+    if coupon.expires_at and now > coupon.expires_at:
+        deactivate = True
+    elif coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
+        deactivate = True
+        
+    if deactivate:
+        coupon.is_active = False
+        db.session.commit()
+        return False
+    return True
 
 
 def _get_google_client_id():
@@ -96,12 +113,22 @@ def register():
     if existing_user:
         return jsonify({"error": "Username or email already exists"}), 400
 
+    shop_id = data.get('shop_id')
+    welcome_pearls = 50
+    if shop_id:
+        shop = Shop.query.get(shop_id)
+        if shop:
+            if not shop.super_coin_enabled:
+                welcome_pearls = 0
+            else:
+                welcome_pearls = shop.welcome_super_coins if shop.welcome_super_coins is not None else 50
+
     user = User(
         username=username,
         email=email,
         name=name or username,
         contact_phone=data.get('contact_phone', ''),
-        super_coins=50 # gift 50 super coins on signup!
+        super_coins=welcome_pearls
     )
     user.set_password(password)
 
@@ -191,12 +218,23 @@ def google_login():
         log_message = "User logged in with Google"
     else:
         username = _build_google_username(email, name)
+        
+        shop_id = data.get('shop_id')
+        welcome_pearls = 50
+        if shop_id:
+            shop = Shop.query.get(shop_id)
+            if shop:
+                if not shop.super_coin_enabled:
+                    welcome_pearls = 0
+                else:
+                    welcome_pearls = shop.welcome_super_coins if shop.welcome_super_coins is not None else 50
+
         user = User(
             username=username,
             email=email,
             name=name,
             contact_phone='',
-            super_coins=50
+            super_coins=welcome_pearls
         )
         user.set_password(secrets.token_urlsafe(32))
         db.session.add(user)
@@ -229,17 +267,43 @@ def logout():
 def request_otp():
     data = request.get_json() or {}
     email = data.get('email')
+    phone = data.get('phone')
     shop_id = data.get('shop_id')
+    purpose = data.get('purpose', 'login')
 
-    if not email:
-        return jsonify({"error": "Email is required"}), 400
+    if not email and not phone:
+        return jsonify({"error": "Email or phone number is required"}), 400
+
+    if phone:
+        if purpose in ['register', 'link_phone']:
+            existing_user = User.query.filter_by(contact_phone=phone).first()
+            if existing_user:
+                return jsonify({"error": "This mobile number is already linked to another account."}), 400
+        else:
+            user = User.query.filter_by(contact_phone=phone).first()
+            if not user:
+                placeholder_email = f"{phone}@sms-login.com"
+                user = User.query.filter_by(email=placeholder_email).first()
+            if not user:
+                return jsonify({"error": "No account found with this mobile number. Please register first."}), 404
+    else:
+        if purpose == 'register':
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                return jsonify({"error": "This email address is already registered."}), 400
+        else:
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                return jsonify({"error": "No account found with this email address. Please register first."}), 404
 
     otp_code = str(random.randint(100000, 999999))
     expires_at = datetime.now() + timedelta(minutes=10)
 
+    target_identifier = phone if phone else email
+
     # Save to db
     otp_record = OTPVerification(
-        email=email,
+        email=target_identifier,
         otp_code=otp_code,
         expires_at=expires_at,
         is_verified=False
@@ -254,11 +318,54 @@ def request_otp():
     if not shop:
         shop = Shop.query.first()
 
-    if shop:
-        send_shop_email(shop, "otp", email, {
-            "name": email.split('@')[0],
-            "otp": otp_code
-        })
+    if phone:
+        if not shop or not shop.sms_enabled:
+            return jsonify({"error": "SMS OTP is currently disabled for this store."}), 400
+        
+        # Check if we have API key
+        api_key = shop.sms_api_key if (shop and shop.sms_api_key) else os.getenv("FAST2SMS_API_KEY")
+        if not api_key:
+            return jsonify({"error": "SMS credentials not configured for this store."}), 500
+            
+        # Determine route: DLT or Quick
+        if getattr(shop, 'sms_otp_template_id', None) and getattr(shop, 'sms_sender_id', None):
+            route = "dlt"
+            sender_id = shop.sms_sender_id
+            message_text = shop.sms_otp_template_id
+            variables_values = otp_code
+            log_msg = f"[DLT OTP] Template ID: {shop.sms_otp_template_id} | Variables: {otp_code}"
+        else:
+            route = "q"
+            sender_id = None
+            message_text = f"Your OTP verification code is {otp_code}."
+            variables_values = None
+            log_msg = message_text
+
+        res = send_sms_via_fast2sms(
+            api_key=api_key,
+            numbers=phone,
+            message=message_text,
+            route=route,
+            variables_values=variables_values,
+            sender_id=sender_id
+        )
+        
+        log_sms_action(
+            shop_id=shop.id if shop else 1,
+            recipient_phone=phone,
+            success=res.get("success", False),
+            message=log_msg,
+            error_msg=res.get("error")
+        )
+        
+        if not res.get("success"):
+            return jsonify({"error": f"Failed to send SMS: {res.get('error')}"}), 500
+    else:
+        if shop:
+            send_shop_email(shop, "otp", email, {
+                "name": email.split('@')[0],
+                "otp": otp_code
+            })
 
     return jsonify({"message": "OTP sent successfully"}), 200
 
@@ -267,13 +374,18 @@ def request_otp():
 def verify_otp():
     data = request.get_json() or {}
     email = data.get('email')
+    phone = data.get('phone')
     otp_code = data.get('otp_code')
 
-    if not email or not otp_code:
-        return jsonify({"error": "Email and OTP code are required"}), 400
+    if not email and not phone:
+        return jsonify({"error": "Email or phone number is required"}), 400
+    if not otp_code:
+        return jsonify({"error": "OTP code is required"}), 400
+
+    target_identifier = phone if phone else email
 
     record = OTPVerification.query.filter(
-        OTPVerification.email == email,
+        OTPVerification.email == target_identifier,
         OTPVerification.otp_code == otp_code,
         OTPVerification.is_verified == False,
         OTPVerification.expires_at > datetime.now()
@@ -292,15 +404,20 @@ def verify_otp():
 def otp_login():
     data = request.get_json() or {}
     email = data.get('email')
+    phone = data.get('phone')
     otp_code = data.get('otp_code')
     shop_id = data.get('shop_id')
 
-    if not email or not otp_code:
-        return jsonify({"error": "Email and OTP code are required"}), 400
+    if not email and not phone:
+        return jsonify({"error": "Email or phone number is required"}), 400
+    if not otp_code:
+        return jsonify({"error": "OTP code is required"}), 400
+
+    target_identifier = phone if phone else email
 
     # Verify the OTP first
     record = OTPVerification.query.filter(
-        OTPVerification.email == email,
+        OTPVerification.email == target_identifier,
         OTPVerification.otp_code == otp_code,
         OTPVerification.is_verified == False,
         OTPVerification.expires_at > datetime.now()
@@ -312,30 +429,23 @@ def otp_login():
     # Mark as verified
     record.is_verified = True
 
-    # Find or auto-register user
-    user = User.query.filter_by(email=email).first()
-    is_new_user = False
-    if not user:
-        is_new_user = True
-        base_username = email.split('@')[0]
-        username = base_username
-        suffix = 1
-        while User.query.filter_by(username=username).first():
-            username = f"{base_username}_{suffix}"
-            suffix += 1
-
-        user = User(
-            username=username,
-            email=email,
-            name=base_username,
-            contact_phone='',
-            super_coins=50  # gift 50 super coins on signup!
-        )
-        user.set_password(secrets.token_urlsafe(32))
-        db.session.add(user)
+    # Find user
+    if phone:
+        user = User.query.filter_by(contact_phone=phone).first()
+        if not user:
+            # Check if a user with the placeholder email exists
+            placeholder_email = f"{phone}@sms-login.com"
+            user = User.query.filter_by(email=placeholder_email).first()
+        if not user:
+            return jsonify({"error": "Account not found. Please register first."}), 404
+        
         db.session.commit()
-        log_user_action(user.id, user.username, "Registered new customer account via OTP", shop_id=shop_id)
+        log_user_action(user.id, user.username, "User logged in via OTP", shop_id=shop_id)
     else:
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({"error": "Account not found. Please register first."}), 404
+            
         db.session.commit()
         log_user_action(user.id, user.username, "User logged in via OTP", shop_id=shop_id)
 
@@ -352,7 +462,7 @@ def otp_login():
     if shop:
         try:
             time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            send_shop_email(shop, "login", email, {
+            send_shop_email(shop, "login", user.email, {
                 "name": user.name or user.username,
                 "time": time_str
             }, sender_info={
@@ -364,7 +474,7 @@ def otp_login():
             print(f"Error sending login email: {e}")
 
     return jsonify({
-        "message": "OTP Login successful" if not is_new_user else "OTP Signup successful",
+        "message": "OTP Login successful",
         "token": token,
         "user": user.serialize()
     }), 200
@@ -451,7 +561,12 @@ def manage_profile():
     if 'name' in data:
         user.name = data['name']
     if 'contact_phone' in data:
-        user.contact_phone = data['contact_phone']
+        new_phone = data['contact_phone']
+        if new_phone:
+            existing_user = User.query.filter(User.contact_phone == new_phone, User.id != user.id).first()
+            if existing_user:
+                return jsonify({"error": "This phone number is already linked to another account."}), 400
+        user.contact_phone = new_phone
     if 'email' in data:
         user.email = data['email']
     if 'addresses' in data:
@@ -584,7 +699,73 @@ def delete_wishlist_item(wishlist_item_id):
 @role_required(['user'])
 def list_shop_coupons(shop_id):
     coupons = Coupon.query.filter_by(shop_id=shop_id, is_active=True).all()
-    return jsonify([c.serialize() for c in coupons]), 200
+    active_coupons = []
+    user_id = request.user['user_id']
+    for c in coupons:
+        if check_and_deactivate_coupon(c):
+            if c.usage_limit_per_user is not None:
+                used_count = Order.query.filter(Order.user_id == user_id, Order.coupon_code == c.code, Order.status != 'Rejected').count()
+                if used_count >= c.usage_limit_per_user:
+                    continue
+            active_coupons.append(c)
+    return jsonify([c.serialize() for c in active_coupons]), 200
+
+# NEWSLETTER SUBSCRIPTION
+@user_bp.route('/subscribe', methods=['POST'])
+def subscribe_newsletter():
+    data = request.get_json() or {}
+    email = data.get('email')
+    shop_id = data.get('shop_id')
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    if not shop_id:
+        return jsonify({"error": "Shop ID is required"}), 400
+
+    email = email.strip().lower()
+
+    # Verify if shop exists
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    # Check if already subscribed
+    existing = NewsletterSubscription.query.filter_by(email=email, shop_id=shop_id).first()
+    if existing:
+        return jsonify({"message": "You are already subscribed to our boutique newsletter!", "coupon_code": "NOBARAA10"}), 200
+
+    # Save subscription
+    sub = NewsletterSubscription(email=email, shop_id=shop_id)
+    db.session.add(sub)
+    db.session.commit()
+
+    # Send welcome email asynchronously in background to avoid blocking user response
+    if shop.smtp_host and shop.smtp_user:
+        try:
+            import threading
+            from flask import current_app
+            from mail_sender import send_newsletter_welcome_email
+            
+            app_context = current_app.app_context()
+            
+            def async_send_welcome(app_context, shop_id, recipient_email):
+                with app_context:
+                    try:
+                        from models import Shop
+                        shop_obj = Shop.query.get(shop_id)
+                        if shop_obj:
+                            send_newsletter_welcome_email(shop_obj, recipient_email)
+                    except Exception as e:
+                        print(f"Error in async welcome email: {e}")
+                        
+            threading.Thread(
+                target=async_send_welcome,
+                args=(app_context, shop.id, email)
+            ).start()
+        except Exception as err:
+            print(f"Failed to spawn newsletter welcome email thread: {err}")
+
+    return jsonify({"message": "Successfully subscribed to our boutique newsletter! Your 10% coupon code is: NOBARAA10", "coupon_code": "NOBARAA10"}), 201
 
 # CHECKOUT / PLACING AN ORDER
 @user_bp.route('/orders', methods=['POST'])
@@ -637,8 +818,13 @@ def create_order():
     # Apply Coupon discount
     discount_amount = 0.0
     if coupon_code:
-        coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id, is_active=True).first()
-        if coupon:
+        coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id).first()
+        if coupon and check_and_deactivate_coupon(coupon):
+            if coupon.usage_limit_per_user is not None:
+                used_count = Order.query.filter(Order.user_id == user_id, Order.coupon_code == coupon.code, Order.status != 'Rejected').count()
+                if used_count >= coupon.usage_limit_per_user:
+                    return jsonify({"error": f"You have reached the usage limit for this coupon code ({coupon.usage_limit_per_user} time(s) per account)"}), 400
+
             if total_amount >= coupon.min_purchase:
                 raw_discount = (coupon.discount_percentage / 100.0) * total_amount
                 discount_amount = min(raw_discount, coupon.max_discount)
@@ -783,7 +969,8 @@ def create_order():
         discount_amount=round(discount_amount + super_coins_used, 2),
         tracking_info=razorpay_order_id,
         shipping_charge=round(shipping_charge, 2),
-        shipping_gst=round(shipping_gst, 2)
+        shipping_gst=round(shipping_gst, 2),
+        coupon_code=coupon_code.upper() if coupon_code else None
     )
 
     shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
@@ -802,6 +989,14 @@ def create_order():
             if addr.get('address') == shipping_address and addr.get('phone') == billing_phone:
                 user.last_used_address_id = addr.get('id')
                 break
+
+    # Increment coupon used count if coupon was applied
+    if coupon_code:
+        coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id).first()
+        if coupon:
+            coupon.used_count += 1
+            if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
+                coupon.is_active = False
 
     db.session.add(order)
     db.session.commit()
@@ -829,7 +1024,7 @@ def create_order():
     try:
         items_summary = []
         for item in order.items:
-            items_summary.append(f"{item.product_name} x {item.quantity} (${item.price})")
+            items_summary.append(f"{item.product_name} x {item.quantity} (₹{item.price})")
         items_str = ", ".join(items_summary)
 
         # Send purchase confirmation email
@@ -951,10 +1146,20 @@ def verify_user_order_payment():
         # Coupon
         discount_amount = 0.0
         if coupon_code:
-            coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id, is_active=True).first()
-            if coupon and total_amount >= coupon.min_purchase:
-                raw_discount = (coupon.discount_percentage / 100.0) * total_amount
-                discount_amount = min(raw_discount, coupon.max_discount)
+            coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id).first()
+            if coupon and check_and_deactivate_coupon(coupon):
+                if coupon.usage_limit_per_user is not None:
+                    used_count = Order.query.filter(Order.user_id == user_id, Order.coupon_code == coupon.code, Order.status != 'Rejected').count()
+                    if used_count >= coupon.usage_limit_per_user:
+                        return jsonify({"error": f"You have reached the usage limit for this coupon code ({coupon.usage_limit_per_user} time(s) per account)"}), 400
+
+                if total_amount >= coupon.min_purchase:
+                    raw_discount = (coupon.discount_percentage / 100.0) * total_amount
+                    discount_amount = min(raw_discount, coupon.max_discount)
+                else:
+                    return jsonify({"error": f"Coupon requires a minimum purchase of {coupon.min_purchase}"}), 400
+            else:
+                return jsonify({"error": "Invalid or inactive coupon code"}), 400
                 
         discounted_amount = total_amount - discount_amount
         
@@ -1028,7 +1233,8 @@ def verify_user_order_payment():
             discount_amount=round(discount_amount + super_coins_used, 2),
             tracking_info=razorpay_order_id,
             shipping_charge=round(shipping_charge, 2),
-            shipping_gst=round(shipping_gst, 2)
+            shipping_gst=round(shipping_gst, 2),
+            coupon_code=coupon_code.upper() if coupon_code else None
         )
         
         shop.last_online_order_number = (shop.last_online_order_number or 0) + 1
@@ -1040,6 +1246,14 @@ def verify_user_order_payment():
         if address_id:
             user.last_used_address_id = address_id
             
+        # Increment coupon used count if coupon was applied
+        if coupon_code:
+            coupon = Coupon.query.filter_by(code=coupon_code.upper(), shop_id=shop_id).first()
+            if coupon:
+                coupon.used_count += 1
+                if coupon.usage_limit is not None and coupon.used_count >= coupon.usage_limit:
+                    coupon.is_active = False
+
         db.session.add(order)
         db.session.commit()
         
@@ -1066,7 +1280,7 @@ def verify_user_order_payment():
         try:
             items_summary = []
             for item in order.items:
-                items_summary.append(f"{item.product_name} x {item.quantity} (${item.price})")
+                items_summary.append(f"{item.product_name} x {item.quantity} (₹{item.price})")
             items_str = ", ".join(items_summary)
             send_shop_email(shop, "purchase", user.email, {
                 "name": user.name or user.username,
@@ -1149,6 +1363,152 @@ def get_order_details(order_id):
     if not order:
         return jsonify({"error": "Order not found"}), 404
     return jsonify(order.serialize()), 200
+
+@user_bp.route('/orders/<int:order_id>/track', methods=['GET'])
+@role_required(['user'])
+def track_order(order_id):
+    import re
+    from datetime import datetime, timedelta
+    import shiprocket_helper
+    from models import Shop
+    
+    user_id = request.user['user_id']
+    order = Order.query.filter_by(id=order_id, user_id=user_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    tracking_str = order.tracking_info
+    if not tracking_str:
+        return jsonify({"error": "Tracking details not available yet for this order."}), 400
+        
+    awb_code = None
+    if "AWB:" in tracking_str:
+        awb_code = tracking_str.split("AWB:")[-1].strip()
+    else:
+        # Match a numeric sequence of 8 to 18 digits (typical AWB length)
+        match = re.search(r'\b\d{8,18}\b', tracking_str)
+        if match:
+            awb_code = match.group(0)
+        else:
+            awb_code = tracking_str.strip()
+            
+    if not awb_code:
+        return jsonify({"error": "AWB code not found in tracking details."}), 400
+        
+    # Check if we should serve mock data for test/demo AWBs
+    is_mock = awb_code.lower().startswith('mock') or awb_code in ['123456', '12345', '123456789'] or order.status in ['Pending', 'Accepted', 'Rejected']
+    
+    if is_mock:
+        # Return a simulated Amazon-style tracking response based on order status
+        scans = []
+        status = "Ordered"
+        status_code = 1
+        delivery_boy_name = None
+        delivery_boy_contact = None
+        
+        created_time = order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else "2026-06-10 10:00"
+        
+        scans.append({
+            "date": created_time,
+            "activity": "Order Placed and Confirmed",
+            "location": "Online Store"
+        })
+        
+        if order.status in ['Accepted', 'Dispatched', 'Customer Received']:
+            status = "Shipped"
+            status_code = 2
+            scans.insert(0, {
+                "date": (order.created_at + timedelta(hours=4)).strftime('%Y-%m-%d %H:%M') if order.created_at else "2026-06-10 14:00",
+                "activity": "Package received at hub and dispatched",
+                "location": "Mumbai Sorting Facility"
+            })
+            
+        if order.status in ['Dispatched', 'Customer Received']:
+            status = "In Transit"
+            status_code = 3
+            scans.insert(0, {
+                "date": (order.created_at + timedelta(hours=18)).strftime('%Y-%m-%d %H:%M') if order.created_at else "2026-06-11 08:30",
+                "activity": "Package in transit to delivery center",
+                "location": "Chennai Warehouse"
+            })
+            
+        if order.status == 'Customer Received':
+            status = "Delivered"
+            status_code = 5
+            scans.insert(0, {
+                "date": order.delivered_at.strftime('%Y-%m-%d %H:%M') if order.delivered_at else (order.created_at + timedelta(days=2)).strftime('%Y-%m-%d %H:%M'),
+                "activity": "Delivered successfully",
+                "location": "Customer Address"
+            })
+        else:
+            # Let's mock a delivery agent if the order is Dispatched (Out for Delivery simulation)
+            if order.status == 'Dispatched':
+                status = "Out For Delivery"
+                status_code = 4
+                scans.insert(0, {
+                    "date": (order.created_at + timedelta(days=1, hours=2)).strftime('%Y-%m-%d %H:%M') if order.created_at else "2026-06-11 09:15",
+                    "activity": "Out for delivery with courier agent",
+                    "location": "Local Delivery Station"
+                })
+                delivery_boy_name = "Arjun Prasad"
+                delivery_boy_contact = "9876543210"
+
+        return jsonify({
+            "success": True,
+            "awb_code": awb_code,
+            "status": status,
+            "status_code": status_code,
+            "courier_name": "Delhivery Express",
+            "etd": (order.created_at + timedelta(days=3)).strftime('%Y-%m-%d') if order.created_at else "2026-06-13",
+            "delivery_agent_name": delivery_boy_name,
+            "delivery_agent_phone": delivery_boy_contact,
+            "scans": scans
+        }), 200
+        
+    # Real live Shiprocket API Call
+    shop = Shop.query.get(order.shop_id)
+    try:
+        raw_tracking = shiprocket_helper.get_tracking_by_awb(shop, awb_code)
+        if not raw_tracking:
+            return jsonify({"error": "Failed to fetch tracking info from Shiprocket."}), 500
+            
+        # Parse Shiprocket's nested payload structure
+        tracking_info = raw_tracking.get('tracking_data', {})
+        if not tracking_info:
+            # Sometimes it's keyed under the AWB code itself
+            tracking_info = raw_tracking.get(awb_code, {}).get('tracking_data', {})
+            
+        if not tracking_info:
+            return jsonify({"error": "No tracking data found for this AWB in Shiprocket."}), 404
+            
+        status = tracking_info.get('shipment_status', 'Unknown')
+        status_code = tracking_info.get('shipment_status_code', 0)
+        etd = tracking_info.get('etd', '')
+        
+        # Scans extraction
+        scans = []
+        raw_scans = tracking_info.get('scans', []) or []
+        for s in raw_scans:
+            scans.append({
+                "date": s.get('date', ''),
+                "activity": s.get('activity', ''),
+                "location": s.get('location', '')
+            })
+            
+        return jsonify({
+            "success": True,
+            "awb_code": awb_code,
+            "status": status,
+            "status_code": status_code,
+            "courier_name": tracking_info.get('courier_name', 'Shiprocket Partner'),
+            "etd": etd,
+            "delivery_agent_name": tracking_info.get('delivery_boy_name'),
+            "delivery_agent_phone": tracking_info.get('delivery_boy_contact'),
+            "scans": scans
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Shiprocket connection error: {str(e)}"}), 500
 
 @user_bp.route('/orders/<int:order_id>/return', methods=['POST'])
 @role_required(['user'])
@@ -1293,6 +1653,66 @@ def mark_notifications_read():
         n.is_read = True
     db.session.commit()
     return jsonify({"message": "All notifications marked as read"}), 200
+
+@user_bp.route('/notifications/<int:notif_id>/read', methods=['POST'])
+@role_required(['user'])
+def mark_single_notification_read(notif_id):
+    user_id = request.user['user_id']
+    n = Notification.query.filter_by(id=notif_id).first()
+    if not n:
+        return jsonify({"error": "Notification not found"}), 404
+    if n.recipient_type == 'user' and (n.recipient_id == user_id or n.recipient_id is None):
+        n.is_read = True
+        db.session.commit()
+        return jsonify(n.serialize()), 200
+    return jsonify({"error": "Unauthorized"}), 403
+
+@user_bp.route('/notifications', methods=['DELETE'])
+@role_required(['user'])
+def clear_all_notifications():
+    user_id = request.user['user_id']
+    Notification.query.filter_by(recipient_type='user', recipient_id=user_id).delete(synchronize_session=False)
+    db.session.commit()
+    return jsonify({"message": "User notifications cleared successfully"}), 200
+
+@user_bp.route('/notifications/<int:notif_id>', methods=['DELETE'])
+@role_required(['user'])
+def delete_single_notification(notif_id):
+    user_id = request.user['user_id']
+    n = Notification.query.filter_by(id=notif_id).first()
+    if not n:
+        return jsonify({"error": "Notification not found"}), 404
+    if n.recipient_type == 'user' and n.recipient_id == user_id:
+        db.session.delete(n)
+        db.session.commit()
+        return jsonify({"message": "Notification deleted successfully"}), 200
+    elif n.recipient_type == 'user' and n.recipient_id is None:
+        return jsonify({"message": "Broadcast notification cleared locally", "broadcast": True}), 200
+    return jsonify({"error": "Unauthorized"}), 403
+
+@user_bp.route('/fcm-token', methods=['POST', 'DELETE'])
+@role_required(['user'])
+def manage_fcm_token():
+    user_id = request.user['user_id']
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    data = request.get_json() or {}
+    token = data.get('fcm_token')
+    if not token:
+        return jsonify({"error": "FCM token is required"}), 400
+        
+    if request.method == 'POST':
+        user.fcm_token = token
+        db.session.commit()
+        return jsonify({"message": "FCM token saved successfully"}), 200
+    else:
+        # DELETE
+        if user.fcm_token == token:
+            user.fcm_token = None
+            db.session.commit()
+        return jsonify({"message": "FCM token removed successfully"}), 200
 
 # HELPDESK TICKETS SUPPORT
 @user_bp.route('/help-tickets', methods=['GET', 'POST'])
@@ -1615,6 +2035,13 @@ def customization_checkout(cust_id):
     db.session.add(order)
     db.session.commit()
 
+    # Send FCM notification
+    try:
+        from fcm_helper import send_order_status_notification
+        send_order_status_notification(order, 'Accepted')
+    except Exception as e:
+        print("FCM status notification error:", e)
+
     # Log purchase
     log_user_action(
         user_id,
@@ -1754,4 +2181,87 @@ def verify_customization_payment(cust_id):
     
     log_user_action(user_id, username, f"Accepted quote and checked out Customization Request #{cust_id} via UPI (Paid)", shop_id=cust.shop_id)
     return jsonify({"success": True, "message": "Payment verified successfully", "customization": cust.serialize()}), 200
+
+@user_bp.route('/shipping-estimate', methods=['POST'])
+@role_required(['user'])
+def get_checkout_shipping_estimate():
+    import shiprocket_helper
+    data = request.get_json() or {}
+    shop_id = data.get('shop_id')
+    pincode = data.get('pincode')
+    weight_kg = data.get('weight_kg', 0.5)
+    declared_value = data.get('declared_value', 1000.0)
+    is_cod = data.get('is_cod', False)
+    
+    if not shop_id or not pincode:
+        return jsonify({"error": "Shop ID and Pincode are required"}), 400
+        
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+        
+    # Pincode validation: 6-digit number
+    import re
+    if not re.match(r'^\d{6}$', str(pincode).strip()):
+        return jsonify({"error": "Invalid Indian pincode"}), 400
+        
+    # Check if Shiprocket credentials are configured
+    has_shiprocket = bool(shop.shiprocket_email and shop.shiprocket_password)
+    
+    if has_shiprocket:
+        try:
+            couriers = shiprocket_helper.check_serviceability(
+                shop=shop,
+                delivery_postcode=pincode,
+                weight_kg=weight_kg,
+                is_cod=is_cod,
+                declared_value=declared_value
+            )
+            
+            estimates = []
+            for courier in couriers:
+                etd = courier.get('etd')
+                courier_name = courier.get('courier_name')
+                transit_days = courier.get('transit_days')
+                if etd:
+                    etd_str = str(etd).strip()
+                    if re.match(r'^\d{4}-\d{2}-\d{2}', etd_str):
+                        etd_date = etd_str.split(' ')[0]
+                    else:
+                        etd_date = re.sub(r'\s+\d{1,2}:\d{2}(:\d{2})?.*$', '', etd_str)
+                    estimates.append({
+                        "courier_name": courier_name,
+                        "etd": etd_date,
+                        "rate": courier.get('rate', 0.0),
+                        "transit_days": transit_days
+                    })
+            
+            if estimates:
+                # Sort by ETD date ascending (earliest first)
+                estimates.sort(key=lambda x: x.get('etd', '9999-12-31'))
+                return jsonify({
+                    "success": True,
+                    "provider": "shiprocket",
+                    "estimates": estimates,
+                    "estimated_delivery_date": estimates[0]['etd']
+                }), 200
+        except Exception as e:
+            print(f"Shiprocket serviceability query failed for checkouts: {e}")
+            # Fall through to simulated date so checkout does not block
+            
+    # Fallback to simulated delivery date (5 days from now)
+    from datetime import datetime, timedelta
+    est_date = (datetime.now() + timedelta(days=5)).strftime('%Y-%m-%d')
+    return jsonify({
+        "success": True,
+        "provider": "simulated",
+        "estimates": [{
+            "courier_name": "Standard Delivery Partner",
+            "etd": est_date,
+            "rate": 0.0,
+            "transit_days": "5"
+        }],
+        "estimated_delivery_date": est_date
+    }), 200
+
 

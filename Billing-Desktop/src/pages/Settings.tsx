@@ -286,16 +286,15 @@ const Settings: React.FC = () => {
     reader.readAsText(file);
   };
 
-  const clearAllData = () => {
+  const clearAllData = async () => {
     if (!confirm('This will permanently delete all products, customers, bills, and transactions. Continue?')) return;
-    const keys: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)!;
-      if (k.startsWith('billing_app_')) keys.push(k);
+    try {
+      await db.wipeDatabase();
+      alert('All application data cleared. The app will reload now.');
+      window.location.reload();
+    } catch (e: any) {
+      alert('Failed to clear database: ' + (e?.message || String(e)));
     }
-    keys.forEach(k => localStorage.removeItem(k));
-    alert('All application data cleared. The app will reload now.');
-    window.location.reload();
   };
 
 

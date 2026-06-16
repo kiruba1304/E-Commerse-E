@@ -1,9 +1,9 @@
 {
   "appId": "com.ecommersee.app",
-  "appName": "Nobaraa-Fashion",
+  "appName": "Nobaraa Fashion",
   "webDir": "dist",
   "server": {
-    "url": "https://vishnex.com",
+    "url": "https://nobaraafashion.co.in",
     "cleartext": true
   },
   "plugins": {

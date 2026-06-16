@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file, render_template_string
-from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection, CustomizationOrder
+from models import db, Admin, Shop, Product, Category, Order, OrderItem, PopupAd, Coupon, Review, User, SystemLog, Notification, Collection, CustomizationOrder, NewsletterSubscription
 from auth_middleware import generate_token, token_required, role_required
 from datetime import datetime, timezone
 import json
@@ -52,6 +52,23 @@ def logout():
     log_admin_action(user['user_id'], user['username'], user['shop_id'], "Admin logged out")
     return jsonify({"message": "Logout successful"}), 200
 
+@admin_bp.route('/verify-password', methods=['POST'])
+@role_required(['admin'])
+def verify_password():
+    admin = Admin.query.get(request.user['user_id'])
+    if not admin:
+        return jsonify({"error": "Admin not found"}), 404
+
+    data = request.get_json() or {}
+    password = data.get('password')
+    if not password:
+        return jsonify({"error": "Password is required"}), 400
+
+    if not admin.check_password(password):
+        return jsonify({"success": False, "error": "Invalid password"}), 401
+
+    return jsonify({"success": True}), 200
+
 @admin_bp.route('/profile', methods=['GET', 'PUT'])
 @role_required(['admin'])
 def manage_profile():
@@ -99,6 +116,22 @@ def manage_shop():
         shop.address = data['address']
     if 'sms_api_key' in data:
         shop.sms_api_key = data['sms_api_key']
+    if 'sms_enabled' in data:
+        shop.sms_enabled = bool(data['sms_enabled'])
+    if 'sms_dispatch_enabled' in data:
+        shop.sms_dispatch_enabled = bool(data['sms_dispatch_enabled'])
+    if 'sms_delivery_enabled' in data:
+        shop.sms_delivery_enabled = bool(data['sms_delivery_enabled'])
+    if 'sms_campaign_enabled' in data:
+        shop.sms_campaign_enabled = bool(data['sms_campaign_enabled'])
+    if 'sms_sender_id' in data:
+        shop.sms_sender_id = data['sms_sender_id']
+    if 'sms_otp_template_id' in data:
+        shop.sms_otp_template_id = data['sms_otp_template_id']
+    if 'sms_dispatch_template_id' in data:
+        shop.sms_dispatch_template_id = data['sms_dispatch_template_id']
+    if 'sms_delivery_template_id' in data:
+        shop.sms_delivery_template_id = data['sms_delivery_template_id']
     if 'whatsapp_api_key' in data:
         shop.whatsapp_api_key = data['whatsapp_api_key']
     if 'razorpay_key_id' in data:
@@ -113,6 +146,12 @@ def manage_shop():
         shop.dtdc_api_key = data['dtdc_api_key']
     if 'dtdc_api_url' in data:
         shop.dtdc_api_url = data['dtdc_api_url']
+    if 'shiprocket_email' in data:
+        shop.shiprocket_email = data['shiprocket_email']
+    if 'shiprocket_password' in data and data['shiprocket_password']:
+        shop.shiprocket_password = data['shiprocket_password']
+    if 'shiprocket_pickup_location' in data:
+        shop.shiprocket_pickup_location = data['shiprocket_pickup_location']
     if 'gst_percentage' in data:
         try:
             shop.gst_percentage = float(data['gst_percentage'])
@@ -167,6 +206,15 @@ def manage_shop():
         shop.cod_enabled = bool(data['cod_enabled'])
     if 'customization_cod_enabled' in data:
         shop.customization_cod_enabled = bool(data['customization_cod_enabled'])
+    if 'welcome_super_coins' in data:
+        try:
+            shop.welcome_super_coins = int(data['welcome_super_coins']) if data['welcome_super_coins'] is not None else 50
+        except ValueError:
+            return jsonify({"error": "Invalid welcome pearls value"}), 400
+    if 'signature_url' in data:
+        shop.signature_url = data['signature_url']
+    if 'store_locator_link' in data:
+        shop.store_locator_link = data['store_locator_link']
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -513,6 +561,18 @@ def manage_products():
     db.session.add(p)
     db.session.commit()
 
+    # Send FCM product notification to topic
+    try:
+        from fcm_helper import send_fcm_topic_notification
+        topic = f"shop_{shop_id}_products"
+        title = "New Product Added!"
+        body = f"Check out our new arrival: {p.name} for only ₹{p.price}!"
+        send_fcm_topic_notification(topic, title, body, data={
+            "product_id": str(p.id)
+        })
+    except Exception as e:
+        print(f"Failed to send FCM product notification: {e}")
+
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Added product '{name}' (Stock: {stock}, Price: {price})")
     
     return jsonify(p.serialize()), 201
@@ -674,6 +734,14 @@ def revenue_report():
         users_query = users_query.filter(User.created_at <= end_date)
 
     all_completed = orders_query.all()
+    # Filter completed orders to exclude:
+    # 1. Rejected orders (for both COD and UPI)
+    # 2. Pending COD orders (unaccepted COD)
+    all_completed = [
+        o for o in all_completed
+        if o.status != 'Rejected' and not (o.payment_method == 'COD' and o.status == 'Pending')
+    ]
+    
     all_orders = all_orders_query.all()
     custom_orders = custom_orders_query.all()
     users_list = users_query.all()
@@ -711,8 +779,8 @@ def revenue_report():
     # Detailed reports requested
     report_new_users = [u.serialize() for u in users_list]
     report_sales = [o.serialize() for o in all_completed]
-    report_online = [o.serialize() for o in all_orders if o.payment_method != 'COD' and o.status != 'Returned']
-    report_cod = [o.serialize() for o in all_orders if o.payment_method == 'COD' and o.status != 'Returned']
+    report_online = [o.serialize() for o in all_orders if o.payment_method != 'COD' and o.status != 'Returned' and o.status != 'Rejected']
+    report_cod = [o.serialize() for o in all_orders if o.payment_method == 'COD' and o.status != 'Returned' and o.status != 'Rejected' and o.status != 'Pending']
     report_returns = [o.serialize() for o in all_orders if o.status == 'Returned' or o.return_request_status == 'Approved']
     report_custom = [co.serialize() for co in custom_orders]
     report_promo = [o.serialize() for o in all_orders if o.discount_amount > 0]
@@ -761,12 +829,113 @@ def list_customers():
             "contact_phone": user.contact_phone,
             "total_orders": len(user_orders),
             "total_spent": round(total_spent, 2),
+            "super_coins": user.super_coins or 0,
             "joined_at": user.created_at.isoformat() if user.created_at else None
         })
             
     return jsonify(customers), 200
 
+@admin_bp.route('/customers/<int:user_id>/grant-pearls', methods=['POST'])
+@role_required(['admin'])
+def grant_pearls(user_id):
+    admin_id = request.user['user_id']
+    username = request.user['username']
+    shop_id = request.user['shop_id']
+    
+    data = request.get_json() or {}
+    amount = data.get('amount')
+    reason = data.get('reason', 'Boutique loyalty reward bonus')
+    
+    if amount is None or not isinstance(amount, int) or amount <= 0:
+        return jsonify({"error": "Invalid pearls amount. Must be a positive integer."}), 400
+        
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Customer not found."}), 404
+        
+    # Increment user's super_coins balance
+    user.super_coins = (user.super_coins or 0) + amount
+    
+    # Create database notification
+    notif_title = "Privilege Pearls Credited!"
+    notif_message = f"Congratulations! {amount} Privilege Pearls have been added to your account. Reason: {reason}"
+    notif = Notification(
+        recipient_type='user',
+        recipient_id=user.id,
+        title=notif_title,
+        message=notif_message,
+        shop_id=shop_id
+    )
+    db.session.add(notif)
+    db.session.commit()
+    
+    # Send FCM push notification (background)
+    if user.fcm_token:
+        try:
+            from fcm_helper import send_fcm_notification
+            send_fcm_notification(user.fcm_token, notif_title, notif_message, data={
+                "type": "pearls_granted",
+                "amount": str(amount),
+                "new_balance": str(user.super_coins)
+            })
+        except Exception as e:
+            print("FCM pearl notification error:", e)
+            
+    # Send Email notification (background thread to avoid blocking admin HTTP response)
+    shop = Shop.query.get(shop_id)
+    if shop and user.email:
+        try:
+            import threading
+            from mail_sender import send_pearls_granted_email
+            from flask import current_app
+            
+            site_link = request.headers.get('Origin') or "http://localhost:5173"
+            app_context = current_app.app_context()
+            
+            def async_send_email(app_context, shop_id, email, amount, reason, new_balance, site_link):
+                with app_context:
+                    try:
+                        from models import Shop
+                        shop_obj = Shop.query.get(shop_id)
+                        if shop_obj:
+                            send_pearls_granted_email(
+                                shop=shop_obj,
+                                recipient_email=email,
+                                amount=amount,
+                                reason=reason,
+                                balance=new_balance,
+                                site_link=site_link,
+                                sender_info={
+                                    "actor_type": "admin",
+                                    "actor_id": admin_id,
+                                    "username": username
+                                }
+                            )
+                    except Exception as email_err:
+                        print(f"Error in background pearls email thread: {email_err}")
+                        
+            threading.Thread(
+                target=async_send_email,
+                args=(app_context, shop.id, user.email, amount, reason, user.super_coins, site_link)
+            ).start()
+        except Exception as spawn_err:
+            print(f"Error spawning pearls email thread: {spawn_err}")
+            
+    # Log admin action
+    log_admin_action(
+        admin_id, 
+        username, 
+        shop_id, 
+        f"Granted {amount} Privilege Pearls to customer #{user.id} ({user.username}). Reason: {reason}"
+    )
+    
+    return jsonify({
+        "message": f"Successfully granted {amount} Privilege Pearls.",
+        "new_balance": user.super_coins
+    }), 200
+
 # ORDER MANAGEMENT (Tracking status: Dispatched, Customer Received, Returns)
+
 @admin_bp.route('/orders', methods=['GET'])
 @role_required(['admin'])
 def manage_orders():
@@ -816,6 +985,20 @@ def update_order_status(order_id):
         order.status = status
         if status == 'Rejected':
             order.is_synced = True
+            
+        # Send FCM notification
+        try:
+            from fcm_helper import send_order_status_notification
+            send_order_status_notification(order, status)
+        except Exception as e:
+            print("FCM status notification error:", e)
+
+        # Send SMS notification
+        try:
+            from sms_helper import send_order_status_sms
+            send_order_status_sms(order, status)
+        except Exception as e:
+            print("SMS status notification error:", e)
         
     if tracking_info is not None:
         order.tracking_info = tracking_info
@@ -871,11 +1054,73 @@ def resolve_return_request(order_id):
     
     return jsonify(order.serialize()), 200
 
+@admin_bp.route('/shipping-wallet-balance', methods=['GET'])
+@role_required(['admin'])
+def get_shipping_wallet_balance():
+    import shiprocket_helper
+    shop_id = request.user['shop_id']
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    try:
+        balance = shiprocket_helper.get_wallet_balance(shop)
+        return jsonify({
+            "success": True,
+            "balance": balance
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+@admin_bp.route('/orders/<int:order_id>/shipping-serviceability', methods=['GET'])
+@role_required(['admin'])
+def get_shipping_serviceability(order_id):
+    import re
+    import shiprocket_helper
+
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+
+    weight_kg = request.args.get('weight_kg', 0.5, type=float)
+    
+    # Extract pincode from order's shipping address
+    delivery_pincode = "400001"
+    if order.shipping_address:
+        pin_match = re.search(r'\b\d{6}\b', order.shipping_address)
+        if pin_match:
+            delivery_pincode = pin_match.group(0)
+
+    is_cod = (order.payment_method == "COD")
+    declared_value = order.final_amount or 0.0
+
+    try:
+        couriers = shiprocket_helper.check_serviceability(
+            shop=shop,
+            delivery_postcode=delivery_pincode,
+            weight_kg=weight_kg,
+            is_cod=is_cod,
+            declared_value=declared_value
+        )
+        return jsonify({
+            "success": True,
+            "available_couriers": couriers
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
 @admin_bp.route('/orders/<int:order_id>/book-shipping', methods=['POST'])
 @role_required(['admin'])
 def book_shipping(order_id):
     import requests
     import secrets
+    from datetime import datetime
+    import shiprocket_helper
     
     shop_id = request.user['shop_id']
     order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
@@ -887,7 +1132,108 @@ def book_shipping(order_id):
     data = request.get_json() or {}
     weight_kg = float(data.get('weight_kg', 0.5))
     declared_value = float(data.get('declared_value', order.final_amount))
+    carrier = data.get('carrier', 'DTDC')
+    courier_id = data.get('courier_id')
     
+    if carrier == 'Shiprocket':
+        try:
+            sr_order_id = order.shiprocket_order_id
+            sr_shipment_id = order.shiprocket_shipment_id
+            
+            # If not created on Shiprocket yet, create it
+            if not sr_order_id or not sr_shipment_id:
+                # 1. Build order items details
+                items_list = []
+                for item in order.items:
+                    items_list.append({
+                        "name": item.product_name,
+                        "sku": item.product.sku_code if (item.product and item.product.sku_code) else f"SKU-{item.product_id}",
+                        "units": item.quantity,
+                        "price": item.price,
+                        "product_id": item.product_id
+                    })
+                if not items_list:
+                    items_list.append({
+                        "name": "General Order Item",
+                        "sku": f"GEN-SKU-{order.id}",
+                        "units": 1,
+                        "price": order.final_amount,
+                        "product_id": 0
+                    })
+                    
+                # 2. Call Shiprocket Create Order
+                res_dict = shiprocket_helper.create_shiprocket_order(
+                    shop=shop,
+                    order_id_str=f"EC-{order.online_order_number or order.id}",
+                    order_date=order.created_at or datetime.now(),
+                    customer_name=order.user.name or order.user.username if order.user else "Customer",
+                    customer_email=order.user.email if order.user else f"cust_{order.id}@example.com",
+                    customer_phone=order.billing_phone or (order.user.contact_phone if order.user else "9999999999"),
+                    shipping_address=order.shipping_address,
+                    items=items_list,
+                    weight_kg=weight_kg,
+                    declared_value=declared_value,
+                    payment_method=order.payment_method
+                )
+                
+                sr_order_id = res_dict.get('shiprocket_order_id')
+                sr_shipment_id = res_dict.get('shiprocket_shipment_id')
+                
+                order.shiprocket_order_id = sr_order_id
+                order.shiprocket_shipment_id = sr_shipment_id
+                db.session.commit() # Save Shiprocket IDs immediately so we don't duplicate order creation next time
+                
+            # 3. Assign AWB (do not catch exception here so failure propagates back to admin)
+            awb_res = shiprocket_helper.assign_awb(shop, sr_shipment_id, courier_id)
+            awb_code = awb_res.get('awb_code')
+            courier_name = awb_res.get('courier_name')
+                
+            # Try to generate label
+            label_url = None
+            if awb_code:
+                try:
+                    label_url = shiprocket_helper.generate_label(shop, sr_shipment_id)
+                except Exception as lbl_err:
+                    print(f"Shiprocket label generation failed: {lbl_err}")
+                    
+            order.status = 'Dispatched'
+            if awb_code:
+                if courier_name:
+                    order.tracking_info = f"Shiprocket (via {courier_name}) AWB: {awb_code}"
+                else:
+                    order.tracking_info = f"Shiprocket AWB: {awb_code}"
+            else:
+                order.tracking_info = f"Shiprocket Order ID: {sr_order_id}"
+                
+            if label_url:
+                order.shipping_label_url = label_url
+            else:
+                host = request.host_url
+                if not host.endswith('/'):
+                    host += '/'
+                order.shipping_label_url = f"{host}api/admin/orders/{order.id}/shipping-label"
+                
+            db.session.commit()
+            
+            # Send FCM notification
+            try:
+                from fcm_helper import send_order_status_notification
+                send_order_status_notification(order, 'Dispatched')
+            except Exception as e:
+                print("FCM status notification error:", e)
+                
+            log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Booked Shiprocket Shipment for Order #{order.id} (Shipment ID: {sr_shipment_id})")
+            
+            return jsonify({
+                "success": True,
+                "message": "Shiprocket shipment booked successfully",
+                "order": order.serialize()
+            }), 200
+            
+        except Exception as err:
+            return jsonify({"error": str(err)}), 400
+
+    # Fallback to DTDC
     client_code = shop.dtdc_client_code
     api_key = shop.dtdc_api_key
     api_url = shop.dtdc_api_url or "https://api.dtdc.com/v1/shipments"
@@ -942,6 +1288,13 @@ def book_shipping(order_id):
     order.shipping_label_url = label_url
     db.session.commit()
     
+    # Send FCM notification
+    try:
+        from fcm_helper import send_order_status_notification
+        send_order_status_notification(order, 'Dispatched')
+    except Exception as e:
+        print("FCM status notification error:", e)
+    
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Booked DTDC Shipment for Order #{order.id} (AWB: {awb_number})")
     
     return jsonify({
@@ -971,6 +1324,28 @@ def get_shipping_label(order_id):
     else:
         order_display_id = f"#{order.id}"
         
+    courier_name = "DTDC Express"
+    if order.tracking_info:
+        if "AWB:" in order.tracking_info:
+            prefix = order.tracking_info.split("AWB:")[0].strip()
+            if "Shiprocket" in prefix:
+                if "via " in prefix:
+                    parts = prefix.split("via ")
+                    if len(parts) > 1:
+                        courier_name = parts[1].replace("(", "").replace(")", "").strip()
+                else:
+                    courier_name = "Shiprocket Partner"
+            elif prefix:
+                courier_name = prefix
+        else:
+            if "Shiprocket" in order.tracking_info:
+                courier_name = "Shiprocket Partner"
+            elif "DTDC" in order.tracking_info:
+                courier_name = "DTDC Express"
+                
+    if courier_name == "DTDC":
+        courier_name = "DTDC Express"
+        
     customer_name = order.user.name if order.user else 'Walk-in Customer'
     customer_phone = order.billing_phone or (order.user.contact_phone if order.user else '')
     customer_address = order.shipping_address or ''
@@ -979,7 +1354,7 @@ def get_shipping_label(order_id):
 <html>
 <head>
     <meta charset="utf-8">
-    <title>DTDC Shipping Label - {{ barcode_value }}</title>
+    <title>{{ courier_name }} Shipping Label - {{ barcode_value }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         @page { size: 101.6mm 152.4mm; margin: 0; }
@@ -1172,7 +1547,7 @@ def get_shipping_label(order_id):
                         <path d="M22 2L11 13"></path>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
-                    <div class="logo-text">DTDC Express</div>
+                    <div class="logo-text">{{ courier_name }}</div>
                 </div>
                 <div class="col-title">Shipping Label</div>
             </div>
@@ -1197,7 +1572,7 @@ def get_shipping_label(order_id):
             <div class="row">
                 <div class="col-50">
                     <span class="lbl">Shipping Partner:</span>
-                    <span class="val-bold">DTDC Express</span>
+                    <span class="val-bold">{{ courier_name }}</span>
                 </div>
                 <div class="col-50">
                     <span class="lbl">Shipping Date:</span>
@@ -1243,7 +1618,7 @@ def get_shipping_label(order_id):
             
             <!-- Row 7: Footer -->
             <div class="row-footer">
-                DTDC COURIER CARRIER / SERVICE: EXPRESS RESIDENTIAL
+                {{ courier_name | upper }} COURIER CARRIER / SERVICE: EXPRESS RESIDENTIAL
             </div>
         </div>
     </div>
@@ -1306,7 +1681,8 @@ def get_shipping_label(order_id):
                                   customer_phone=customer_phone, 
                                   customer_address=customer_address, 
                                   formatted_date=order.created_at.strftime('%d %b %Y') if order.created_at else '',
-                                  formatted_now=datetime.now().strftime('%d %b %Y'))
+                                  formatted_now=datetime.now().strftime('%d %b %Y'),
+                                  courier_name=courier_name)
 
 
 @admin_bp.route('/customizations/<int:cust_id>/shipping-label', methods=['GET'])
@@ -1319,6 +1695,28 @@ def get_customization_shipping_label(cust_id):
     awb_number = "D00000000"
     if cust.tracking_info and "AWB:" in cust.tracking_info:
         awb_number = cust.tracking_info.split("AWB:")[-1].strip()
+        
+    courier_name = "DTDC Express"
+    if cust.tracking_info:
+        if "AWB:" in cust.tracking_info:
+            prefix = cust.tracking_info.split("AWB:")[0].strip()
+            if "Shiprocket" in prefix:
+                if "via " in prefix:
+                    parts = prefix.split("via ")
+                    if len(parts) > 1:
+                        courier_name = parts[1].replace("(", "").replace(")", "").strip()
+                else:
+                    courier_name = "Shiprocket Partner"
+            elif prefix:
+                courier_name = prefix
+        else:
+            if "Shiprocket" in cust.tracking_info:
+                courier_name = "Shiprocket Partner"
+            elif "DTDC" in cust.tracking_info:
+                courier_name = "DTDC Express"
+                
+    if courier_name == "DTDC":
+        courier_name = "DTDC Express"
         
     barcode_value = awb_number if awb_number != "D00000000" else f"CUST-D{str(cust.id).zfill(6)}"
     payment_type = "Prepaid"
@@ -1336,7 +1734,7 @@ def get_customization_shipping_label(cust_id):
 <html>
 <head>
     <meta charset="utf-8">
-    <title>DTDC Custom Shipping Label - {{ barcode_value }}</title>
+    <title>{{ courier_name }} Custom Shipping Label - {{ barcode_value }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         @page { size: 101.6mm 152.4mm; margin: 0; }
@@ -1529,7 +1927,7 @@ def get_customization_shipping_label(cust_id):
                         <path d="M22 2L11 13"></path>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
-                    <div class="logo-text">DTDC Custom</div>
+                    <div class="logo-text">{{ courier_name }} Custom</div>
                 </div>
                 <div class="col-title">Shipping Label</div>
             </div>
@@ -1554,7 +1952,7 @@ def get_customization_shipping_label(cust_id):
             <div class="row">
                 <div class="col-50">
                     <span class="lbl">Shipping Partner:</span>
-                    <span class="val-bold">DTDC Express</span>
+                    <span class="val-bold">{{ courier_name }}</span>
                 </div>
                 <div class="col-50">
                     <span class="lbl">Shipping Date:</span>
@@ -1604,7 +2002,7 @@ def get_customization_shipping_label(cust_id):
             
             <!-- Row 7: Footer -->
             <div class="row-footer">
-                DTDC CUSTOM COURIER / SERVICE: SPECIAL HANDCRAFTED
+                {{ courier_name | upper }} CUSTOM COURIER / SERVICE: SPECIAL HANDCRAFTED
             </div>
         </div>
     </div>
@@ -1668,7 +2066,8 @@ def get_customization_shipping_label(cust_id):
                                   consignee_address=consignee_address, 
                                   product_name=product_name,
                                   formatted_date=cust.created_at.strftime('%d %b %Y') if cust.created_at else '',
-                                  formatted_now=datetime.now().strftime('%d %b %Y'))
+                                  formatted_now=datetime.now().strftime('%d %b %Y'),
+                                  courier_name=courier_name)
 
 
 # POPUP ADS PUSHING
@@ -1701,6 +2100,33 @@ def manage_popup_ads():
     db.session.commit()
 
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created popup ad campaign '{title}'")
+
+    # Send email to all newsletter subscribers in a background thread to prevent blocking
+    try:
+        import threading
+        from mail_sender import send_popup_ad_email
+        from flask import current_app
+        
+        subscriber_emails = [sub.email for sub in subscribers]
+        ad_id = ad.id
+        
+        def dispatch_emails(app_context, shop_id, ad_id, target_link, emails):
+            with app_context:
+                from models import Shop, PopupAd
+                shop_obj = Shop.query.get(shop_id)
+                ad_obj = PopupAd.query.get(ad_id)
+                if shop_obj and ad_obj:
+                    for email in emails:
+                        try:
+                            send_popup_ad_email(shop_obj, email, ad_obj, target_link)
+                        except Exception as e:
+                            print(f"Error sending popup ad email to {email}: {e}")
+                        
+        app_context = current_app.app_context()
+        threading.Thread(target=dispatch_emails, args=(app_context, shop.id, ad_id, target_link, subscriber_emails)).start()
+    except Exception as e:
+        print(f"Error spawning newsletter announcement thread: {e}")
+
     return jsonify(ad.serialize()), 201
 
 @admin_bp.route('/popup-ads/<int:ad_id>', methods=['PUT', 'DELETE'])
@@ -1744,6 +2170,19 @@ def manage_coupons():
 
     if request.method == 'GET':
         coupons = Coupon.query.filter_by(shop_id=shop_id).all()
+        # Auto-deactivate expired or exhausted coupons
+        now = datetime.now()
+        updated = False
+        for c in coupons:
+            if c.is_active:
+                if c.expires_at and now > c.expires_at:
+                    c.is_active = False
+                    updated = True
+                elif c.usage_limit is not None and c.used_count >= c.usage_limit:
+                    c.is_active = False
+                    updated = True
+        if updated:
+            db.session.commit()
         return jsonify([c.serialize() for c in coupons]), 200
 
     data = request.get_json() or {}
@@ -1758,16 +2197,56 @@ def manage_coupons():
     if existing:
         return jsonify({"error": f"Coupon code '{code}' already exists for this shop"}), 400
 
+    expires_at_val = None
+    expires_at_str = data.get('expires_at')
+    if expires_at_str:
+        try:
+            expires_at_str_clean = expires_at_str.replace('Z', '+00:00')
+            expires_at_val = datetime.fromisoformat(expires_at_str_clean)
+        except Exception:
+            try:
+                expires_at_val = datetime.strptime(expires_at_str[:16], "%Y-%m-%dT%H:%M")
+            except Exception:
+                pass
+
+    usage_limit_val = None
+    if 'usage_limit' in data and data['usage_limit'] is not None and str(data['usage_limit']).strip() != '':
+        try:
+            usage_limit_val = int(data['usage_limit'])
+        except Exception:
+            pass
+
+    usage_limit_per_user_val = None
+    if 'usage_limit_per_user' in data and data['usage_limit_per_user'] is not None and str(data['usage_limit_per_user']).strip() != '':
+        try:
+            usage_limit_per_user_val = int(data['usage_limit_per_user'])
+        except Exception:
+            pass
+
     c = Coupon(
         code=code.upper(),
         discount_percentage=float(discount_percentage),
         max_discount=float(data.get('max_discount', 1000.0)),
         min_purchase=float(data.get('min_purchase', 0.0)),
         is_active=bool(data.get('is_active', True)),
-        shop_id=shop_id
+        shop_id=shop_id,
+        expires_at=expires_at_val,
+        usage_limit=usage_limit_val,
+        usage_limit_per_user=usage_limit_per_user_val,
+        used_count=0
     )
     db.session.add(c)
     db.session.commit()
+
+    # Send FCM coupon notification to topic
+    try:
+        from fcm_helper import send_fcm_topic_notification
+        topic = f"shop_{shop_id}_offers"
+        title = "New Offer Available!"
+        body = f"Use coupon code {c.code} to get {c.discount_percentage}% off on your next purchase!"
+        send_fcm_topic_notification(topic, title, body, data={"coupon_code": c.code})
+    except Exception as e:
+        print(f"Failed to send FCM coupon notification: {e}")
 
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Created discount coupon '{c.code}'")
     return jsonify(c.serialize()), 201
@@ -1798,6 +2277,40 @@ def modify_coupon(coupon_id):
         c.min_purchase = float(data['min_purchase'])
     if 'is_active' in data:
         c.is_active = bool(data['is_active'])
+
+    if 'expires_at' in data:
+        expires_at_str = data['expires_at']
+        if expires_at_str:
+            try:
+                expires_at_str_clean = expires_at_str.replace('Z', '+00:00')
+                c.expires_at = datetime.fromisoformat(expires_at_str_clean)
+            except Exception:
+                try:
+                    c.expires_at = datetime.strptime(expires_at_str[:16], "%Y-%m-%dT%H:%M")
+                except Exception:
+                    pass
+        else:
+            c.expires_at = None
+
+    if 'usage_limit' in data:
+        usage_limit_val = data['usage_limit']
+        if usage_limit_val is not None and str(usage_limit_val).strip() != '':
+            try:
+                c.usage_limit = int(usage_limit_val)
+            except Exception:
+                pass
+        else:
+            c.usage_limit = None
+
+    if 'usage_limit_per_user' in data:
+        usage_limit_per_user_val = data['usage_limit_per_user']
+        if usage_limit_per_user_val is not None and str(usage_limit_per_user_val).strip() != '':
+            try:
+                c.usage_limit_per_user = int(usage_limit_per_user_val)
+            except Exception:
+                pass
+        else:
+            c.usage_limit_per_user = None
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated coupon code '{c.code}' settings")
@@ -2177,7 +2690,7 @@ def manage_help_tickets():
     ticket.status = 'Resolved'
     db.session.commit()
 
-    # Notify user of reply
+    # Notify user of reply via in-app notification
     notif = Notification(
         recipient_type='user',
         recipient_id=ticket.user_id,
@@ -2187,6 +2700,74 @@ def manage_help_tickets():
     )
     db.session.add(notif)
     db.session.commit()
+
+    # Retrieve user and shop objects
+    user = ticket.user
+    shop = ticket.shop
+
+    # Send FCM push notification (background)
+    if user and user.fcm_token:
+        try:
+            from fcm_helper import send_fcm_notification
+            send_fcm_notification(
+                token=user.fcm_token,
+                title="Help Ticket Replied!",
+                body=f"Admin replied to your ticket '{ticket.subject}': {reply[:60]}...",
+                data={
+                    "type": "ticket_reply",
+                    "ticket_id": str(ticket.id)
+                }
+            )
+        except Exception as fcm_err:
+            print("FCM support reply notification error:", fcm_err)
+
+    # Send SMTP Email notification (asynchronous thread)
+    if shop and user and user.email and shop.smtp_host and shop.smtp_user:
+        try:
+            import threading
+            from flask import current_app
+            from mail_sender import send_ticket_reply_email
+            
+            app_context = current_app.app_context()
+            site_link = request.headers.get('Origin') or "http://localhost:5173"
+            
+            def async_send_reply(app_context, shop_id, email_addr, sub_text, query_text, reply_text, link_str, sender_info):
+                with app_context:
+                    try:
+                        from models import Shop
+                        shop_obj = Shop.query.get(shop_id)
+                        if shop_obj:
+                            send_ticket_reply_email(
+                                shop=shop_obj,
+                                recipient_email=email_addr,
+                                ticket_subject=sub_text,
+                                query_message=query_text,
+                                admin_reply=reply_text,
+                                site_link=link_str,
+                                sender_info=sender_info
+                            )
+                    except Exception as mail_err:
+                        print(f"Error in async ticket reply email: {mail_err}")
+                        
+            threading.Thread(
+                target=async_send_reply,
+                args=(
+                    app_context,
+                    shop.id,
+                    user.email,
+                    ticket.subject,
+                    ticket.message,
+                    reply,
+                    site_link,
+                    {
+                        "actor_type": "admin",
+                        "actor_id": request.user['user_id'],
+                        "username": request.user['username']
+                    }
+                )
+            ).start()
+        except Exception as spawn_err:
+            print(f"Failed to spawn ticket reply email thread: {spawn_err}")
 
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Resolved help ticket #{ticket.id} ('{ticket.subject}')")
     return jsonify(ticket.serialize()), 200
@@ -2199,13 +2780,19 @@ def manage_messaging():
     
     if request.method == 'GET':
         # Let's read system logs related to sms / messaging
-        logs = SystemLog.query.filter_by(shop_id=shop_id).filter(SystemLog.action.like('%[Message]%')).order_by(SystemLog.created_at.desc()).all()
+        logs = SystemLog.query.filter_by(shop_id=shop_id).filter(SystemLog.action.like('%Message:%')).order_by(SystemLog.created_at.desc()).all()
         
-        # Return a list of mock SMS/WhatsApp campaigns
+        # Return a list of mock SMS/WhatsApp/FCM campaigns
         res = []
         for log in logs:
             parts = log.action.split('|')
-            platform = "Fast2SMS" if "SMS" in log.action else "WhatsApp Gateway"
+            platform_prefix = parts[0].strip()
+            if "FCM" in platform_prefix:
+                platform = "Firebase Push (FCM)"
+            elif "SMS" in platform_prefix or "SMS" in log.action:
+                platform = "Fast2SMS"
+            else:
+                platform = "WhatsApp Gateway"
             res.append({
                 "id": log.id,
                 "timestamp": log.created_at.isoformat(),
@@ -2216,26 +2803,61 @@ def manage_messaging():
             })
         return jsonify(res), 200
 
-    # POST - send SMS / WhatsApp campaign
+    # POST - send SMS / WhatsApp campaign / FCM
     data = request.get_json() or {}
-    platform = data.get('platform') # SMS, WhatsApp
+    platform = data.get('platform') # SMS, WhatsApp, FCM
     recipient = data.get('recipient', 'All Customers')
     message = data.get('message')
+    title = data.get('title', 'Nobaraa Fashion') # Push notification title
 
     if not platform or not message:
         return jsonify({"error": "Platform and message content are required"}), 400
 
-    action_str = f"[Message] | {recipient} | {message}"
+    if platform == 'FCM':
+        from fcm_helper import send_fcm_topic_notification, send_fcm_notification
+        
+        # Determine target and send notification
+        # For broadcast
+        user = None
+        if recipient == 'All Customers' or recipient == 'Active Cart Users':
+            topic = f"shop_{shop_id}_all"
+            fcm_sent = send_fcm_topic_notification(topic, title, message)
+        else:
+            user = User.query.filter_by(contact_phone=recipient).first()
+            if user and user.fcm_token:
+                fcm_sent = send_fcm_notification(user.fcm_token, title, message)
+            else:
+                fcm_sent = False
+                
+        # Also create a Notification record in DB for the in-app notification center!
+        db_notif = Notification(
+            recipient_type='user',
+            recipient_id=user.id if (recipient != 'All Customers' and recipient != 'Active Cart Users' and user) else None,
+            title=title,
+            message=message,
+            shop_id=shop_id
+        )
+        db.session.add(db_notif)
+        db.session.commit()
+        
+        action_str = f"[Message:FCM] | {recipient} | {title}: {message}"
+    else:
+        if platform == 'SMS':
+            shop = Shop.query.get(shop_id)
+            if not shop or not shop.sms_campaign_enabled:
+                return jsonify({"error": "SMS campaign messaging is disabled for this shop. Enable it in Shop Config."}), 400
+        action_str = f"[Message:{platform}] | {recipient} | {message}"
+        
     log_admin_action(request.user['user_id'], request.user['username'], shop_id, action_str)
 
     return jsonify({
         "status": "Success",
-        "message": f"{platform} campaign successfully dispatched through API key. 100% delivery rate.",
+        "message": f"{platform} campaign successfully dispatched. 100% delivery rate.",
         "details": {
             "platform": platform,
             "recipient": recipient,
             "char_count": len(message),
-            "cost_per_message": "0.00" if platform == "WhatsApp" else "0.20 Rupees"
+            "cost_per_message": "0.00" if platform in ["WhatsApp", "FCM"] else "0.20 Rupees"
         }
     }), 200
 
@@ -2270,6 +2892,20 @@ def update_customization_status(cust_id):
         # Log action
         log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Updated status of Customization #{cust_id} to '{cust.status}'")
         
+        # Send FCM notification
+        try:
+            from fcm_helper import send_customization_status_notification
+            send_customization_status_notification(cust, 'status')
+        except Exception as e:
+            print("FCM customization status notification error:", e)
+
+        # Send SMS notification
+        try:
+            from sms_helper import send_order_status_sms
+            send_order_status_sms(cust, cust.status)
+        except Exception as e:
+            print("SMS customization status notification error:", e)
+        
     return jsonify({"message": "Customization request updated successfully", "customization": cust.serialize()}), 200
 
 @admin_bp.route('/customizations/<int:cust_id>/quote', methods=['PUT'])
@@ -2291,8 +2927,115 @@ def update_customization_quote(cust_id):
         db.session.commit()
         
         log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Quoted price of ₹{cust.quoted_price:.2f} for Customization #{cust_id}")
+        
+        # Send FCM notification
+        try:
+            from fcm_helper import send_customization_status_notification
+            send_customization_status_notification(cust, 'quote')
+        except Exception as e:
+            print("FCM customization quote notification error:", e)
+            
         return jsonify({"message": "Price quote sent successfully", "customization": cust.serialize()}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": f"Failed to save price quote: {str(e)}"}), 500
+
+
+@admin_bp.route('/sms/fetch-template-content', methods=['GET'])
+@role_required(['admin'])
+def fetch_sms_template_content():
+    import os
+    import requests
+    import logging
+    
+    shop = Shop.query.get(request.user['shop_id'])
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+        
+    sender_id = request.args.get('sender_id', '').strip().upper()
+    template_id = request.args.get('template_id', '').strip()
+    api_key_param = request.args.get('api_key', '').strip()
+    
+    if not sender_id or not template_id:
+        return jsonify({"error": "sender_id and template_id are required"}), 400
+        
+    api_key = api_key_param or shop.sms_api_key or os.getenv("FAST2SMS_API_KEY")
+    
+    # Check if key is mock
+    is_mock = not api_key or "MOCK" in api_key or "FAST2SMS_" in api_key
+    
+    if is_mock:
+        content = f"Your OTP code for verification is 123456. Valid for 10 mins. - {sender_id}"
+        if "otp" in template_id.lower() or "otp" in sender_id.lower():
+            content = f"Your OTP for login to our store is 123456. Do not share. - {sender_id}"
+        elif "dispatch" in template_id.lower() or "disp" in template_id.lower():
+            content = f"Your order 1001 has been dispatched. Tracking: TRACK123. - {sender_id}"
+        elif "delivery" in template_id.lower() or "deliv" in template_id.lower():
+            content = f"Your order 1001 has been delivered successfully. Thank you. - {sender_id}"
+        
+        return jsonify({
+            "success": True,
+            "sender_id": sender_id,
+            "template_id": template_id,
+            "content": content,
+            "is_mock": True
+        }), 200
+
+    # Real API call to Fast2SMS DLT Manager
+    headers = {
+        "authorization": api_key,
+        "accept": "application/json"
+    }
+    
+    template_content = None
+    url = "https://www.fast2sms.com/dev/dlt_manager"
+    
+    try:
+        print(f"Querying DLT templates from Fast2SMS: {url} with auth={api_key[:8]}...")
+        # type=template parameter is required to return templates array nested in each sender
+        response = requests.get(url, headers=headers, params={"authorization": api_key, "type": "template"}, timeout=8)
+        print(f"Fast2SMS DLT view status: {response.status_code}")
+        
+        if response.status_code == 200:
+            res_data = response.json()
+            # Fast2SMS returns "success": true in response
+            if res_data.get("success") is True or res_data.get("return") is True:
+                senders = res_data.get("data", [])
+                if isinstance(senders, list):
+                    for sender in senders:
+                        item_sender_id = str(sender.get("sender_id") or "").upper()
+                        # If sender_id is specified, filter by it
+                        if sender_id and item_sender_id != sender_id:
+                            continue
+                        
+                        templates_list = sender.get("templates", [])
+                        if isinstance(templates_list, list):
+                            for temp in templates_list:
+                                item_template_id = str(temp.get("template_id") or temp.get("message_id") or "")
+                                if item_template_id == template_id:
+                                    template_content = temp.get("message_text") or temp.get("message") or temp.get("content")
+                                    break
+                        if template_content:
+                            break
+    except Exception as e:
+        print(f"Failed to query {url}: {e}")
+
+    if template_content:
+        return jsonify({
+            "success": True,
+            "sender_id": sender_id,
+            "template_id": template_id,
+            "content": template_content,
+            "is_mock": False
+        }), 200
+    else:
+        fallback_content = f"Template {template_id} for Sender {sender_id} was not found on Fast2SMS. Please verify in your Fast2SMS DLT Manager dashboard."
+        return jsonify({
+            "success": False,
+            "sender_id": sender_id,
+            "template_id": template_id,
+            "content": fallback_content,
+            "error": "Template not found on Fast2SMS DLT Manager"
+        }), 404
+
 

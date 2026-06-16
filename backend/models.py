@@ -43,6 +43,14 @@ class Shop(db.Model):
     
     # API credentials
     sms_api_key = db.Column(db.String(255), nullable=True)
+    sms_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    sms_dispatch_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    sms_delivery_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    sms_campaign_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    sms_sender_id = db.Column(db.String(50), nullable=True)
+    sms_otp_template_id = db.Column(db.String(255), nullable=True)
+    sms_dispatch_template_id = db.Column(db.String(255), nullable=True)
+    sms_delivery_template_id = db.Column(db.String(255), nullable=True)
     whatsapp_api_key = db.Column(db.String(255), nullable=True)
     razorpay_key_id = db.Column(db.String(255), nullable=True)
     razorpay_key_secret = db.Column(db.String(255), nullable=True)
@@ -55,9 +63,19 @@ class Shop(db.Model):
     dtdc_api_url = db.Column(db.String(255), nullable=True)
     last_online_order_number = db.Column(db.Integer, default=0, nullable=False)
     
+    # Shiprocket Credentials
+    shiprocket_email = db.Column(db.String(255), nullable=True)
+    shiprocket_password = db.Column(db.String(255), nullable=True)
+    shiprocket_pickup_location = db.Column(db.String(255), default='Primary', nullable=True)
+    shiprocket_token = db.Column(db.Text, nullable=True)
+    shiprocket_token_expiry = db.Column(db.DateTime, nullable=True)
+    
     # Super coin configuration
     super_coin_enabled = db.Column(db.Boolean, default=True)
     super_coin_ratio = db.Column(db.Integer, default=10) # 1 super coin for every 10 currency units spent
+    welcome_super_coins = db.Column(db.Integer, default=50)
+    signature_url = db.Column(db.String(500), nullable=True)
+    store_locator_link = db.Column(db.Text, nullable=True)
     
     gst_percentage = db.Column(db.Float, default=18.0)
     gst_inclusive = db.Column(db.Boolean, default=False)
@@ -177,7 +195,7 @@ class Shop(db.Model):
                 },
                 "purchase": {
                     "subject": "Order Confirmation #{order_id} - {shop_name}",
-                    "body": "Hello {name},\n\nThank you for your purchase! We have received your order #{order_id}.\n\nOrder Details:\nTotal Amount: {total_amount}\nItems: {items}\n\nWe will update you once your order is shipped.\n\nBest regards,\n{shop_name}"
+                    "body": "Hello {name},\n\nThank you for your purchase! We have received your order #{order_id}.\n\nOrder Details:\nTotal Amount: ₹{total_amount}\nItems: {items}\n\nWe will update you once your order is shipped.\n\nBest regards,\n{shop_name}"
                 },
                 "login": {
                     "subject": "New Login Alert - {shop_name}",
@@ -224,6 +242,14 @@ class Shop(db.Model):
             "privacy_policy": self.privacy_policy,
             "address": self.address,
             "sms_api_key": self.sms_api_key,
+            "sms_enabled": self.sms_enabled,
+            "sms_dispatch_enabled": self.sms_dispatch_enabled,
+            "sms_delivery_enabled": self.sms_delivery_enabled,
+            "sms_campaign_enabled": self.sms_campaign_enabled,
+            "sms_sender_id": self.sms_sender_id,
+            "sms_otp_template_id": self.sms_otp_template_id,
+            "sms_dispatch_template_id": self.sms_dispatch_template_id,
+            "sms_delivery_template_id": self.sms_delivery_template_id,
             "whatsapp_api_key": self.whatsapp_api_key,
             "razorpay_key_id": self.razorpay_key_id,
             "razorpay_key_secret": self.razorpay_key_secret,
@@ -233,8 +259,14 @@ class Shop(db.Model):
             "dtdc_api_key": self.dtdc_api_key,
             "dtdc_api_url": self.dtdc_api_url,
             "last_online_order_number": self.last_online_order_number,
+            "shiprocket_email": self.shiprocket_email,
+            "shiprocket_password": self.shiprocket_password,
+            "shiprocket_pickup_location": self.shiprocket_pickup_location,
             "super_coin_enabled": self.super_coin_enabled,
             "super_coin_ratio": self.super_coin_ratio,
+            "welcome_super_coins": self.welcome_super_coins if self.welcome_super_coins is not None else 50,
+            "signature_url": self.signature_url,
+            "store_locator_link": self.store_locator_link,
             "gst_percentage": self.gst_percentage,
             "gst_inclusive": self.gst_inclusive,
             "saree_models": self.saree_models,
@@ -304,6 +336,7 @@ class User(db.Model):
     last_used_address_id = db.Column(db.BigInteger, nullable=True)
     reset_token = db.Column(db.String(100), nullable=True)
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
+    fcm_token = db.Column(db.String(255), nullable=True)
 
     @property
     def addresses(self):
@@ -342,7 +375,8 @@ class User(db.Model):
             "addresses": self.addresses,
             "last_used_address_id": self.last_used_address_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "role": "user"
+            "role": "user",
+            "fcm_token": self.fcm_token
         }
 
 class Category(db.Model):
@@ -522,6 +556,9 @@ class Order(db.Model):
     delivered_at = db.Column(db.DateTime, nullable=True)
     shipping_charge = db.Column(db.Float, default=0.0)
     shipping_gst = db.Column(db.Float, default=0.0)
+    shiprocket_order_id = db.Column(db.String(255), nullable=True)
+    shiprocket_shipment_id = db.Column(db.String(255), nullable=True)
+    coupon_code = db.Column(db.String(50), nullable=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -559,6 +596,9 @@ class Order(db.Model):
             "is_synced": self.is_synced,
             "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "shiprocket_order_id": self.shiprocket_order_id,
+            "shiprocket_shipment_id": self.shiprocket_shipment_id,
+            "coupon_code": self.coupon_code,
             "customer": {
                 "name": user.name if user else "Online Customer",
                 "phone": self.billing_phone or (user.contact_phone if user else ""),
@@ -688,6 +728,11 @@ class Coupon(db.Model):
     min_purchase = db.Column(db.Float, default=0.0)
     is_active = db.Column(db.Boolean, default=True)
     shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    
+    expires_at = db.Column(db.DateTime, nullable=True)
+    usage_limit = db.Column(db.Integer, nullable=True)
+    usage_limit_per_user = db.Column(db.Integer, nullable=True)
+    used_count = db.Column(db.Integer, default=0, nullable=False)
 
     def serialize(self):
         return {
@@ -697,7 +742,11 @@ class Coupon(db.Model):
             "max_discount": self.max_discount,
             "min_purchase": self.min_purchase,
             "is_active": self.is_active,
-            "shop_id": self.shop_id
+            "shop_id": self.shop_id,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "usage_limit": self.usage_limit,
+            "usage_limit_per_user": self.usage_limit_per_user,
+            "used_count": self.used_count
         }
 
 class HelpTicket(db.Model):
@@ -854,6 +903,8 @@ class CustomizationOrder(db.Model):
     quote_status = db.Column(db.String(50), default='Pending') # Pending, Quoted, Accepted, Rejected
     shipping_address = db.Column(db.Text, nullable=True)
     billing_phone = db.Column(db.String(50), nullable=True)
+    shiprocket_order_id = db.Column(db.String(255), nullable=True)
+    shiprocket_shipment_id = db.Column(db.String(255), nullable=True)
     payment_method = db.Column(db.String(50), default='COD')
     payment_status = db.Column(db.String(50), default='Pending')
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
@@ -885,6 +936,8 @@ class CustomizationOrder(db.Model):
             "shipping_label_url": self.shipping_label_url,
             "quoted_price": self.quoted_price,
             "quote_status": self.quote_status,
+            "shiprocket_order_id": self.shiprocket_order_id,
+            "shiprocket_shipment_id": self.shiprocket_shipment_id,
             "billing_phone": self.billing_phone,
             "payment_method": self.payment_method,
             "payment_status": self.payment_status,
@@ -906,5 +959,23 @@ class UploadedFile(db.Model):
         return {
             "filename": self.filename,
             "mime_type": self.mime_type,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+class NewsletterSubscription(db.Model):
+    __tablename__ = 'newsletter_subscriptions'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), nullable=False)
+    shop_id = db.Column(db.Integer, db.ForeignKey('shops.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "shop_id": self.shop_id,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

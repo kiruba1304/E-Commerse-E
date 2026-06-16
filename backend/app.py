@@ -10,7 +10,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order, UploadedFile
+from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order, UploadedFile, NewsletterSubscription
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -95,6 +95,10 @@ else:
         f"Please configure them in your server/container environment or set DATABASE_URL."
     )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_recycle": 280,
+    "pool_pre_ping": True
+}
 
 # File Upload Configuration
 app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
@@ -135,7 +139,7 @@ def serve_uploaded_file(filename):
     # Try serving from database first
     try:
         base_filename = os.path.basename(filename)
-        uploaded_file = UploadedFile.query.get(base_filename)
+        uploaded_file = db.session.get(UploadedFile, base_filename)
         if uploaded_file:
             return Response(uploaded_file.data, mimetype=uploaded_file.mime_type)
     except Exception as e:
@@ -516,6 +520,14 @@ def seed_database():
         ensure_last_used_address_id_bigint()
         ensure_cod_enabled_columns()
         ensure_product_custom_colors_column()
+        ensure_fcm_token_column()
+        ensure_shiprocket_columns()
+        ensure_sms_enabled_column()
+        ensure_coupon_expiry_and_limit_columns()
+        ensure_coupon_usage_limit_per_account_columns()
+        ensure_shop_welcome_pearls_column()
+        ensure_shop_signature_column()
+        ensure_shop_store_locator_column()
         
         # Automatic SQLite to MySQL migration if using MySQL
         if db.engine.name == 'mysql':
@@ -950,6 +962,165 @@ def ensure_cod_enabled_columns():
     except Exception as e:
         print(f"Error ensuring cod_enabled columns: {e}")
 
+def ensure_coupon_expiry_and_limit_columns():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('coupons')]
+        
+        if 'expires_at' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN expires_at DATETIME"))
+                else:
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN expires_at DATETIME NULL"))
+            print("Successfully added expires_at column to coupons table.")
+            
+        if 'usage_limit' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE coupons ADD COLUMN usage_limit INTEGER NULL"))
+            print("Successfully added usage_limit column to coupons table.")
+            
+        if 'used_count' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN used_count INTEGER DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN used_count INT NOT NULL DEFAULT 0"))
+            print("Successfully added used_count column to coupons table.")
+            
+    except Exception as e:
+        print(f"Error ensuring coupon expiry/limit columns: {e}")
+
+def ensure_coupon_usage_limit_per_account_columns():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
+        # 1. coupons table: usage_limit_per_user column
+        columns = [col['name'] for col in inspector.get_columns('coupons')]
+        if 'usage_limit_per_user' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN usage_limit_per_user INTEGER NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE coupons ADD COLUMN usage_limit_per_user INT NULL"))
+            print("Successfully added usage_limit_per_user column to coupons table.")
+            
+        # 2. orders table: coupon_code column
+        columns_orders = [col['name'] for col in inspector.get_columns('orders')]
+        if 'coupon_code' not in columns_orders:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN coupon_code VARCHAR(50) NULL"))
+            print("Successfully added coupon_code column to orders table.")
+    except Exception as e:
+        print(f"Error ensuring coupon limit per account columns: {e}")
+
+def ensure_shop_welcome_pearls_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'welcome_super_coins' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN welcome_super_coins INTEGER DEFAULT 50"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN welcome_super_coins INT DEFAULT 50"))
+            print("Successfully added welcome_super_coins column to shops table.")
+    except Exception as e:
+        print(f"Error ensuring welcome_super_coins column: {e}")
+
+def ensure_shop_signature_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'signature_url' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN signature_url VARCHAR(500)"))
+            print("Successfully added signature_url column to shops table.")
+    except Exception as e:
+        print(f"Error ensuring signature_url column: {e}")
+
+def ensure_shop_store_locator_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'store_locator_link' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN store_locator_link TEXT"))
+            print("Successfully added store_locator_link column to shops table.")
+    except Exception as e:
+        print(f"Error ensuring store_locator_link column: {e}")
+
+def ensure_sms_enabled_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        
+        # 1. sms_enabled
+        if 'sms_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_enabled BOOLEAN DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_enabled TINYINT(1) DEFAULT 0 NOT NULL"))
+            print("Successfully added sms_enabled column to shops table.")
+
+        # 2. sms_dispatch_enabled
+        if 'sms_dispatch_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_dispatch_enabled BOOLEAN DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_dispatch_enabled TINYINT(1) DEFAULT 0 NOT NULL"))
+            print("Successfully added sms_dispatch_enabled column to shops table.")
+
+        # 3. sms_delivery_enabled
+        if 'sms_delivery_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_delivery_enabled BOOLEAN DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_delivery_enabled TINYINT(1) DEFAULT 0 NOT NULL"))
+            print("Successfully added sms_delivery_enabled column to shops table.")
+
+        # 4. sms_campaign_enabled
+        if 'sms_campaign_enabled' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_campaign_enabled BOOLEAN DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN sms_campaign_enabled TINYINT(1) DEFAULT 0 NOT NULL"))
+            print("Successfully added sms_campaign_enabled column to shops table.")
+            
+        # 5. DLT Template and Sender ID columns
+        if 'sms_sender_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN sms_sender_id VARCHAR(50)"))
+            print("Successfully added sms_sender_id column to shops table.")
+
+        if 'sms_otp_template_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN sms_otp_template_id VARCHAR(255)"))
+            print("Successfully added sms_otp_template_id column to shops table.")
+
+        if 'sms_dispatch_template_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN sms_dispatch_template_id VARCHAR(255)"))
+            print("Successfully added sms_dispatch_template_id column to shops table.")
+
+        if 'sms_delivery_template_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN sms_delivery_template_id VARCHAR(255)"))
+            print("Successfully added sms_delivery_template_id column to shops table.")
+            
+    except Exception as e:
+        print(f"Error ensuring sms_enabled columns: {e}")
+
 def ensure_product_custom_colors_column():
     try:
         from sqlalchemy import inspect
@@ -964,6 +1135,126 @@ def ensure_product_custom_colors_column():
             print("Successfully added custom_colors_json column to products table.")
     except Exception as e:
         print(f"Error ensuring custom_colors_json column: {e}")
+
+def ensure_fcm_token_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'fcm_token' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE users ADD COLUMN fcm_token VARCHAR(255)"))
+            print("Successfully added fcm_token column to users table.")
+    except Exception as e:
+        print(f"Error ensuring fcm_token column: {e}")
+
+def ensure_shiprocket_columns():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
+        # 1. Shop table
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'shiprocket_email' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_email VARCHAR(255)"))
+            print("Added shiprocket_email to shops table.")
+        if 'shiprocket_password' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_password VARCHAR(255)"))
+            print("Added shiprocket_password to shops table.")
+        if 'shiprocket_pickup_location' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_pickup_location VARCHAR(255) DEFAULT 'Primary'"))
+            print("Added shiprocket_pickup_location to shops table.")
+        if 'shiprocket_token' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_token TEXT"))
+            print("Added shiprocket_token to shops table.")
+        if 'shiprocket_token_expiry' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_token_expiry DATETIME"))
+            print("Added shiprocket_token_expiry to shops table.")
+
+        # 2. Orders table
+        columns = [col['name'] for col in inspector.get_columns('orders')]
+        if 'shiprocket_order_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN shiprocket_order_id VARCHAR(255)"))
+            print("Added shiprocket_order_id to orders table.")
+        if 'shiprocket_shipment_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN shiprocket_shipment_id VARCHAR(255)"))
+            print("Added shiprocket_shipment_id to orders table.")
+
+        # 3. CustomizationOrders table
+        columns = [col['name'] for col in inspector.get_columns('customization_orders')]
+        if 'shiprocket_order_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shiprocket_order_id VARCHAR(255)"))
+            print("Added shiprocket_order_id to customization_orders table.")
+        if 'shiprocket_shipment_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shiprocket_shipment_id VARCHAR(255)"))
+            print("Added shiprocket_shipment_id to customization_orders table.")
+            
+        print("Successfully ensured Shiprocket columns exist.")
+    except Exception as e:
+        print(f"Error ensuring Shiprocket columns: {e}")
+
+def ensure_shiprocket_columns():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        
+        # 1. Shop table
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'shiprocket_email' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_email VARCHAR(255)"))
+            print("Added shiprocket_email to shops table.")
+        if 'shiprocket_password' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_password VARCHAR(255)"))
+            print("Added shiprocket_password to shops table.")
+        if 'shiprocket_pickup_location' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_pickup_location VARCHAR(255) DEFAULT 'Primary'"))
+            print("Added shiprocket_pickup_location to shops table.")
+        if 'shiprocket_token' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_token TEXT"))
+            print("Added shiprocket_token to shops table.")
+        if 'shiprocket_token_expiry' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE shops ADD COLUMN shiprocket_token_expiry DATETIME"))
+            print("Added shiprocket_token_expiry to shops table.")
+
+        # 2. Orders table
+        columns = [col['name'] for col in inspector.get_columns('orders')]
+        if 'shiprocket_order_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN shiprocket_order_id VARCHAR(255)"))
+            print("Added shiprocket_order_id to orders table.")
+        if 'shiprocket_shipment_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE orders ADD COLUMN shiprocket_shipment_id VARCHAR(255)"))
+            print("Added shiprocket_shipment_id to orders table.")
+
+        # 3. CustomizationOrders table
+        columns = [col['name'] for col in inspector.get_columns('customization_orders')]
+        if 'shiprocket_order_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shiprocket_order_id VARCHAR(255)"))
+            print("Added shiprocket_order_id to customization_orders table.")
+        if 'shiprocket_shipment_id' not in columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shiprocket_shipment_id VARCHAR(255)"))
+            print("Added shiprocket_shipment_id to customization_orders table.")
+            
+        print("Successfully ensured Shiprocket columns exist.")
+    except Exception as e:
+        print(f"Error ensuring Shiprocket columns: {e}")
 
 @app.route('/api/create-order', methods=['POST'])
 def create_order():
@@ -1028,6 +1319,234 @@ def verify_payment():
         }), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 400
+
+
+@app.route('/api/webhooks/shipping-status', methods=['POST'])
+def shipping_status_webhook():
+    from datetime import datetime
+    from models import db, Order, CustomizationOrder, Shop, Notification, SystemLog
+    
+    # 1. Parse JSON body
+    data = request.get_json() or {}
+    
+    # Print and log incoming webhook data for tracking/debugging
+    print("Received Shipping Status Webhook Payload:", data)
+    
+    # Extract identifiers
+    awb = data.get('awb')
+    shipment_id = data.get('shipment_id')
+    order_id = data.get('order_id')
+    
+    # Extract status details
+    # Shiprocket webhook payload may contain current_status, status, or inside tracking_data
+    current_status = data.get('current_status') or data.get('status')
+    status_code = data.get('current_status_code') or data.get('status_code')
+    
+    if not current_status and 'tracking_data' in data:
+        td = data.get('tracking_data') or {}
+        current_status = td.get('shipment_status')
+    
+    status_str = str(current_status).strip().lower() if current_status else ""
+    status_code_str = str(status_code).strip() if status_code is not None else ""
+    
+    is_delivered = False
+    is_returned = False
+    
+    # Delivered: Status code 7 is Delivered
+    if status_code_str == "7" or status_str == "delivered":
+        is_delivered = True
+    # Returned / RTO: Status codes 13 (RTO Initiated), 17 (RTO Delivered), 18 (RTO Ack), 19 (RTO OFD)
+    elif status_code_str in ["13", "17", "18", "19"] or "rto" in status_str or "returned" in status_str:
+        is_returned = True
+        
+    # We only process actions for Delivered or Returned updates
+    if not (is_delivered or is_returned):
+        return jsonify({"status": "ignored", "message": f"Status '{current_status}' (code {status_code}) is not delivered or returned"}), 200
+
+    # 2. Locate order in database
+    order = None
+    cust_order = None
+    
+    # Search standard orders
+    if shipment_id:
+        order = Order.query.filter_by(shiprocket_shipment_id=str(shipment_id)).first()
+    if not order and order_id:
+        order = Order.query.filter_by(shiprocket_order_id=str(order_id)).first()
+    if not order and awb:
+        order = Order.query.filter(Order.tracking_info.like(f"%{awb}%")).first()
+        
+    # Search customization orders if not standard order
+    if not order:
+        if shipment_id:
+            cust_order = CustomizationOrder.query.filter_by(shiprocket_shipment_id=str(shipment_id)).first()
+        if not cust_order and order_id:
+            cust_order = CustomizationOrder.query.filter_by(shiprocket_order_id=str(order_id)).first()
+        if not cust_order and awb:
+            cust_order = CustomizationOrder.query.filter(CustomizationOrder.tracking_info.like(f"%{awb}%")).first()
+            
+    # Verify authorization token (if configured)
+    shop = None
+    if order:
+        shop = db.session.get(Shop, order.shop_id)
+    elif cust_order:
+        shop = db.session.get(Shop, cust_order.shop_id)
+        
+    expected_token = os.getenv('SHIPPING_WEBHOOK_TOKEN')
+    provided_token = request.headers.get('x-api-key') or request.headers.get('Authorization')
+    if provided_token and provided_token.startswith('Bearer '):
+        provided_token = provided_token.split('Bearer ')[-1].strip()
+        
+    if expected_token and provided_token != expected_token:
+        print(f"Webhook unauthorized: token mismatch. Expected: {expected_token}, Provided: {provided_token}")
+        return jsonify({"error": "Unauthorized"}), 401
+    elif not expected_token and provided_token and shop and provided_token != shop.billing_api_key:
+        print(f"Webhook unauthorized: billing key mismatch. Expected: {shop.billing_api_key}, Provided: {provided_token}")
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # 3. Update status and trigger downstream actions
+    if order:
+        if is_delivered:
+            if order.status != 'Customer Received':
+                order.status = 'Customer Received'
+                order.delivered_at = datetime.now()
+                if order.payment_method == 'COD':
+                    order.payment_status = 'Paid'
+                
+                # Award SuperCoins
+                shop_id = order.shop_id
+                shop = Shop.query.get(shop_id)
+                if shop and shop.super_coin_enabled:
+                    # Prevent duplicate coin credentials
+                    if not order.super_coins_earned:
+                        coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                        if coins_to_add > 0:
+                            order.user.super_coins += coins_to_add
+                            order.super_coins_earned = coins_to_add
+                            notif = Notification(
+                                recipient_type='user',
+                                recipient_id=order.user_id,
+                                title="SuperCoins Credited!",
+                                message=f"Congratulations! You earned {coins_to_add} SuperCoins from your order #{order.id}.",
+                                shop_id=shop_id
+                            )
+                            db.session.add(notif)
+                
+                # Send FCM push notification
+                try:
+                    from fcm_helper import send_order_status_notification
+                    send_order_status_notification(order, 'Customer Received')
+                except Exception as e:
+                    print("FCM webhook status notification error:", e)
+                
+                # Send SMS notification
+                try:
+                    from sms_helper import send_order_status_sms
+                    send_order_status_sms(order, 'Customer Received')
+                except Exception as e:
+                    print("SMS webhook status notification error:", e)
+                
+                # Log system action
+                log = SystemLog(
+                    actor_type='system',
+                    actor_id=0,
+                    username='Shiprocket Webhook',
+                    action=f"Automatically updated Order #{order.id} status to 'Customer Received' (Delivered) via tracking webhook (AWB: {awb or 'N/A'}).",
+                    shop_id=order.shop_id
+                )
+                db.session.add(log)
+                db.session.commit()
+                return jsonify({"status": "success", "message": f"Updated Order #{order.id} to Delivered"}), 200
+            else:
+                return jsonify({"status": "no_change", "message": f"Order #{order.id} was already marked as Customer Received"}), 200
+        
+        elif is_returned:
+            if order.status != 'Returned':
+                order.status = 'Returned'
+                # Send FCM push notification
+                try:
+                    from fcm_helper import send_order_status_notification
+                    send_order_status_notification(order, 'Returned')
+                except Exception as e:
+                    print("FCM webhook status notification error:", e)
+                
+                # Log system action
+                log = SystemLog(
+                    actor_type='system',
+                    actor_id=0,
+                    username='Shiprocket Webhook',
+                    action=f"Automatically updated Order #{order.id} status to 'Returned' (RTO) via tracking webhook (AWB: {awb or 'N/A'}).",
+                    shop_id=order.shop_id
+                )
+                db.session.add(log)
+                db.session.commit()
+                return jsonify({"status": "success", "message": f"Updated Order #{order.id} to Returned"}), 200
+            else:
+                return jsonify({"status": "no_change", "message": f"Order #{order.id} was already marked as Returned"}), 200
+
+    elif cust_order:
+        if is_delivered:
+            if cust_order.status != 'Completed':
+                cust_order.status = 'Completed'
+                if cust_order.payment_method == 'COD':
+                    cust_order.payment_status = 'Paid'
+                
+                # Send FCM push notification
+                try:
+                    from fcm_helper import send_customization_status_notification
+                    send_customization_status_notification(cust_order, 'status')
+                except Exception as e:
+                    print("FCM webhook customization status notification error:", e)
+                
+                # Send SMS notification
+                try:
+                    from sms_helper import send_order_status_sms
+                    send_order_status_sms(cust_order, 'Completed')
+                except Exception as e:
+                    print("SMS webhook customization status notification error:", e)
+                
+                # Log system action
+                log = SystemLog(
+                    actor_type='system',
+                    actor_id=0,
+                    username='Shiprocket Webhook',
+                    action=f"Automatically updated Customization Order #{cust_order.id} status to 'Completed' (Delivered) via tracking webhook (AWB: {awb or 'N/A'}).",
+                    shop_id=cust_order.shop_id
+                )
+                db.session.add(log)
+                db.session.commit()
+                return jsonify({"status": "success", "message": f"Updated Customization Order #{cust_order.id} to Completed"}), 200
+            else:
+                return jsonify({"status": "no_change", "message": f"Customization Order #{cust_order.id} was already marked as Completed"}), 200
+        
+        elif is_returned:
+            if cust_order.status != 'Rejected':
+                cust_order.status = 'Rejected'
+                
+                # Send FCM push notification
+                try:
+                    from fcm_helper import send_customization_status_notification
+                    send_customization_status_notification(cust_order, 'status')
+                except Exception as e:
+                    print("FCM webhook customization status notification error:", e)
+                
+                # Log system action
+                log = SystemLog(
+                    actor_type='system',
+                    actor_id=0,
+                    username='Shiprocket Webhook',
+                    action=f"Automatically updated Customization Order #{cust_order.id} status to 'Rejected' (Returned/RTO) via tracking webhook (AWB: {awb or 'N/A'}).",
+                    shop_id=cust_order.shop_id
+                )
+                db.session.add(log)
+                db.session.commit()
+                return jsonify({"status": "success", "message": f"Updated Customization Order #{cust_order.id} to Returned (Rejected)"}), 200
+            else:
+                return jsonify({"status": "no_change", "message": f"Customization Order #{cust_order.id} was already marked as Rejected"}), 200
+
+    else:
+        # Order not found
+        print(f"Webhook received tracking event but could not match with any database order (AWB: {awb}, Shipment ID: {shipment_id}, Order ID: {order_id})")
+        return jsonify({"status": "ignored", "message": "Order not found"}), 200
 
 
 if __name__ == '__main__':

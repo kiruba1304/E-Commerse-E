@@ -71,7 +71,8 @@ const PaymentComponent = () => {
             },
             theme: {
                 color: "#3399cc"
-            }
+            },
+            webview_intent: true
         };
 
         // 5. Open Razorpay Checkout Window

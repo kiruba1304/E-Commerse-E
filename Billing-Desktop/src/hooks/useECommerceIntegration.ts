@@ -97,18 +97,38 @@ export const useECommerceIntegration = () => {
       // 1. SYNC PRODUCTS (BIDIRECTIONAL)
       // -------------------------------------------------------------
       const localProducts = db.getProducts();
+      
+      const deletedKey = 'billing_app_deleted_products_sync';
+      const deletedListRaw = localStorage.getItem(deletedKey);
+      const deletedList = deletedListRaw ? JSON.parse(deletedListRaw) : [];
+
       const productSyncRes = await fetch(`${apiUrl}/billing/sync/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: apiKey,
-          products: localProducts
+          products: localProducts,
+          deleted_products: deletedList
         })
       });
 
       if (productSyncRes.ok) {
+        // Clear locally synced deleted products queue
+        localStorage.removeItem(deletedKey);
+        
         const prodData = await productSyncRes.json();
         const webProducts = prodData.products || [];
+        const webDeletedProducts = prodData.deleted_products || [];
+
+        // Delete any local products that were deleted on the web admin side
+        for (const wdp of webDeletedProducts) {
+          const localProd = localProducts.find(
+            lp => (wdp.barcode && lp.barcode === wdp.barcode) || (wdp.sku_code && lp.skuCode === wdp.sku_code)
+          );
+          if (localProd) {
+            db.deleteProduct(localProd.id, false); // false = don't re-queue for server sync
+          }
+        }
 
         // Update local storage products with details from website
         for (const wp of webProducts) {

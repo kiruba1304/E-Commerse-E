@@ -146,9 +146,21 @@ class BrowserDatabase {
     return false;
   }
 
-  deleteProduct(id: number): boolean {
+  deleteProduct(id: number, syncToServer: boolean = true): boolean {
     const products = this.getProducts();
     const initialLength = products.length;
+    const targetProduct = products.find(p => p.id === id);
+    if (targetProduct && syncToServer) {
+      const deletedKey = 'billing_app_deleted_products_sync';
+      const rawList = localStorage.getItem(deletedKey);
+      const deletedList: any[] = rawList ? JSON.parse(rawList) : [];
+      deletedList.push({
+        barcode: targetProduct.barcode || '',
+        skuCode: targetProduct.skuCode || targetProduct.productCode || '',
+        deletedAt: new Date().toISOString()
+      });
+      localStorage.setItem(deletedKey, JSON.stringify(deletedList));
+    }
     const filtered = products.filter(p => p.id !== id);
     localStorage.setItem(this.getStorageKey('products'), JSON.stringify(filtered));
     this.saveToDisk();
@@ -833,6 +845,32 @@ class BrowserDatabase {
       check();
     });
   }
+
+  public async wipeDatabase(): Promise<void> {
+    // 1. Gather all billing_app_ keys
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('billing_app_')) {
+        keys.push(k);
+      }
+    }
+    
+    // 2. Clear from localStorage
+    keys.forEach(k => localStorage.removeItem(k));
+    
+    // 3. Clear backup file on disk by writing an empty object
+    if (this.userDataPath) {
+      const api = (window as any).electronAPI;
+      if (api?.saveJson) {
+        try {
+          await api.saveJson('database_backup.json', JSON.stringify({}), this.userDataPath);
+        } catch (e) {
+          console.error('Failed to clear backup file on disk:', e);
+        }
+      }
+    }
+  }
 }
 
 // Global database instance
@@ -886,9 +924,9 @@ export const useProducts = () => {
     }
   };
 
-  const deleteProduct = async (id: number) => {
+  const deleteProduct = async (id: number, syncToServer: boolean = true) => {
     try {
-      const success = db.deleteProduct(id);
+      const success = db.deleteProduct(id, syncToServer);
       if (success) {
         await loadProducts(); // Reload products
       }

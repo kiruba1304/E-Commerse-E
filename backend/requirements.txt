@@ -6,3 +6,4 @@ pyjwt
 razorpay
 python-dotenv
 pymysql
+firebase-admin
