@@ -1418,7 +1418,10 @@ def shipping_status_webhook():
                 if shop and shop.super_coin_enabled:
                     # Prevent duplicate coin credentials
                     if not order.super_coins_earned:
-                        coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                        if shop.super_coin_ratio and shop.super_coin_ratio > 0:
+                            coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                        else:
+                            coins_to_add = 0
                         if coins_to_add > 0:
                             order.user.super_coins += coins_to_add
                             order.super_coins_earned = coins_to_add

@@ -968,7 +968,10 @@ def update_order_status(order_id):
             # Add supercoins to user profile
             shop = Shop.query.get(shop_id)
             if shop and shop.super_coin_enabled:
-                coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                if shop.super_coin_ratio and shop.super_coin_ratio > 0:
+                    coins_to_add = int(order.final_amount / shop.super_coin_ratio)
+                else:
+                    coins_to_add = 0
                 if coins_to_add > 0:
                     order.user.super_coins += coins_to_add
                     order.super_coins_earned = coins_to_add

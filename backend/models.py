@@ -910,7 +910,7 @@ class CustomizationOrder(db.Model):
     razorpay_payment_id = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.now)
 
-    user = db.relationship('User', backref=db.backref('customization_orders_rel', lazy=True))
+    user = db.relationship('User', backref=db.backref('customization_orders_rel', lazy=True, cascade="all, delete-orphan"))
     shop = db.relationship('Shop', backref=db.backref('customization_orders_rel', lazy=True))
     product = db.relationship('Product', backref=db.backref('customization_orders_rel', lazy=True))
 

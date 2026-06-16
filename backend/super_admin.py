@@ -66,6 +66,16 @@ def create_shop():
     if not name:
         return jsonify({"error": "Shop name is required"}), 400
 
+    super_coin_ratio = 10
+    if 'super_coin_ratio' in data and data['super_coin_ratio'] is not None:
+        try:
+            val = int(data['super_coin_ratio'])
+            if val <= 0:
+                return jsonify({"error": "Super coin ratio must be a positive integer"}), 400
+            super_coin_ratio = val
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid super coin ratio value"}), 400
+
     shop = Shop(
         name=name,
         logo_url=data.get('logo_url', ''),
@@ -86,7 +96,7 @@ def create_shop():
         razorpay_key_id=data.get('razorpay_key_id', ''),
         razorpay_key_secret=data.get('razorpay_key_secret', ''),
         super_coin_enabled=data.get('super_coin_enabled', True),
-        super_coin_ratio=data.get('super_coin_ratio', 10),
+        super_coin_ratio=super_coin_ratio,
         welcome_super_coins=data.get('welcome_super_coins', 50),
         signature_url=data.get('signature_url', ''),
         store_locator_link=data.get('store_locator_link', ''),
@@ -169,8 +179,14 @@ def update_shop(shop_id):
     # Supercoin rules
     if 'super_coin_enabled' in data:
         shop.super_coin_enabled = bool(data['super_coin_enabled'])
-    if 'super_coin_ratio' in data:
-        shop.super_coin_ratio = int(data['super_coin_ratio'])
+    if 'super_coin_ratio' in data and data['super_coin_ratio'] is not None:
+        try:
+            val = int(data['super_coin_ratio'])
+            if val <= 0:
+                return jsonify({"error": "Super coin ratio must be a positive integer"}), 400
+            shop.super_coin_ratio = val
+        except (ValueError, TypeError):
+            return jsonify({"error": "Invalid super coin ratio value"}), 400
     if 'welcome_super_coins' in data:
         shop.welcome_super_coins = int(data['welcome_super_coins']) if data['welcome_super_coins'] is not None else 50
     if 'signature_url' in data:
