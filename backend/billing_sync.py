@@ -140,21 +140,45 @@ def sync_products():
             product = Product.query.filter_by(shop_id=shop.id, sku_code=sku_code).first()
             
         if product:
-            # Update matching product details
-            product.name = name
-            product.price = price
-            product.original_price = cost_price if cost_price > 0 else price
-            product.stock = stock
-            product.category_id = target_category_id
-            if hsn_code:
-                product.hsc_code = hsn_code
-            if barcode and not product.barcode:
-                product.barcode = barcode
-            if sku_code and not product.sku_code:
-                product.sku_code = sku_code
-            # If POS sends an update for a soft-deleted product, restore it
-            if product.is_deleted:
-                product.is_deleted = False
+            # Parse desktop product updatedAt timestamp to compare with web's updated_at
+            desktop_updated_at_str = p_in.get('updatedAt') or p_in.get('updated_at')
+            desktop_updated_at = None
+            if desktop_updated_at_str:
+                try:
+                    # Clean and parse UTC format e.g. "2026-06-18T10:00:00.000Z"
+                    if desktop_updated_at_str.endswith('Z'):
+                        # Convert to timezone-aware UTC datetime, then convert to local system time, and strip tzinfo
+                        dt_utc = datetime.fromisoformat(desktop_updated_at_str.replace('Z', '+00:00'))
+                        dt_local = dt_utc.astimezone()
+                        desktop_updated_at = dt_local.replace(tzinfo=None)
+                    else:
+                        clean_dt = desktop_updated_at_str.split('.')[0]
+                        desktop_updated_at = datetime.fromisoformat(clean_dt)
+                except Exception as e:
+                    print(f"Failed to parse desktop updatedAt '{desktop_updated_at_str}': {e}")
+                    pass
+            
+            web_updated_at = product.updated_at or product.created_at or datetime.min
+            # Only update online details if desktop timestamp is newer than web timestamp + 5 seconds buffer
+            # (or if no desktop timestamp is provided, to ensure backward compatibility)
+            is_desktop_newer = not desktop_updated_at or (desktop_updated_at > web_updated_at + timedelta(seconds=5))
+
+            if is_desktop_newer:
+                # Update matching product details
+                product.name = name
+                product.price = price
+                product.original_price = cost_price if cost_price > 0 else price
+                product.stock = stock
+                product.category_id = target_category_id
+                if hsn_code:
+                    product.hsc_code = hsn_code
+                if barcode and not product.barcode:
+                    product.barcode = barcode
+                if sku_code and not product.sku_code:
+                    product.sku_code = sku_code
+                # If POS sends an update for a soft-deleted product, restore it
+                if product.is_deleted:
+                    product.is_deleted = False
         else:
             # Create new product
             product = Product(

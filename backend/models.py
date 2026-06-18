@@ -437,6 +437,7 @@ class Product(db.Model):
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     reviews = db.relationship('Review', backref='product', lazy=True, cascade="all, delete-orphan")
     cart_items = db.relationship('CartItem', backref='product', lazy=True, cascade="all, delete-orphan")
@@ -493,7 +494,8 @@ class Product(db.Model):
             "hsc_code": self.hsc_code or "",
             "return_window_days": self.return_window_days,
             "cod_enabled": self.cod_enabled if self.cod_enabled is not None else True,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else (self.created_at.isoformat() if self.created_at else None)
         }
 
 class PopupAd(db.Model):

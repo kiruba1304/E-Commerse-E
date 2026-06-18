@@ -1,10 +1,11 @@
 import os
 import time
 
-# Set default timezone to Indian Standard Time (IST)
-os.environ['TZ'] = 'Asia/Kolkata'
-if hasattr(time, 'tzset'):
-    time.tzset()
+# Set default timezone to Indian Standard Time (IST) (only on Unix systems that support tzset)
+if os.name != 'nt':
+    os.environ['TZ'] = 'Asia/Kolkata'
+    if hasattr(time, 'tzset'):
+        time.tzset()
 
 import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response
@@ -1251,6 +1252,16 @@ def ensure_shiprocket_columns():
             with db.engine.begin() as connection:
                 connection.execute(text("ALTER TABLE customization_orders ADD COLUMN shiprocket_shipment_id VARCHAR(255)"))
             print("Added shiprocket_shipment_id to customization_orders table.")
+            
+        # 4. Products table
+        prod_columns = [col['name'] for col in inspector.get_columns('products')]
+        if 'updated_at' not in prod_columns:
+            with db.engine.begin() as connection:
+                connection.execute(text("ALTER TABLE products ADD COLUMN updated_at DATETIME"))
+            print("Added updated_at to products table.")
+            with db.engine.begin() as connection:
+                connection.execute(text("UPDATE products SET updated_at = created_at WHERE updated_at IS NULL"))
+            print("Backfilled updated_at in products table.")
             
         print("Successfully ensured Shiprocket columns exist.")
     except Exception as e:
