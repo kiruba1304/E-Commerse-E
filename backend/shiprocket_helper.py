@@ -376,3 +376,41 @@ def get_tracking_by_awb(shop, awb_code):
         print(f"Failed to fetch tracking for AWB {awb_code}: {e}")
     return None
 
+def check_rto_prediction(shop, phone, email, amount, payment_method, pincode, items):
+    """
+    Queries Shiprocket Sense RTO API to get the predictive RTO score/risk.
+    """
+    try:
+        token = get_token(shop)
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
+        
+        # Build items list
+        order_items = []
+        for item in items:
+            order_items.append({
+                "name": item.get("name", "Product Item")[:50],
+                "sku": item.get("sku", "SKU")[:50],
+                "units": int(item.get("units", 1))
+            })
+            
+        payload = {
+            "customer_phone": str(phone),
+            "customer_email": str(email or f"customer_{pincode}@example.com"),
+            "order_amount": float(amount),
+            "payment_method": "COD" if str(payment_method).upper() == "COD" else "Prepaid",
+            "shipping_pincode": str(pincode),
+            "order_items": order_items
+        }
+        
+        res = requests.post(f"{SHIPROCKET_API_URL}/open/rto", json=payload, headers=headers, timeout=8)
+        if res.status_code == 200:
+            res_json = res.json()
+            return res_json.get('data', {})
+    except Exception as e:
+        print(f"Shiprocket Sense RTO score API call failed: {e}")
+    return None
+
+

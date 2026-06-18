@@ -1063,6 +1063,7 @@ export default function App() {
   const [shiprocketSelectorOrder, setShiprocketSelectorOrder] = useState(null);
   const [shiprocketWeight, setShiprocketWeight] = useState(0.5);
   const [shiprocketCouriers, setShiprocketCouriers] = useState([]);
+  const [shiprocketOrderRtoRisk, setShiprocketOrderRtoRisk] = useState(null);
   const [fetchingShiprocketRates, setFetchingShiprocketRates] = useState(false);
   const [shiprocketRatesError, setShiprocketRatesError] = useState("");
   const [shiprocketWalletBalance, setShiprocketWalletBalance] = useState(null);
@@ -3749,7 +3750,6 @@ export default function App() {
       setBookingShippingId(null);
     }
   };
-
   const fetchShiprocketCourierRates = async (orderId, weightVal) => {
     try {
       setFetchingShiprocketRates(true);
@@ -3763,6 +3763,7 @@ export default function App() {
         // Sort couriers by rate ascending (cheapest first)
         const sorted = (data.available_couriers || []).sort((a, b) => parseFloat(a.rate || 0) - parseFloat(b.rate || 0));
         setShiprocketCouriers(sorted);
+        setShiprocketOrderRtoRisk(data.order_rto_risk || null);
       } else {
         setShiprocketRatesError(data.error || "Failed to fetch courier serviceability details.");
       }
@@ -3796,6 +3797,7 @@ export default function App() {
       setShiprocketSelectorOrder(orderObj);
       setShiprocketWeight(weight);
       setShiprocketCouriers([]);
+      setShiprocketOrderRtoRisk(null);
       setShiprocketRatesError("");
       setShiprocketWalletBalance(null);
       fetchShiprocketCourierRates(orderId, weight);
@@ -15221,6 +15223,21 @@ export default function App() {
                         <div style={{ flex: '1 1 200px' }}>
                           <strong>Payment:</strong> {shiprocketSelectorOrder.payment_method}
                         </div>
+                        {shiprocketOrderRtoRisk && (
+                          <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <strong>RTO Risk:</strong> 
+                            {(() => {
+                              const risk = String(shiprocketOrderRtoRisk.risk).toLowerCase();
+                              if (risk.includes('high')) {
+                                return <span style={{ color: '#ef4444', fontWeight: 'bold', background: '#fdf2f2', padding: '2px 8px', borderRadius: '4px', border: '1px solid #fde2e2', fontSize: '0.8rem' }}>🔴 High Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                              } else if (risk.includes('mod') || risk.includes('mid') || risk.includes('medium')) {
+                                return <span style={{ color: '#f59e0b', fontWeight: 'bold', background: '#fffbeb', padding: '2px 8px', borderRadius: '4px', border: '1px solid #fef3c7', fontSize: '0.8rem' }}>🟡 Mid Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                              } else {
+                                return <span style={{ color: '#10b981', fontWeight: 'bold', background: '#ecfdf5', padding: '2px 8px', borderRadius: '4px', border: '1px solid #d1fae5', fontSize: '0.8rem' }}>🟢 Low Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                              }
+                            })()}
+                          </div>
+                        )}
                       </div>
 
                       {/* Weight Config */}
@@ -15279,6 +15296,7 @@ export default function App() {
                                 <tr style={{ borderBottom: '2px solid rgba(43, 11, 87, 0.1)', textAlign: 'left' }}>
                                   <th style={{ padding: '10px' }}>Courier Partner</th>
                                   <th style={{ padding: '10px' }}>Est. Delivery</th>
+                                  <th style={{ padding: '10px' }}>RTO Risk</th>
                                   <th style={{ padding: '10px' }}>Rate</th>
                                   <th style={{ padding: '10px', textAlign: 'right' }}>Action</th>
                                 </tr>
@@ -15286,7 +15304,7 @@ export default function App() {
                               <tbody>
                                 {shiprocketCouriers.length === 0 ? (
                                   <tr>
-                                    <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#777' }}>
+                                    <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#777' }}>
                                       No courier partners available. Try adjusting weight or checking address.
                                     </td>
                                   </tr>
@@ -15298,6 +15316,25 @@ export default function App() {
                                       </td>
                                       <td style={{ padding: '12px 10px' }}>
                                         {c.etd || 'N/A'}
+                                      </td>
+                                      <td style={{ padding: '12px 10px' }}>
+                                        {(() => {
+                                          const score = c.rto_performance;
+                                          if (score === undefined || score === null || score === '') {
+                                            return <span style={{ color: 'var(--text-muted)' }}>N/A</span>;
+                                          }
+                                          const perf = Number(score);
+                                          if (isNaN(perf)) {
+                                            return <span>{score}</span>;
+                                          }
+                                          if (perf >= 4) {
+                                            return <span style={{ color: '#10b981', fontWeight: '600' }}>🟢 Low Risk ({perf}/5)</span>;
+                                          } else if (perf === 3) {
+                                            return <span style={{ color: '#f59e0b', fontWeight: '600' }}>🟡 Mid Risk ({perf}/5)</span>;
+                                          } else {
+                                            return <span style={{ color: '#ef4444', fontWeight: '600' }}>🔴 High Risk ({perf}/5)</span>;
+                                          }
+                                        })()}
                                       </td>
                                       <td style={{ padding: '12px 10px', fontWeight: '700', color: '#2b0b57' }}>
                                         ₹{parseFloat(c.rate || 0).toFixed(2)}
