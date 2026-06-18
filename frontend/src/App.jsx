@@ -15295,6 +15295,7 @@ export default function App() {
                               <thead>
                                 <tr style={{ borderBottom: '2px solid rgba(43, 11, 87, 0.1)', textAlign: 'left' }}>
                                   <th style={{ padding: '10px' }}>Courier Partner</th>
+                                  <th style={{ padding: '10px' }}>Est. Pickup</th>
                                   <th style={{ padding: '10px' }}>Est. Delivery</th>
                                   <th style={{ padding: '10px' }}>RTO Risk</th>
                                   <th style={{ padding: '10px' }}>Rate</th>
@@ -15304,7 +15305,7 @@ export default function App() {
                               <tbody>
                                 {shiprocketCouriers.length === 0 ? (
                                   <tr>
-                                    <td colSpan="5" style={{ textAlign: 'center', padding: '20px', color: '#777' }}>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#777' }}>
                                       No courier partners available. Try adjusting weight or checking address.
                                     </td>
                                   </tr>
@@ -15313,6 +15314,45 @@ export default function App() {
                                     <tr key={c.courier_company_id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                                       <td style={{ padding: '12px 10px', fontWeight: '600' }}>
                                         {c.courier_name}
+                                      </td>
+                                      <td style={{ padding: '12px 10px' }}>
+                                        {(() => {
+                                          if (c.suppress_date) {
+                                            return c.suppress_date;
+                                          }
+                                          if (c.etd) {
+                                            const etdDate = new Date(c.etd);
+                                            if (!isNaN(etdDate.getTime())) {
+                                              const days = parseInt(c.estimated_delivery_days) || 0;
+                                              if (days > 0) {
+                                                const calculatedPickup = new Date(etdDate.getTime() - days * 24 * 60 * 60 * 1000);
+                                                const today = new Date();
+                                                const earliestPickup = new Date();
+                                                if (today.getHours() >= 14) {
+                                                  earliestPickup.setDate(today.getDate() + 1);
+                                                }
+                                                earliestPickup.setHours(0, 0, 0, 0);
+                                                calculatedPickup.setHours(0, 0, 0, 0);
+                                                
+                                                const finalPickup = calculatedPickup < earliestPickup ? earliestPickup : calculatedPickup;
+                                                return finalPickup.toLocaleDateString('en-US', {
+                                                  month: 'short',
+                                                  day: 'numeric',
+                                                  year: 'numeric'
+                                                });
+                                              }
+                                            }
+                                          }
+                                          const today = new Date();
+                                          if (today.getHours() >= 14) {
+                                            today.setDate(today.getDate() + 1);
+                                          }
+                                          return today.toLocaleDateString('en-US', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                          });
+                                        })()}
                                       </td>
                                       <td style={{ padding: '12px 10px' }}>
                                         {c.etd || 'N/A'}

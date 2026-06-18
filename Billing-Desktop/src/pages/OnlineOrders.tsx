@@ -177,6 +177,7 @@ const OnlineOrders: React.FC = () => {
   const [shiprocketTargetType, setShiprocketTargetType] = useState<'standard' | 'customization' | null>(null);
   const [shiprocketWeight, setShiprocketWeight] = useState('0.5');
   const [shiprocketCouriers, setShiprocketCouriers] = useState<any[]>([]);
+  const [shiprocketOrderRtoRisk, setShiprocketOrderRtoRisk] = useState<any | null>(null);
   const [shiprocketLoading, setShiprocketLoading] = useState(false);
   const [shiprocketError, setShiprocketError] = useState<string | null>(null);
   const [shiprocketWalletBalance, setShiprocketWalletBalance] = useState<number | null>(null);
@@ -211,6 +212,7 @@ const OnlineOrders: React.FC = () => {
       const data = await res.json();
       if (res.ok && data.success) {
         setShiprocketCouriers(data.available_couriers || []);
+        setShiprocketOrderRtoRisk(data.order_rto_risk || null);
       } else {
         setShiprocketError(data.error || "Failed to fetch serviceability rates.");
       }
@@ -249,6 +251,7 @@ const OnlineOrders: React.FC = () => {
     setShiprocketTargetType(type);
     setShiprocketWeight('0.5');
     setShiprocketCouriers([]);
+    setShiprocketOrderRtoRisk(null);
     setShiprocketError(null);
     setShiprocketWalletBalance(null);
     setShiprocketModalOpen(true);
@@ -2750,6 +2753,21 @@ const OnlineOrders: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-500">
                   Compare rates and choose the best carrier for delivery.
                 </p>
+                {shiprocketOrderRtoRisk && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-700">
+                    <span className="font-semibold text-slate-500">Order RTO Risk:</span>
+                    {(() => {
+                      const risk = String(shiprocketOrderRtoRisk.risk).toLowerCase();
+                      if (risk.includes('high')) {
+                        return <span className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200">🔴 High Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                      } else if (risk.includes('mod') || risk.includes('mid') || risk.includes('medium')) {
+                        return <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">🟡 Mid Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                      } else {
+                        return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">🟢 Low Risk ({Math.round(shiprocketOrderRtoRisk.score * 100)}%)</span>;
+                      }
+                    })()}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-4">
                 {shiprocketWalletBalance !== null && (
@@ -2819,7 +2837,9 @@ const OnlineOrders: React.FC = () => {
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 sticky top-0">
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Courier</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">RTO Risk</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Rate</th>
+                      <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Est. Pickup</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">ETD</th>
                       <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
                     </tr>
@@ -2841,10 +2861,68 @@ const OnlineOrders: React.FC = () => {
                             <div className="text-[10px] text-slate-400">ID: {courier.courier_company_id} • Min Wt: {courier.min_weight}kg</div>
                           </td>
                           <td className="px-4 py-3">
+                            {(() => {
+                              const score = courier.rto_performance;
+                              if (score === undefined || score === null || score === '') {
+                                return <span className="text-xs text-slate-400 font-semibold">N/A</span>;
+                              }
+                              const perf = Number(score);
+                              if (isNaN(perf)) {
+                                return <span className="text-xs text-slate-700 font-semibold">{score}</span>;
+                              }
+                              if (perf >= 4) {
+                                return <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50/50 px-2 py-0.5 rounded border border-emerald-200/50">🟢 Low ({perf}/5)</span>;
+                              } else if (perf === 3) {
+                                return <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50/50 px-2 py-0.5 rounded border border-amber-200/50">🟡 Mid ({perf}/5)</span>;
+                              } else {
+                                return <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 bg-rose-50/50 px-2 py-0.5 rounded border border-rose-200/50">🔴 High ({perf}/5)</span>;
+                              }
+                            })()}
+                          </td>
+                          <td className="px-4 py-3">
                             <div className="font-bold text-slate-900">₹{parseFloat(charge).toFixed(2)}</div>
                             {courier.cod_charges > 0 && (
                               <div className="text-[10px] text-amber-600 font-medium">Incl. COD Charge: ₹{courier.cod_charges}</div>
                             )}
+                          </td>
+                          <td className="px-4 py-3 text-sm font-medium text-slate-700">
+                            {(() => {
+                              if (courier.suppress_date) {
+                                return courier.suppress_date;
+                              }
+                              if (courier.etd) {
+                                const etdDate = new Date(courier.etd);
+                                if (!isNaN(etdDate.getTime())) {
+                                  const days = parseInt(courier.estimated_delivery_days) || 0;
+                                  if (days > 0) {
+                                    const calculatedPickup = new Date(etdDate.getTime() - days * 24 * 60 * 60 * 1000);
+                                    const today = new Date();
+                                    const earliestPickup = new Date();
+                                    if (today.getHours() >= 14) {
+                                      earliestPickup.setDate(today.getDate() + 1);
+                                    }
+                                    earliestPickup.setHours(0, 0, 0, 0);
+                                    calculatedPickup.setHours(0, 0, 0, 0);
+                                    
+                                    const finalPickup = calculatedPickup < earliestPickup ? earliestPickup : calculatedPickup;
+                                    return finalPickup.toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    });
+                                  }
+                                }
+                              }
+                              const today = new Date();
+                              if (today.getHours() >= 14) {
+                                today.setDate(today.getDate() + 1);
+                              }
+                              return today.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              });
+                            })()}
                           </td>
                           <td className="px-4 py-3">
                             <div className="text-sm font-medium text-slate-700">{courier.etd || 'N/A'}</div>

@@ -463,6 +463,66 @@ def get_order_shipping_serviceability(order_id):
     is_cod = (order.payment_method == "COD")
     declared_value = order.final_amount or 0.0
 
+    # Calculate RTO Risk prediction
+    rto_risk_info = None
+    if shop.shiprocket_email and shop.shiprocket_password:
+        try:
+            # Build order items details
+            items_list = []
+            for item in order.items:
+                items_list.append({
+                    "name": item.product_name,
+                    "sku": item.product.sku_code if (item.product and item.product.sku_code) else f"SKU-{item.product_id}",
+                    "units": item.quantity
+                })
+            if not items_list:
+                items_list.append({
+                    "name": "General Order Item",
+                    "sku": f"GEN-SKU-{order.id}",
+                    "units": 1
+                })
+                
+            rto_res = shiprocket_helper.check_rto_prediction(
+                shop=shop,
+                phone=order.billing_phone or (order.user.contact_phone if order.user else "9999999999"),
+                email=order.user.email if order.user else None,
+                amount=declared_value,
+                payment_method=order.payment_method or "COD",
+                pincode=delivery_pincode,
+                items=items_list
+            )
+            if rto_res:
+                rto_risk_info = {
+                    "source": "shiprocket_sense",
+                    "score": rto_res.get('rto_score'),
+                    "risk": rto_res.get('rto_risk') or rto_res.get('risk_level') or rto_res.get('risk')
+                }
+        except Exception as e:
+            print(f"Error checking Shiprocket Sense RTO for sync order: {e}")
+
+    if not rto_risk_info:
+        # Fallback to local heuristic
+        addr_len = len(order.shipping_address or "")
+        if not is_cod:
+            risk = "Low Risk"
+            score = 0.05
+        else:
+            if addr_len < 25:
+                risk = "High Risk"
+                score = 0.85
+            elif declared_value > 3000:
+                risk = "Moderate Risk"
+                score = 0.55
+            else:
+                risk = "Low Risk"
+                score = 0.25
+        
+        rto_risk_info = {
+            "source": "local_heuristic",
+            "score": score,
+            "risk": risk
+        }
+
     try:
         couriers = shiprocket_helper.check_serviceability(
             shop=shop,
@@ -473,7 +533,8 @@ def get_order_shipping_serviceability(order_id):
         )
         return jsonify({
             "success": True,
-            "available_couriers": couriers
+            "available_couriers": couriers,
+            "order_rto_risk": rto_risk_info
         }), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 400
@@ -822,6 +883,57 @@ def get_customization_shipping_serviceability(cust_id):
     prod_price = cust.product.price if cust.product else 1000.0
     declared_value = float(cust.quoted_price if cust.quoted_price is not None else (prod_price * cust.quantity))
 
+    # Calculate RTO Risk prediction
+    rto_risk_info = None
+    if shop.shiprocket_email and shop.shiprocket_password:
+        try:
+            items_list = [{
+                "name": cust.product.name if cust.product else "Bespoke Item",
+                "sku": cust.product.sku_code if (cust.product and cust.product.sku_code) else f"SKU-{cust.product_id}",
+                "units": cust.quantity or 1
+            }]
+                
+            rto_res = shiprocket_helper.check_rto_prediction(
+                shop=shop,
+                phone=cust.billing_phone or (cust.user.contact_phone if cust.user else "9999999999"),
+                email=cust.user.email if cust.user else None,
+                amount=declared_value,
+                payment_method="COD" if is_cod else "Prepaid",
+                pincode=delivery_pincode,
+                items=items_list
+            )
+            if rto_res:
+                rto_risk_info = {
+                    "source": "shiprocket_sense",
+                    "score": rto_res.get('rto_score'),
+                    "risk": rto_res.get('rto_risk') or rto_res.get('risk_level') or rto_res.get('risk')
+                }
+        except Exception as e:
+            print(f"Error checking Shiprocket Sense RTO for sync customization: {e}")
+
+    if not rto_risk_info:
+        # Fallback to local heuristic
+        addr_len = len(consignee_address or "")
+        if not is_cod:
+            risk = "Low Risk"
+            score = 0.05
+        else:
+            if addr_len < 25:
+                risk = "High Risk"
+                score = 0.85
+            elif declared_value > 3000:
+                risk = "Moderate Risk"
+                score = 0.55
+            else:
+                risk = "Low Risk"
+                score = 0.25
+        
+        rto_risk_info = {
+            "source": "local_heuristic",
+            "score": score,
+            "risk": risk
+        }
+
     try:
         couriers = shiprocket_helper.check_serviceability(
             shop=shop,
@@ -832,7 +944,8 @@ def get_customization_shipping_serviceability(cust_id):
         )
         return jsonify({
             "success": True,
-            "available_couriers": couriers
+            "available_couriers": couriers,
+            "order_rto_risk": rto_risk_info
         }), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 400
