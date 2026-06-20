@@ -101,6 +101,7 @@ class Shop(db.Model):
     shipping_charges_flat = db.Column(db.Float, default=0.0)
     cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     customization_cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    views_count = db.Column(db.Integer, default=0, nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -286,6 +287,7 @@ class Shop(db.Model):
             "smtp_use_tls": self.smtp_use_tls if self.smtp_use_tls is not None else True,
             "smtp_sender_name": self.smtp_sender_name,
             "email_templates": self.email_templates,
+            "views_count": self.views_count or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -436,6 +438,7 @@ class Product(db.Model):
     return_window_days = db.Column(db.Integer, nullable=True)
     is_deleted = db.Column(db.Boolean, default=False, nullable=False)
     cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    views_count = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -494,6 +497,7 @@ class Product(db.Model):
             "hsc_code": self.hsc_code or "",
             "return_window_days": self.return_window_days,
             "cod_enabled": self.cod_enabled if self.cod_enabled is not None else True,
+            "views_count": self.views_count or 0,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else (self.created_at.isoformat() if self.created_at else None)
         }
@@ -980,4 +984,24 @@ class NewsletterSubscription(db.Model):
             "email": self.email,
             "shop_id": self.shop_id,
             "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+class ActiveSession(db.Model):
+    __tablename__ = 'active_sessions'
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(100), unique=True, nullable=False)
+    shop_id = db.Column(db.Integer, nullable=True)
+    product_id = db.Column(db.Integer, nullable=True)
+    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "shop_id": self.shop_id,
+            "product_id": self.product_id,
+            "last_seen_at": self.last_seen_at.isoformat() if self.last_seen_at else None
         }

@@ -11,7 +11,7 @@ import uuid
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order, UploadedFile, NewsletterSubscription
+from models import db, SuperAdmin, Shop, Admin, User, Category, Product, PopupAd, Coupon, Review, Collection, Order, UploadedFile, NewsletterSubscription, ActiveSession
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -286,6 +286,14 @@ def opac_product_detail(prod_id):
     if not prod:
         return jsonify({"error": "Product not found"}), 404
 
+    # Increment view count
+    try:
+        prod.views_count = (prod.views_count or 0) + 1
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating views_count: {e}")
+
     # Fetch product reviews
     reviews = Review.query.filter_by(product_id=prod_id).all()
     
@@ -328,6 +336,61 @@ def opac_list_collections():
         return jsonify({"error": "shop_id is required"}), 400
     collections = Collection.query.filter_by(shop_id=int(shop_id)).all()
     return jsonify([c.serialize() for c in collections]), 200
+
+@app.route('/api/opac/heartbeat', methods=['POST'])
+def user_heartbeat():
+    from datetime import datetime, timedelta
+    data = request.get_json() or {}
+    session_id = data.get('session_id')
+    shop_id = data.get('shop_id')
+    product_id = data.get('product_id')
+    
+    if not session_id:
+        return jsonify({"error": "session_id is required"}), 400
+        
+    try:
+        # 1. Upsert active session
+        session = ActiveSession.query.filter_by(session_id=session_id).first()
+        if not session:
+            session = ActiveSession(session_id=session_id)
+            
+        session.shop_id = int(shop_id) if shop_id else None
+        session.product_id = int(product_id) if product_id else None
+        session.last_seen_at = datetime.utcnow()
+        
+        db.session.add(session)
+        db.session.commit()
+        
+        # 2. Prune old sessions (> 60 seconds offline)
+        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        ActiveSession.query.filter(ActiveSession.last_seen_at < cutoff).delete()
+        db.session.commit()
+        
+        # 3. Get active count
+        if product_id:
+            active_count = ActiveSession.query.filter_by(product_id=int(product_id)).count()
+        elif shop_id:
+            active_count = ActiveSession.query.filter_by(shop_id=int(shop_id)).count()
+        else:
+            active_count = ActiveSession.query.count()
+            
+        return jsonify({"status": "success", "active_count": max(1, active_count)}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/opac/shops/<int:shop_id>/view', methods=['POST'])
+def increment_shop_view(shop_id):
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+    try:
+        shop.views_count = (shop.views_count or 0) + 1
+        db.session.commit()
+        return jsonify({"status": "success", "views_count": shop.views_count}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
 def make_relative(val):
@@ -529,6 +592,8 @@ def seed_database():
         ensure_shop_welcome_pearls_column()
         ensure_shop_signature_column()
         ensure_shop_store_locator_column()
+        ensure_product_views_count_column()
+        ensure_shop_views_count_column()
         
         # Automatic SQLite to MySQL migration if using MySQL
         if db.engine.name == 'mysql':
@@ -1055,6 +1120,36 @@ def ensure_shop_store_locator_column():
             print("Successfully added store_locator_link column to shops table.")
     except Exception as e:
         print(f"Error ensuring store_locator_link column: {e}")
+
+def ensure_product_views_count_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('products')]
+        if 'views_count' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE products ADD COLUMN views_count INTEGER DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE products ADD COLUMN views_count INT DEFAULT 0 NOT NULL"))
+            print("Successfully added views_count column to products table.")
+    except Exception as e:
+        print(f"Error ensuring views_count column: {e}")
+
+def ensure_shop_views_count_column():
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('shops')]
+        if 'views_count' not in columns:
+            with db.engine.begin() as connection:
+                if db.engine.name == 'sqlite':
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN views_count INTEGER DEFAULT 0 NOT NULL"))
+                else:
+                    connection.execute(text("ALTER TABLE shops ADD COLUMN views_count INT DEFAULT 0 NOT NULL"))
+            print("Successfully added views_count column to shops table.")
+    except Exception as e:
+        print(f"Error ensuring shop views_count column: {e}")
 
 def ensure_sms_enabled_column():
     try:

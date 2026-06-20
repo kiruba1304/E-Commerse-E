@@ -413,4 +413,54 @@ def check_rto_prediction(shop, phone, email, amount, payment_method, pincode, it
         print(f"Shiprocket Sense RTO score API call failed: {e}")
     return None
 
+def request_pickup(shop, shipment_id):
+    """
+    Requests Shiprocket to schedule a pickup for the given shipment_id.
+    """
+    token = get_token(shop)
+    
+    payload = {
+        "shipment_id": [int(shipment_id)]
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    
+    res = requests.post(f"{SHIPROCKET_API_URL}/courier/generate/pickup", json=payload, headers=headers, timeout=12)
+    res_json = res.json()
+    
+    if res.status_code == 200 and res_json.get('pickup_status') == 1:
+        data = res_json.get('response', {})
+        return {
+            "success": True,
+            "pickup_id": data.get('pickup_id'),
+            "pickup_scheduled_date": data.get('pickup_scheduled_date'),
+            "pickup_token_number": data.get('pickup_token_number')
+        }
+    else:
+        error_msg = res_json.get('message', 'Failed to schedule pickup.')
+        if 'errors' in res_json:
+            error_msg += f" Details: {res_json['errors']}"
+        raise Exception(f"Shiprocket Pickup Request Failed: {error_msg}")
+
+def cancel_order(shop, order_id):
+    """
+    Cancels an order on Shiprocket.
+    """
+    token = get_token(shop)
+    
+    payload = {
+        "ids": [int(order_id)]
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}"
+    }
+    
+    res = requests.post(f"{SHIPROCKET_API_URL}/orders/cancel", json=payload, headers=headers, timeout=12)
+    return res.status_code in [200, 204]
+
 

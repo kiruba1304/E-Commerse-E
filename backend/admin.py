@@ -1229,7 +1229,7 @@ def book_shipping(order_id):
                 # 2. Call Shiprocket Create Order
                 res_dict = shiprocket_helper.create_shiprocket_order(
                     shop=shop,
-                    order_id_str=f"EC-{order.online_order_number or order.id}",
+                    order_id_str=f"EC-{order.online_order_number or order.id}-{secrets.token_hex(2).upper()}",
                     order_date=order.created_at or datetime.now(),
                     customer_name=order.user.name or order.user.username if order.user else "Customer",
                     customer_email=order.user.email if order.user else f"cust_{order.id}@example.com",
@@ -1365,6 +1365,84 @@ def book_shipping(order_id):
     return jsonify({
         "success": True,
         "message": "DTDC shipment booked successfully",
+        "order": order.serialize()
+    }), 200
+
+
+@admin_bp.route('/orders/<int:order_id>/schedule-pickup', methods=['POST'])
+@role_required(['admin'])
+def schedule_shiprocket_pickup(order_id):
+    import shiprocket_helper
+    
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+        
+    if not order.shiprocket_shipment_id:
+        return jsonify({"error": "Order is not associated with a Shiprocket shipment."}), 400
+        
+    try:
+        pickup_res = shiprocket_helper.request_pickup(shop, order.shiprocket_shipment_id)
+        
+        # Append pickup details to tracking_info if desired, or simply record it in order tracking
+        pickup_info = f" | Pickup ID: {pickup_res.get('pickup_id')} (Date: {pickup_res.get('pickup_scheduled_date')})"
+        if order.tracking_info and pickup_info not in order.tracking_info:
+            order.tracking_info += pickup_info
+            db.session.commit()
+            
+        log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Scheduled Shiprocket pickup for Order #{order.id} (Pickup ID: {pickup_res.get('pickup_id')})")
+        
+        return jsonify({
+            "success": True,
+            "message": "Shiprocket pickup scheduled successfully",
+            "pickup_id": pickup_res.get('pickup_id'),
+            "pickup_scheduled_date": pickup_res.get('pickup_scheduled_date'),
+            "pickup_token_number": pickup_res.get('pickup_token_number')
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+
+@admin_bp.route('/orders/<int:order_id>/cancel-shipping', methods=['POST'])
+@role_required(['admin'])
+def cancel_shipping(order_id):
+    import shiprocket_helper
+    
+    shop_id = request.user['shop_id']
+    order = Order.query.filter_by(id=order_id, shop_id=shop_id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    shop = Shop.query.get(shop_id)
+    if not shop:
+        return jsonify({"error": "Shop not found"}), 404
+        
+    # If it is a Shiprocket order, call Shiprocket API to cancel
+    if order.shiprocket_order_id:
+        try:
+            shiprocket_helper.cancel_order(shop, order.shiprocket_order_id)
+        except Exception as err:
+            # We log the warning but still allow resetting the database fields in our system
+            print(f"Shiprocket Cancel Order Warning: {err}")
+            
+    # Reset tracking and booking fields
+    order.shiprocket_order_id = None
+    order.shiprocket_shipment_id = None
+    order.tracking_info = None
+    order.shipping_label_url = None
+    order.status = 'Accepted'
+    db.session.commit()
+    
+    log_admin_action(request.user['user_id'], request.user['username'], shop_id, f"Cancelled shipment & reset booking options for Order #{order.id}")
+    
+    return jsonify({
+        "success": True,
+        "message": "Shipment cancelled and booking options reset successfully",
         "order": order.serialize()
     }), 200
 

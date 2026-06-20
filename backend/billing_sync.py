@@ -613,7 +613,7 @@ def book_order_shipping(order_id):
                 # 2. Call Shiprocket Create Order
                 res_dict = shiprocket_helper.create_shiprocket_order(
                     shop=shop,
-                    order_id_str=f"EC-{order.online_order_number or order.id}",
+                    order_id_str=f"EC-{order.online_order_number or order.id}-{secrets.token_hex(2).upper()}",
                     order_date=order.created_at or datetime.now(),
                     customer_name=order.user.name or order.user.username if order.user else "Customer",
                     customer_email=order.user.email if order.user else f"cust_{order.id}@example.com",
@@ -1038,7 +1038,7 @@ def book_customization_shipping(cust_id):
                 # 2. Call Shiprocket Create Order
                 res_dict = shiprocket_helper.create_shiprocket_order(
                     shop=shop,
-                    order_id_str=f"CUST-{cust.id}",
+                    order_id_str=f"CUST-{cust.id}-{secrets.token_hex(2).upper()}",
                     order_date=cust.created_at or datetime.now(),
                     customer_name=cust.user.name or cust.user.username if cust.user else "Customer",
                     customer_email=cust.user.email if cust.user else f"cust_custom_{cust.id}@example.com",
@@ -1216,3 +1216,148 @@ def sync_categories():
     return jsonify({
         "categories": [c.serialize() for c in web_categories]
     }), 200
+
+
+@billing_sync_bp.route('/orders/<int:order_id>/schedule-pickup', methods=['POST'])
+def schedule_order_pickup(order_id):
+    import shiprocket_helper
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    if not order.shiprocket_shipment_id:
+        return jsonify({"error": "Order is not associated with a Shiprocket shipment."}), 400
+        
+    try:
+        pickup_res = shiprocket_helper.request_pickup(shop, order.shiprocket_shipment_id)
+        
+        pickup_info = f" | Pickup ID: {pickup_res.get('pickup_id')} (Date: {pickup_res.get('pickup_scheduled_date')})"
+        if order.tracking_info and pickup_info not in order.tracking_info:
+            order.tracking_info += pickup_info
+            db.session.commit()
+            
+        return jsonify({
+            "success": True,
+            "message": "Shiprocket pickup scheduled successfully",
+            "pickup_id": pickup_res.get('pickup_id'),
+            "pickup_scheduled_date": pickup_res.get('pickup_scheduled_date'),
+            "pickup_token_number": pickup_res.get('pickup_token_number')
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+
+@billing_sync_bp.route('/orders/<int:order_id>/cancel-shipping', methods=['POST'])
+def cancel_order_shipping(order_id):
+    import shiprocket_helper
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    order = Order.query.filter_by(id=order_id, shop_id=shop.id).first()
+    if not order:
+        return jsonify({"error": "Order not found"}), 404
+        
+    # If it is a Shiprocket order, call Shiprocket API to cancel
+    if order.shiprocket_order_id:
+        try:
+            shiprocket_helper.cancel_order(shop, order.shiprocket_order_id)
+        except Exception as err:
+            print(f"Shiprocket Cancel Sync Order Warning: {err}")
+            
+    # Reset tracking and booking fields
+    order.shiprocket_order_id = None
+    order.shiprocket_shipment_id = None
+    order.tracking_info = None
+    order.shipping_label_url = None
+    order.status = 'Accepted'
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "Shipment cancelled and booking options reset successfully",
+        "order": order.serialize()
+    }), 200
+
+
+@billing_sync_bp.route('/customizations/<int:cust_id>/schedule-pickup', methods=['POST'])
+def schedule_customization_pickup(cust_id):
+    import shiprocket_helper
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    if not cust.shiprocket_shipment_id:
+        return jsonify({"error": "Customization order is not associated with a Shiprocket shipment."}), 400
+        
+    try:
+        pickup_res = shiprocket_helper.request_pickup(shop, cust.shiprocket_shipment_id)
+        
+        pickup_info = f" | Pickup ID: {pickup_res.get('pickup_id')} (Date: {pickup_res.get('pickup_scheduled_date')})"
+        if cust.tracking_info and pickup_info not in cust.tracking_info:
+            cust.tracking_info += pickup_info
+            db.session.commit()
+            
+        return jsonify({
+            "success": True,
+            "message": "Shiprocket pickup scheduled successfully for customization",
+            "pickup_id": pickup_res.get('pickup_id'),
+            "pickup_scheduled_date": pickup_res.get('pickup_scheduled_date'),
+            "pickup_token_number": pickup_res.get('pickup_token_number')
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 400
+
+
+@billing_sync_bp.route('/customizations/<int:cust_id>/cancel-shipping', methods=['POST'])
+def cancel_customization_shipping(cust_id):
+    import shiprocket_helper
+    
+    data = request.get_json() or {}
+    api_key = data.get('api_key')
+    shop = get_shop_by_api_key(api_key)
+    if not shop:
+        return jsonify({"error": "Invalid API key"}), 401
+        
+    cust = CustomizationOrder.query.filter_by(id=cust_id, shop_id=shop.id).first()
+    if not cust:
+        return jsonify({"error": "Customization request not found"}), 404
+        
+    # If it is a Shiprocket order, call Shiprocket API to cancel
+    if cust.shiprocket_order_id:
+        try:
+            shiprocket_helper.cancel_order(shop, cust.shiprocket_order_id)
+        except Exception as err:
+            print(f"Shiprocket Cancel Sync Customization Warning: {err}")
+            
+    # Reset tracking and booking fields
+    cust.shiprocket_order_id = None
+    cust.shiprocket_shipment_id = None
+    cust.tracking_info = None
+    cust.shipping_label_url = None
+    cust.status = 'Pending'
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "Customization shipment cancelled and booking options reset successfully",
+        "customization": cust.serialize()
+    }), 200
+

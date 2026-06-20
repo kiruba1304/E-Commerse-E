@@ -769,9 +769,15 @@ tr:hover td {
 
 @media (max-width: 768px) {
   .navbar {
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding: 12px 16px 8px !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    gap: 0 !important;
+  }
+
+  .mobile-header-actions {
+    display: flex !important;
   }
 
   .nav-links {
@@ -3466,6 +3472,21 @@ input[type="checkbox"] {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
+@keyframes live-pulse {
+  0% { transform: scale(0.97); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(0.97); }
+}
+
+.live-pulse-badge {
+  animation: live-pulse 2.5s infinite ease-in-out;
+}
+
+.navbar-stats-container:hover .navbar-stats-popover {
+  display: flex !important;
+}
+
 
 
 

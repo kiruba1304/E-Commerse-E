@@ -223,10 +223,7 @@ const renderCollectionTitle = (name) => {
       {name}
     </h2>
   );
-};
-
-
-function NobaraaHero({ sareeModels = [] }) {
+};function NobaraaHero({ sareeModels = [], viewsCount = 0, liveCount = 0 }) {
   const [coords, setCoords] = React.useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = React.useState(false);
   const [activeModel, setActiveModel] = React.useState(0);
@@ -312,6 +309,7 @@ function NobaraaHero({ sareeModels = [] }) {
         <p className="nobaraa-hero-subtitle">
           Discover the latest trends, timeless elegance and fashion made for you.
         </p>
+
         <button
           onClick={() => {
             document.getElementById('catalog-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -684,6 +682,7 @@ export default function App() {
     return window.innerWidth <= 768 ? "menu" : "orders";
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileStatsOpen, setMobileStatsOpen] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [profileForm, setProfileForm] = useState({ name: "", email: "", contact_phone: "", password: "", addresses: [] });
 
@@ -805,6 +804,69 @@ export default function App() {
       });
     }
   }, [activeProduct]);
+
+  const [sessionId] = useState(() => {
+    let id = localStorage.getItem('site_session_id');
+    if (!id) {
+      id = 'sess_' + Math.random().toString(36).substring(2, 15);
+      localStorage.setItem('site_session_id', id);
+    }
+    return id;
+  });
+  const [liveActiveViewers, setLiveActiveViewers] = useState(0);
+
+  useEffect(() => {
+    const pingHeartbeat = async () => {
+      try {
+        const payload = {
+          session_id: sessionId,
+          shop_id: activeShopId ? Number(activeShopId) : null,
+          product_id: (currentView === 'product_detail' && activeProduct) ? Number(activeProduct.id) : null
+        };
+        const res = await fetch(`${API_BASE}/opac/heartbeat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLiveActiveViewers(data.active_count || 1);
+        }
+      } catch (e) {
+        console.error("Heartbeat request failed:", e);
+      }
+    };
+
+    pingHeartbeat();
+    const intervalId = setInterval(pingHeartbeat, 20000);
+    return () => clearInterval(intervalId);
+  }, [sessionId, activeShopId, activeProduct, currentView]);
+
+  useEffect(() => {
+    if (activeShopId) {
+      const incrementShopViews = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/opac/shops/${activeShopId}/view`, {
+            method: 'POST'
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setShops(prevShops =>
+              prevShops.map(shop =>
+                Number(shop.id) === Number(activeShopId)
+                  ? { ...shop, views_count: data.views_count }
+                  : shop
+              )
+            );
+          }
+        } catch (e) {
+          console.error("Failed to increment shop views:", e);
+        }
+      };
+      incrementShopViews();
+    }
+  }, [activeShopId]);
+
   const [popupAd, setPopupAd] = useState(null);
   const [popupAdImageStyle, setPopupAdImageStyle] = useState({ width: '90%', maxWidth: '550px' });
 
@@ -2440,6 +2502,18 @@ export default function App() {
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [showProfileDropdown]);
 
+  // Close mobile stats popover when clicking outside
+  useEffect(() => {
+    if (!mobileStatsOpen) return;
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.mobile-stats-trigger')) {
+        setMobileStatsOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [mobileStatsOpen]);
+
   const loadUserDashboard = async () => {
     try {
       const res = await fetch(`${API_BASE}/user/dashboard`, { headers: getHeaders() });
@@ -3829,6 +3903,47 @@ export default function App() {
       addToast("Error", "Network error while booking shipment.", "danger");
     } finally {
       setBookingShippingId(null);
+    }
+  };
+
+  const handleScheduleShiprocketPickup = async (orderId) => {
+    try {
+      addToast("Requesting Pickup", "Scheduling Shiprocket pickup request...", "info");
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/schedule-pickup`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        addToast("Pickup Scheduled", `Shiprocket pickup scheduled for ${data.pickup_scheduled_date}. Token: ${data.pickup_token_number || 'N/A'}`, "success");
+        loadAdminOrders();
+      } else {
+        addToast("Scheduling Failed", data.error || "Failed to schedule Shiprocket pickup.", "danger");
+      }
+    } catch (e) {
+      addToast("Error", "Network error while scheduling pickup.", "danger");
+    }
+  };
+
+  const handleCancelShipping = async (orderId) => {
+    if (!window.confirm("Are you sure you want to cancel the shipment booking? This will reset the order back to Accepted status and allow you to book it again.")) {
+      return;
+    }
+    try {
+      addToast("Cancelling Shipment", "Requesting shipment cancellation...", "info");
+      const res = await fetch(`${API_BASE}/admin/orders/${orderId}/cancel-shipping`, {
+        method: 'POST',
+        headers: getHeaders()
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        addToast("Shipment Cancelled", "Shipment cancelled and order reset successfully.", "success");
+        loadAdminOrders();
+      } else {
+        addToast("Cancellation Failed", data.error || "Failed to cancel shipment.", "danger");
+      }
+    } catch (e) {
+      addToast("Error", "Network error while cancelling shipment.", "danger");
     }
   };
 
@@ -7409,6 +7524,86 @@ export default function App() {
 
         {/* Right Side: Interactive Icons Row */}
         <div className="desktop-nav-icons" style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#222222' }}>
+          {/* Activity / Stats Hover Indicator */}
+          <div 
+            className="navbar-stats-container"
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '8px 0' }}
+          >
+            {/* Green pulsing dot and stats icon */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingUp size={20} style={{ color: '#7a4ea5' }} />
+              <span style={{
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                background: '#22c55e',
+                borderRadius: '50%',
+                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                animation: 'live-pulse 2s infinite ease-in-out'
+              }}></span>
+            </div>
+
+            {/* Hover Popover Dropdown Card */}
+            <div 
+              className="navbar-stats-popover"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: '-40px',
+                width: '240px',
+                background: 'rgba(255, 255, 255, 0.96)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(122, 78, 165, 0.25)',
+                borderRadius: '12px',
+                padding: '16px',
+                boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
+                display: 'none', // Managed by CSS hover rule
+                flexDirection: 'column',
+                gap: '12px',
+                zIndex: 1000,
+                marginTop: '8px',
+                boxSizing: 'border-box',
+                animation: 'fadeIn 0.3s ease-out forwards'
+              }}
+            >
+              {/* Pointer Arrow */}
+              <div style={{
+                position: 'absolute',
+                top: '-6px',
+                right: '48px',
+                width: '10px',
+                height: '10px',
+                background: '#ffffff',
+                borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
+                borderTop: '1px solid rgba(122, 78, 165, 0.25)',
+                transform: 'rotate(45deg)',
+                zIndex: 1001
+              }}></div>
+
+              <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
+                Live Site Activity
+              </div>
+
+              {/* Total Visits row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
+                <Eye size={16} style={{ color: '#7a4ea5' }} />
+                <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+              </div>
+
+              {/* Active Users row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
+                <span style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  background: '#22c55e',
+                  borderRadius: '50%'
+                }}></span>
+                <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+              </div>
+            </div>
+          </div>
+
           {/* Search Icon */}
           <div
             style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
@@ -7663,13 +7858,105 @@ export default function App() {
           )}
         </div>
 
-        {/* MOBILE HAMBURGER MENU BUTTON */}
-        <div
-          className="mobile-menu-btn"
-          style={{ display: 'none', alignItems: 'center', cursor: 'pointer', color: '#222222' }}
-          onClick={() => setMobileMenuOpen(true)}
+        {/* MOBILE ACTIONS (STATS TRIGGER & HAMBURGER) */}
+        <div 
+          className="mobile-header-actions" 
+          style={{ display: 'none', alignItems: 'center', gap: '16px' }}
         >
-          <Menu size={28} />
+          {/* Mobile Live Activity Stats Trigger */}
+          <div 
+            className="mobile-stats-trigger"
+            style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '6px' }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMobileStatsOpen(!mobileStatsOpen);
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <TrendingUp size={22} style={{ color: '#7a4ea5' }} />
+              <span style={{
+                display: 'inline-block',
+                width: '8px',
+                height: '8px',
+                background: '#22c55e',
+                borderRadius: '50%',
+                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                animation: 'live-pulse 2s infinite ease-in-out'
+              }}></span>
+            </div>
+
+            {/* Popover Dropdown Card for Mobile (Toggled on click) */}
+            {mobileStatsOpen && (
+              <div 
+                className="mobile-stats-popover"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: '-10px',
+                  width: '240px',
+                  background: 'rgba(255, 255, 255, 0.98)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(122, 78, 165, 0.25)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  zIndex: 10001,
+                  marginTop: '12px',
+                  boxSizing: 'border-box',
+                  animation: 'fadeIn 0.3s ease-out forwards'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Pointer Arrow */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '18px',
+                  width: '10px',
+                  height: '10px',
+                  background: '#ffffff',
+                  borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
+                  borderTop: '1px solid rgba(122, 78, 165, 0.25)',
+                  transform: 'rotate(45deg)',
+                  zIndex: 10002
+                }}></div>
+
+                <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
+                  Live Site Activity
+                </div>
+
+                {/* Total Visits row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
+                  <Eye size={16} style={{ color: '#7a4ea5' }} />
+                  <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+                </div>
+
+                {/* Active Users row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    background: '#22c55e',
+                    borderRadius: '50%'
+                  }}></span>
+                  <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* MOBILE HAMBURGER MENU BUTTON */}
+          <div
+            className="mobile-menu-btn"
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#222222' }}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <Menu size={28} />
+          </div>
         </div>
       </header>
 
@@ -7748,6 +8035,53 @@ export default function App() {
                   )}
                 </span>
               ))}
+            </div>
+
+            {/* Live activity card inside drawer */}
+            <div style={{
+              margin: '0 24px 20px',
+              padding: '16px',
+              background: 'linear-gradient(135deg, rgba(122, 78, 165, 0.05) 0%, rgba(122, 78, 165, 0.02) 100%)',
+              border: '1px solid rgba(122, 78, 165, 0.15)',
+              borderRadius: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              boxShadow: '0 4px 20px rgba(122, 78, 165, 0.03)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(122, 78, 165, 0.1)', paddingBottom: '6px' }}>
+                <TrendingUp size={16} style={{ color: '#7a4ea5' }} />
+                <span style={{ fontSize: '0.75rem', color: '#7a4ea5', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                  Live Store Stats
+                </span>
+                <span style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  background: '#22c55e',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                  animation: 'live-pulse 2s infinite ease-in-out'
+                }}></span>
+              </div>
+
+              {/* Total Visits row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#444444' }}>
+                <Eye size={14} style={{ color: '#7a4ea5' }} />
+                <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+              </div>
+
+              {/* Active Users row */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#16a34a', fontWeight: 600 }}>
+                <span style={{
+                  display: 'inline-block',
+                  width: '6px',
+                  height: '6px',
+                  background: '#22c55e',
+                  borderRadius: '50%'
+                }}></span>
+                <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+              </div>
             </div>
 
             {/* Bottom Icons Stack */}
@@ -9080,7 +9414,7 @@ export default function App() {
         <>
           {!activeCategoryPage && (
             <div className="animate-fade-in" style={{ width: '100%' }}>
-              <NobaraaHero sareeModels={currentSareeModels} />
+              <NobaraaHero sareeModels={currentSareeModels} viewsCount={currentShop?.views_count || 0} liveCount={liveActiveViewers} />
             </div>
           )}
           <main className="main-content" style={{ maxWidth: '100%', margin: '0 auto', width: '100%', padding: isMobile ? '0' : '0 40px' }}>
@@ -14894,6 +15228,27 @@ export default function App() {
                                         <Truck size={12} />
                                         {bookingShippingId === o.id ? 'Booking...' : 'Book Shiprocket'}
                                       </button>
+                                      {(o.shiprocket_order_id || o.tracking_info) && (
+                                        <button
+                                          onClick={() => handleCancelShipping(o.id)}
+                                          className="btn-secondary"
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '0.75rem',
+                                            borderColor: 'var(--accent-danger)',
+                                            color: 'var(--accent-danger)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            width: '100%',
+                                            maxWidth: '160px',
+                                            marginTop: '4px'
+                                          }}
+                                        >
+                                          <X size={12} /> Cancel Booking
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                   {o.status === 'Dispatched' && (
@@ -14921,6 +15276,44 @@ export default function App() {
                                           <Printer size={12} /> Label
                                         </button>
                                       )}
+                                      {o.shiprocket_shipment_id && (!o.tracking_info || !o.tracking_info.includes('Pickup ID')) && (
+                                        <button
+                                          onClick={() => handleScheduleShiprocketPickup(o.id)}
+                                          className="btn-secondary"
+                                          style={{
+                                            padding: '6px 12px',
+                                            fontSize: '0.75rem',
+                                            borderColor: '#16a34a',
+                                            color: '#16a34a',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            width: '100%',
+                                            maxWidth: '160px'
+                                          }}
+                                        >
+                                          <Truck size={12} /> Schedule Pickup
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => handleCancelShipping(o.id)}
+                                        className="btn-secondary"
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '0.75rem',
+                                          borderColor: 'var(--accent-danger)',
+                                          color: 'var(--accent-danger)',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          gap: '6px',
+                                          width: '100%',
+                                          maxWidth: '160px'
+                                        }}
+                                      >
+                                        <X size={12} /> Cancel Booking
+                                      </button>
                                     </div>
                                   )}
                                   {o.status === 'Customer Received' && (
