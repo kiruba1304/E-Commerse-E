@@ -4846,7 +4846,7 @@ export default function App() {
         bottom: isMobile ? 'auto' : '24px',
         left: isMobile ? '12px' : 'auto',
         right: isMobile ? '12px' : '24px',
-        zIndex: 10500,
+        zIndex: 20000,
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
@@ -5122,24 +5122,24 @@ export default function App() {
             background: '#ffffff',
             borderRadius: '24px',
             width: '500px',
-            maxWidth: '90%',
-            padding: '32px',
+            maxWidth: '92%',
+            padding: isMobile ? '20px' : '32px',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 20px 50px rgba(122, 78, 165, 0.2)',
             position: 'relative',
             fontFamily: "'Jost', sans-serif"
           }}>
-            <button onClick={() => setSelectedNotification(null)} style={{ position: 'absolute', top: '24px', right: '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+            <button onClick={() => setSelectedNotification(null)} style={{ position: 'absolute', top: isMobile ? '12px' : '24px', right: isMobile ? '12px' : '24px', background: '#f5edff', border: 'none', cursor: 'pointer', color: '#7a4ea5', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
               <X size={20} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px' }}>
-              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid #f0e6fc', paddingBottom: '16px', paddingRight: isMobile ? '32px' : '0px' }}>
+              <div style={{ background: '#f5edff', color: '#7a4ea5', borderRadius: '12px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justify: 'center', flexShrink: 0 }}>
                 <Bell size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)' }}>{selectedNotification.title}</h3>
+                <h3 style={{ fontSize: isMobile ? '1.2rem' : '1.4rem', fontWeight: 800, margin: 0, color: '#2b0b57', fontFamily: 'var(--font-serif)', wordBreak: 'break-word' }}>{selectedNotification.title}</h3>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(selectedNotification.created_at).toLocaleString()}</span>
               </div>
             </div>
@@ -9791,9 +9791,9 @@ export default function App() {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
                             <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                              {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                              {parseFloat(p.avg_rating || 0).toFixed(1)} <Award size={12} />
                             </span>
-                            <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                            <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({p.total_reviews || 0} reviews)</span>
                           </div>
 
                           <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
@@ -10292,9 +10292,9 @@ export default function App() {
 
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
                                           <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                            {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                            {parseFloat(p.avg_rating || 0).toFixed(1)} <Award size={12} />
                                           </span>
-                                          <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                          <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({p.total_reviews || 0} reviews)</span>
                                         </div>
 
                                         <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
@@ -10643,9 +10643,9 @@ export default function App() {
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', marginBottom: '12px' }}>
                                   <span className="badge badge-success" style={{ background: '#f5edff', color: '#7a4ea5', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '12px' }}>
-                                    {(4.0 + (p.id % 10) * 0.1).toFixed(1)} <Award size={12} />
+                                    {parseFloat(p.avg_rating || 0).toFixed(1)} <Award size={12} />
                                   </span>
-                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({(p.id * 7 + 15)} reviews)</span>
+                                  <span style={{ color: '#666666', fontFamily: "'Jost', sans-serif" }}>({p.total_reviews || 0} reviews)</span>
                                 </div>
 
                                 <p className="product-description" style={{ fontFamily: "'Jost', sans-serif", color: '#666666', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: '20px', flexGrow: 1 }}>{p.description}</p>
@@ -11868,9 +11868,15 @@ export default function App() {
               {/* Notifications Feed */}
               {activePanel === 'notifications' && (
                 <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h2 style={{ fontWeight: 800, fontSize: '1.8rem' }}>Notifications</h2>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: isMobile ? 'column' : 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: isMobile ? 'flex-start' : 'center',
+                    gap: isMobile ? '12px' : '0px'
+                  }}>
+                    <h2 style={{ fontWeight: 800, fontSize: isMobile ? '1.5rem' : '1.8rem', margin: 0 }}>Notifications</h2>
+                    <div style={{ display: 'flex', gap: '8px', width: isMobile ? '100%' : 'auto' }}>
                       <button
                         onClick={async () => {
                           const res = await fetch(`${API_BASE}/user/notifications/read`, { method: 'POST', headers: getHeaders() });
@@ -11880,7 +11886,7 @@ export default function App() {
                           }
                         }}
                         className="btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', flex: isMobile ? 1 : 'none', textAlign: 'center' }}
                       >
                         Mark All Read
                       </button>
@@ -11903,7 +11909,7 @@ export default function App() {
                           }
                         }}
                         className="btn-danger"
-                        style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#ef4444', borderColor: '#ef4444', color: '#fff', borderRadius: '4px' }}
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#ef4444', borderColor: '#ef4444', color: '#fff', borderRadius: '4px', flex: isMobile ? 1 : 'none', textAlign: 'center' }}
                       >
                         Clear All
                       </button>

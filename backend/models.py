@@ -475,6 +475,9 @@ class Product(db.Model):
         self.custom_colors_json = json.dumps(value)
 
     def serialize(self):
+        reviews_list = self.reviews if self.reviews else []
+        total_rev = len(reviews_list)
+        avg_rat = round(sum([r.rating for r in reviews_list]) / total_rev, 1) if total_rev > 0 else 0.0
         return {
             "id": self.id,
             "name": self.name,
@@ -500,6 +503,8 @@ class Product(db.Model):
             "return_window_days": self.return_window_days,
             "cod_enabled": self.cod_enabled if self.cod_enabled is not None else True,
             "views_count": self.views_count or 0,
+            "total_reviews": total_rev,
+            "avg_rating": avg_rat,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else (self.created_at.isoformat() if self.created_at else None)
         }
