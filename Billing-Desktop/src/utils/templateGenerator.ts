@@ -32,7 +32,7 @@ export const generateThermalCompactReceipt = (bill: Bill, settings: AppSettings,
   const storeAddress = settings.address || '32-F, Near Eswaran Temple, Kadaiveethi\nIdappadi – 637101';
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsg = settings.footerMessage || 'Thank you!';
 
   return `
@@ -102,7 +102,7 @@ export const generateThermalCompactReceipt = (bill: Bill, settings: AppSettings,
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Disc:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -136,7 +136,7 @@ export const generateThermalStandardReceipt = (bill: Bill, settings: AppSettings
     .filter(line => line.trim() !== '');
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsgHtml = (settings.footerMessage || 'Thank you for your business!\nVisit again soon')
     .split('\n')
     .map(line => `<div>${line}</div>`)
@@ -210,7 +210,7 @@ export const generateThermalStandardReceipt = (bill: Bill, settings: AppSettings
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -248,7 +248,7 @@ export const generateThermalDetailedReceipt = (bill: Bill, settings: AppSettings
   const storeAddress = settings.address || '32-F, Near Eswaran Temple, Kadaiveethi\nIdappadi – 637101';
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsg = settings.footerMessage || 'Thank you for shopping with us!';
 
   return `
@@ -308,7 +308,7 @@ export const generateThermalDetailedReceipt = (bill: Bill, settings: AppSettings
               </div>
               <div class="item-detail">
                 <span>Qty: ${item.quantity} × ₹${item.unitPrice.toFixed(2)}</span>
-                <span>GST: ${item.gst}%</span>
+                ${isGstEnabled ? `<span>GST: ${item.gst}%</span>` : ''}
               </div>
             </div>
           `).join('') || ''}
@@ -316,7 +316,7 @@ export const generateThermalDetailedReceipt = (bill: Bill, settings: AppSettings
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL AMOUNT</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 1px dashed #000; margin-top: 5px; padding-top: 5px;">
@@ -352,7 +352,7 @@ export const generateRegularA5Receipt = (bill: Bill, settings: AppSettings, qrDa
   const storeAddress = settings.address || '32-F, Near Eswaran Temple, Kadaiveethi\nIdappadi – 637101';
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsg = settings.footerMessage || 'Thank you for your business!';
 
   return `
@@ -436,7 +436,7 @@ export const generateRegularA5Receipt = (bill: Bill, settings: AppSettings, qrDa
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span>-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST ${settings.gstInclusive ? '(Incl)' : '(Excl)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #333; margin-top: 5px; padding-top: 5px;">
@@ -471,7 +471,7 @@ export const generateRegularA4Receipt = (bill: Bill, settings: AppSettings, qrDa
   const storeAddress = settings.address || '32-F, Near Eswaran Temple, Kadaiveethi\nIdappadi – 637101';
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsg = settings.footerMessage || 'Thank you for your business!';
 
   return `
@@ -565,7 +565,7 @@ export const generateRegularA4Receipt = (bill: Bill, settings: AppSettings, qrDa
         <div class="totals">
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
-          <div class="total-line"><span>GST (${bill.items?.[0]?.gst || 0}% ${settings.gstInclusive ? 'Incl' : 'Excl'}):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST (${bill.items?.[0]?.gst || 0}% ${settings.gstInclusive ? 'Incl' : 'Excl'}):</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL AMOUNT DUE:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #333; margin-top: 8px; padding-top: 8px;">
@@ -608,7 +608,7 @@ export const generateRegularA4DetailedReceipt = (bill: Bill, settings: AppSettin
   const storeAddress = settings.address || '32-F, Near Eswaran Temple, Kadaiveethi\nIdappadi – 637101';
   const storePhone = settings.phone || '9965326590, 9047656890';
   const gstNum = settings.gstNumber || '';
-  const isGstEnabled = settings.showGst !== false;
+  const isGstEnabled = settings.showGst !== false && bill.isGstBill !== false;
   const footerMsg = settings.footerMessage || 'Thank you for your purchase!';
 
   return `
@@ -706,7 +706,7 @@ export const generateRegularA4DetailedReceipt = (bill: Bill, settings: AppSettin
           <div class="total-line"><span>Subtotal:</span><span>₹${bill.totalAmount.toFixed(2)}</span></div>
           <div class="total-line"><span>Total Discount:</span><span style="color: red;">-₹${bill.totalDiscount.toFixed(2)}</span></div>
           <div class="total-line"><span>Base Amount (after discount):</span><span>₹${(bill.totalAmount - bill.totalDiscount).toFixed(2)}</span></div>
-          <div class="total-line"><span>GST ${settings.gstInclusive ? '(Included)' : '(Excluded)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>
+          ${isGstEnabled ? `<div class="total-line"><span>GST ${settings.gstInclusive ? '(Included)' : '(Excluded)'}:</span><span>₹${bill.totalGst.toFixed(2)}</span></div>` : ''}
           <div class="total-line final-total"><span>TOTAL AMOUNT DUE:</span><span>₹${bill.finalAmount.toFixed(2)}</span></div>
           ${(bill.paymentMethod === 'credit' && bill.previousBalance !== undefined) ? `
             <div style="border-top: 2px solid #1a3a52; margin-top: 8px; padding-top: 8px;">

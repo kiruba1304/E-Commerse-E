@@ -36,6 +36,7 @@ const Billing: React.FC = () => {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'upi' | 'credit' | 'other' | 'online' | 'cod'>('cash');
+  const [gstBillingEnabled, setGstBillingEnabled] = useState(true);
   // extra discount value and mode: percent or rupees
   const [extraDiscountValue, setExtraDiscountValue] = useState<string>('');
   const [extraDiscountMode, setExtraDiscountMode] = useState<'percent' | 'rupees'>('percent');
@@ -96,6 +97,7 @@ const Billing: React.FC = () => {
         createdAt: bill.createdAt,
         customerId: bill.customerId,
       });
+      setGstBillingEnabled(bill.isGstBill !== false);
 
       if (bill.customerId) {
         const found = customers.find((c) => c.id === bill.customerId) || bill.customer || null;
@@ -232,7 +234,7 @@ const Billing: React.FC = () => {
     const baseAfterExtra = Math.max(0, base - extraDiscountAmount);
 
     let totalGst = 0;
-    if (base > 0) {
+    if (gstBillingEnabled && base > 0) {
       billItems.forEach(item => {
         const itemBase = item.totalPrice - (item.totalPrice * item.discount / 100);
         const adjustedItemBase = itemBase * (baseAfterExtra / base);
@@ -267,6 +269,7 @@ const Billing: React.FC = () => {
       extraDiscountValue: parseFloat(extraDiscountValue) || 0,
       extraDiscountMode,
       appliedCreditAmount,
+      isGstBill: gstBillingEnabled,
       timestamp: new Date()
     };
     setHeldBills([...heldBills, newHeldBill]);
@@ -277,6 +280,7 @@ const Billing: React.FC = () => {
     setWalkInPhone('');
     setExtraDiscountValue('');
     setAppliedCreditAmount(0);
+    setGstBillingEnabled(true);
     alert('Bill held successfully!');
   };
 
@@ -291,6 +295,7 @@ const Billing: React.FC = () => {
       setExtraDiscountMode(bill.extraDiscountMode || 'percent');
       setAppliedCreditAmount(bill.appliedCreditAmount || 0);
       setPaymentMethod(bill.paymentMethod);
+      setGstBillingEnabled(bill.isGstBill !== false);
       setHeldBills(heldBills.filter(b => b.id !== id));
       setShowHeldBills(false);
     }
@@ -457,7 +462,11 @@ const Billing: React.FC = () => {
         createdAt: billCreatedAt,
         updatedAt: new Date().toISOString(),
         customer: selectedCustomer || undefined,
-        items: billItems,
+        items: billItems.map(item => ({
+          ...item,
+          gst: gstBillingEnabled ? item.gst : 0
+        })),
+        isGstBill: gstBillingEnabled,
         previousBalance: paymentMethod === 'credit' ? previousBalance : undefined,
         currentlyPaid: paymentMethod === 'credit' ? currentlyPayAmount : undefined,
         totalOutstanding: paymentMethod === 'credit' ? totalOutstanding : undefined,
@@ -476,6 +485,7 @@ const Billing: React.FC = () => {
           status: tempBill.status,
           customer: tempBill.customer,
           items: tempBill.items,
+          isGstBill: tempBill.isGstBill,
           previousBalance: tempBill.previousBalance,
           currentlyPaid: tempBill.currentlyPaid,
           totalOutstanding: tempBill.totalOutstanding,
@@ -541,6 +551,7 @@ const Billing: React.FC = () => {
       setAppliedCreditAmount(0);
       setPaymentMethod('cash');
       setEditingBillMeta(null);
+      setGstBillingEnabled(true);
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Error saving bill: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -668,6 +679,24 @@ const Billing: React.FC = () => {
             <div className="card border border-white/60 bg-gradient-to-br from-emerald-50 to-white shadow-soft">
               <h3 className="mb-2 text-base font-semibold text-slate-900">Bill Summary</h3>
 
+              {/* GST Billing Toggle switch */}
+              <div className="mb-3 p-3 rounded-2xl bg-white/80 border border-slate-100 flex items-center justify-between shadow-sm">
+                <div>
+                  <p className="text-xs font-semibold text-slate-900">GST Billing</p>
+                  <p className="text-[10px] text-slate-500">Enable GST tax calculations</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGstBillingEnabled(!gstBillingEnabled)}
+                  style={{ backgroundColor: gstBillingEnabled ? 'var(--primary)' : '#cbd5e1' }}
+                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${gstBillingEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
+
               {/* Pending Amount Section (if customer selected) */}
               {selectedCustomer && (
                 <div className="mb-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
@@ -738,7 +767,9 @@ const Billing: React.FC = () => {
                 
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">GST {gstInclusive ? '(Inclusive)' : '(Exclusive)'}:</span>
-                  <span className="font-medium text-slate-900">₹{totals.totalGst.toFixed(2)}</span>
+                  <span className="font-medium text-slate-900">
+                    {gstBillingEnabled ? `₹${totals.totalGst.toFixed(2)}` : '₹0.00 (Off)'}
+                  </span>
                 </div>
                 <hr className="my-1 border-slate-200" />
                 

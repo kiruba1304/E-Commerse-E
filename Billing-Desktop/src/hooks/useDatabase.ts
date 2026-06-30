@@ -557,7 +557,7 @@ class BrowserDatabase {
 
     // Bills
     sql += '-- Table: Bills\n';
-    sql += 'CREATE TABLE IF NOT EXISTS Bills (id INTEGER PRIMARY KEY, billNumber TEXT, customerId INTEGER, totalAmount REAL, totalDiscount REAL, totalGst REAL, finalAmount REAL, paymentMethod TEXT, status TEXT, createdAt TEXT, updatedAt TEXT);\n';
+    sql += 'CREATE TABLE IF NOT EXISTS Bills (id INTEGER PRIMARY KEY, billNumber TEXT, customerId INTEGER, totalAmount REAL, totalDiscount REAL, totalGst REAL, finalAmount REAL, paymentMethod TEXT, status TEXT, createdAt TEXT, updatedAt TEXT, isGstBill INTEGER DEFAULT 1);\n';
 
     // Bill Items
     sql += '-- Table: BillItems\n';
@@ -565,7 +565,7 @@ class BrowserDatabase {
 
     const bills = this.getBills();
     bills.forEach(b => {
-      sql += `INSERT INTO Bills VALUES (${b.id}, '${b.billNumber.replace(/'/g, "''")}', ${b.customerId || 'NULL'}, ${b.totalAmount || 0}, ${b.totalDiscount || 0}, ${b.totalGst || 0}, ${b.finalAmount || 0}, '${b.paymentMethod}', '${b.status}', '${b.createdAt}', '${b.updatedAt}');\n`;
+      sql += `INSERT INTO Bills VALUES (${b.id}, '${b.billNumber.replace(/'/g, "''")}', ${b.customerId || 'NULL'}, ${b.totalAmount || 0}, ${b.totalDiscount || 0}, ${b.totalGst || 0}, ${b.finalAmount || 0}, '${b.paymentMethod}', '${b.status}', '${b.createdAt}', '${b.updatedAt}', ${b.isGstBill !== false ? 1 : 0});\n`;
 
       if (b.items) {
         b.items.forEach(item => {
@@ -761,6 +761,7 @@ class BrowserDatabase {
             status: String(row[8]) as any,
             createdAt: String(row[9] ?? new Date().toISOString()),
             updatedAt: String(row[10] ?? new Date().toISOString()),
+            isGstBill: row[11] === null || row[11] === undefined ? true : Number(row[11]) === 1,
             items: [],
           });
           break;

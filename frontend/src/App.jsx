@@ -16390,7 +16390,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayOrderNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.customer?.name || item.user_name}</td>
                             <td>
@@ -16459,7 +16459,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayOrderNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.customer?.name || item.user_name}</td>
                             <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{item.razorpay_payment_id || 'UPI/Prepaid'}</td>
@@ -16490,7 +16490,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayOrderNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.customer?.name || item.user_name}</td>
                             <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
@@ -16521,7 +16521,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayOrderNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.customer?.name || item.user_name}</td>
                             <td style={{ color: 'var(--accent-success)', fontWeight: 'bold' }}>₹{item.final_amount}</td>
@@ -16555,7 +16555,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayCustomizationNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.user_name}</td>
                             <td>{item.product_name}</td>
@@ -16596,7 +16596,7 @@ export default function App() {
                       <tbody>
                         {list.map(item => (
                           <tr key={item.id}>
-                            <td style={{ fontWeight: 'bold' }}>#{item.id}</td>
+                            <td style={{ fontWeight: 'bold' }}>{getDisplayOrderNumber(item)}</td>
                             <td>{new Date(item.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                             <td>{item.customer?.name || item.user_name}</td>
                             <td>₹{item.total_amount}</td>
@@ -16652,7 +16652,7 @@ export default function App() {
                   if (tab === 'sales') {
                     const itemNames = (item.items || []).map(i => `${i.product_name} x${i.quantity}`).join('; ');
                     row = [
-                      item.id,
+                      getDisplayOrderNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.customer?.name || item.user_name || ''}"`,
                       `"${itemNames}"`,
@@ -16671,7 +16671,7 @@ export default function App() {
                     ];
                   } else if (tab === 'online') {
                     row = [
-                      item.id,
+                      getDisplayOrderNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.customer?.name || item.user_name || ''}"`,
                       item.razorpay_payment_id || 'UPI/Prepaid',
@@ -16680,7 +16680,7 @@ export default function App() {
                     ];
                   } else if (tab === 'cod') {
                     row = [
-                      item.id,
+                      getDisplayOrderNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.customer?.name || item.user_name || ''}"`,
                       item.final_amount,
@@ -16689,7 +16689,7 @@ export default function App() {
                     ];
                   } else if (tab === 'returns') {
                     row = [
-                      item.id,
+                      getDisplayOrderNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.customer?.name || item.user_name || ''}"`,
                       item.final_amount,
@@ -16698,7 +16698,7 @@ export default function App() {
                     ];
                   } else if (tab === 'custom') {
                     row = [
-                      item.id,
+                      getDisplayCustomizationNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.user_name || ''}"`,
                       `"${item.product_name || ''}"`,
@@ -16710,7 +16710,7 @@ export default function App() {
                     ];
                   } else if (tab === 'promo') {
                     row = [
-                      item.id,
+                      getDisplayOrderNumber(item),
                       new Date(item.created_at).toLocaleDateString(),
                       `"${item.customer?.name || item.user_name || ''}"`,
                       item.total_amount,

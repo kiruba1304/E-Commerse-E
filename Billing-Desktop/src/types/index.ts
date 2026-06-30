@@ -121,6 +121,7 @@ export interface Bill {
   status: 'pending' | 'completed' | 'cancelled';
   salesChannel?: 'pos' | 'ecommerce'; // Source of the bill
   invoiceType?: 'customer_bill' | 'seller_bill'; // Type of invoice
+  isGstBill?: boolean;
   createdAt: string;
   updatedAt: string;
   customer?: Customer;

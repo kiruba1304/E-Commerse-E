@@ -404,6 +404,7 @@ const Reports: React.FC = () => {
     }> = [];
 
     periodBills.forEach(b => {
+      if (b.isGstBill === false) return;
       const items = b.items || [];
       const itemDiscounts = items.map(it => Number(it.totalPrice) * (Number(it.discount || 0) / 100));
       const itemBases = items.map((it, idx) => Math.max(0, Number(it.totalPrice) - itemDiscounts[idx]));
@@ -608,8 +609,10 @@ const Reports: React.FC = () => {
           }
         } catch {}
 
+        const isBillGstEnabled = b.isGstBill !== false;
+        const itemGstRate = isBillGstEnabled ? Number(it.gst || 0) : 0;
         const itemBase = it.totalPrice - (it.totalPrice * it.discount / 100);
-        const itemRevenue = gstInclusive ? itemBase : (itemBase + (itemBase * it.gst / 100));
+        const itemRevenue = gstInclusive ? itemBase : (itemBase + (itemBase * itemGstRate / 100));
         rec.revenue += itemRevenue;
         // rough profit estimate
         if (p) rec.profit += (it.unitPrice - p.costPrice) * it.quantity;
@@ -745,15 +748,17 @@ const Reports: React.FC = () => {
           }
         } catch {}
 
+        const isBillGstEnabled = b.isGstBill !== false;
+        const itemGstRate = isBillGstEnabled ? Number(it.gst || 0) : 0;
         const adjustedBaseRaw = Math.max(0, itemBase - perItemExtra);
         let itemGst = 0;
         let itemFinalIncGst = 0;
 
         if (gstInclusive) {
-          itemGst = adjustedBaseRaw * (Number(it.gst || 0) / 100) / (1 + Number(it.gst || 0) / 100);
+          itemGst = adjustedBaseRaw * (itemGstRate / 100) / (1 + itemGstRate / 100);
           itemFinalIncGst = adjustedBaseRaw;
         } else {
-          itemGst = adjustedBaseRaw * (Number(it.gst || 0) / 100);
+          itemGst = adjustedBaseRaw * (itemGstRate / 100);
           itemFinalIncGst = adjustedBaseRaw + itemGst;
         }
 
