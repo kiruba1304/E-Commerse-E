@@ -1030,7 +1030,7 @@ def create_order():
         # Send purchase confirmation email
         send_shop_email(shop, "purchase", user.email, {
             "name": user.name or user.username,
-            "order_id": order.id,
+            "order_id": order.online_order_number or order.id,
             "total_amount": order.final_amount,
             "items": items_str
         }, sender_info={
@@ -1284,7 +1284,7 @@ def verify_user_order_payment():
             items_str = ", ".join(items_summary)
             send_shop_email(shop, "purchase", user.email, {
                 "name": user.name or user.username,
-                "order_id": order.id,
+                "order_id": order.online_order_number or order.id,
                 "total_amount": order.final_amount,
                 "items": items_str
             }, sender_info={

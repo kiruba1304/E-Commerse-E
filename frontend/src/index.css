@@ -1056,12 +1056,13 @@ tr:hover td {
 .nobaraa-hero-section {
   position: relative;
   width: 100%;
-  min-height: 640px;
+  height: calc(100vh - 72px);
+  min-height: 600px;
   background: radial-gradient(circle at 70% 40%, rgba(243, 230, 255, 0.75) 0%, rgba(251, 248, 255, 0.6) 40%, #ffffff 80%);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 60px 8% 80px;
+  padding: 0 8%;
   overflow: hidden;
   font-family: var(--font-family);
   box-sizing: border-box;
@@ -1395,10 +1396,13 @@ tr:hover td {
   }
 
   .nobaraa-hero-section {
+    height: auto;
+    min-height: calc(100vh - 72px);
     flex-direction: column;
-    padding: 60px 40px 20px;
+    padding: 40px 40px 40px;
     text-align: center;
     gap: 20px;
+    justify-content: center;
   }
 
   .nobaraa-hero-content {
@@ -1464,6 +1468,8 @@ tr:hover td {
 
 @media (max-width: 576px) {
   .nobaraa-hero-section {
+    height: auto !important;
+    min-height: calc(100vh - 56px) !important;
     padding: 40px 16px 15px !important;
     gap: 15px !important;
   }
@@ -3486,6 +3492,106 @@ input[type="checkbox"] {
 .navbar-stats-container:hover .navbar-stats-popover {
   display: flex !important;
 }
+
+/* Shipping Reports Responsive Styles */
+.shipping-report-panel {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.shipping-report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.shipping-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.shipping-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.shipping-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .shipping-report-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .shipping-report-header h2 {
+    font-size: 1.4rem !important;
+  }
+  .shipping-report-actions {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .shipping-report-panel {
+    padding: 16px !important;
+    gap: 16px !important;
+  }
+  
+  .shipping-report-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+    font-size: 0.75rem !important;
+    padding: 8px 12px !important;
+    height: 32px !important;
+  }
+  
+  .shipping-report-actions .badge {
+    font-size: 0.7rem !important;
+    padding: 4px 8px !important;
+  }
+
+  .shipping-metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+    gap: 10px !important;
+  }
+  
+  .shipping-metrics-grid .glass-panel {
+    padding: 12px !important;
+  }
+  
+  .shipping-metrics-grid .glass-panel span:nth-child(1) {
+    font-size: 0.7rem !important;
+  }
+  
+  .shipping-metrics-grid .glass-panel span:nth-child(2) {
+    font-size: 1.3rem !important;
+  }
+
+  .shipping-metrics-grid .glass-panel span:nth-child(3) {
+    font-size: 0.6rem !important;
+  }
+
+  .responsive-table-container th, 
+  .responsive-table-container td {
+    padding: 8px 10px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
 
 
 

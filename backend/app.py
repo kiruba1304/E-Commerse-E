@@ -339,7 +339,7 @@ def opac_list_collections():
 
 @app.route('/api/opac/heartbeat', methods=['POST'])
 def user_heartbeat():
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
     data = request.get_json() or {}
     session_id = data.get('session_id')
     shop_id = data.get('shop_id')
@@ -356,13 +356,13 @@ def user_heartbeat():
             
         session.shop_id = int(shop_id) if shop_id else None
         session.product_id = int(product_id) if product_id else None
-        session.last_seen_at = datetime.utcnow()
+        session.last_seen_at = datetime.now(timezone.utc).replace(tzinfo=None)
         
         db.session.add(session)
         db.session.commit()
         
         # 2. Prune old sessions (> 60 seconds offline)
-        cutoff = datetime.utcnow() - timedelta(seconds=60)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(seconds=60)
         ActiveSession.query.filter(ActiveSession.last_seen_at < cutoff).delete()
         db.session.commit()
         

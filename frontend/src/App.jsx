@@ -1061,6 +1061,11 @@ export default function App() {
 
   // Admin Workspace states
   const [adminShop, setAdminShop] = useState(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState("idle"); // idle, saving, saved, error
+  const autoSaveTimeoutRef = useRef(null);
+  const isInitialLoadRef = useRef(true);
+  const prevAdminShopStrRef = useRef("");
+  const [undoData, setUndoData] = useState(null);
   const [adminProducts, setAdminProducts] = useState([]);
 
   // SMTP settings and Email Template helper states
@@ -1095,6 +1100,7 @@ export default function App() {
   const [adminCollections, setAdminCollections] = useState([]);
   const [adminOrders, setAdminOrders] = useState([]);
   const [bookingShippingId, setBookingShippingId] = useState(null);
+  const [updatingOrderStatus, setUpdatingOrderStatus] = useState({});
   const [adminCustomers, setAdminCustomers] = useState([]);
   const [adminInventory, setAdminInventory] = useState(null);
   const [adminRevenue, setAdminRevenue] = useState(null);
@@ -1111,6 +1117,12 @@ export default function App() {
   const [gstFilterDate, setGstFilterDate] = useState("");
   const [gstFilterMonth, setGstFilterMonth] = useState("");
   const [gstFilterYear, setGstFilterYear] = useState("");
+  const [shippingReport, setShippingReport] = useState(null);
+  const [shippingFilterDate, setShippingFilterDate] = useState("");
+  const [shippingFilterMonth, setShippingFilterMonth] = useState("");
+  const [shippingFilterYear, setShippingFilterYear] = useState("");
+  const [shippingFilterStatus, setShippingFilterStatus] = useState("");
+  const [shippingSearch, setShippingSearch] = useState("");
   const [adminProductSearch, setAdminProductSearch] = useState("");
   const [adminProductCategoryFilter, setAdminProductCategoryFilter] = useState("");
   const [adminStartDate, setAdminStartDate] = useState("");
@@ -1490,12 +1502,12 @@ export default function App() {
   ]);
 
   // Add a Toast Notification helper
-  const addToast = (title, message, type = "info") => {
+  const addToast = (title, message, type = "info", duration = 4500, action = null) => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, title, message, type }]);
+    setToasts(prev => [...prev, { id, title, message, type, action }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4500);
+    }, duration);
   };
 
   const registerPushNotifications = async (userId, userToken) => {
@@ -3132,6 +3144,7 @@ export default function App() {
       if (activePanel === 'logs') loadAdminLogs();
       if (activePanel === 'messaging') loadAdminSmsLogs();
       if (activePanel === 'gst_report') loadGstReport(gstFilterDate, gstFilterMonth, gstFilterYear);
+      if (activePanel === 'shipping_report') loadShippingReport(shippingFilterDate, shippingFilterMonth, shippingFilterYear, shippingFilterStatus, shippingSearch);
       if (activePanel === 'customers') { loadAdminCustomers(); loadAdminShop(); }
       if (activePanel === 'customizations') {
         loadAdminCustomizations();
@@ -3141,14 +3154,93 @@ export default function App() {
       }
       if (activePanel === 'billing_heartbeat') loadBillingHeartbeat();
     }
-  }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear, revenueStartDate, revenueEndDate]);
+  }, [role, currentView, activePanel, gstFilterDate, gstFilterMonth, gstFilterYear, revenueStartDate, revenueEndDate, shippingFilterDate, shippingFilterMonth, shippingFilterYear, shippingFilterStatus, shippingSearch]);
 
   const loadAdminShop = async () => {
     try {
       const res = await fetch(`${API_BASE}/admin/shop`, { headers: getHeaders() });
       const data = await res.json();
-      if (res.ok) setAdminShop(data);
+      if (res.ok) {
+        isInitialLoadRef.current = true;
+        setAdminShop(data);
+      }
     } catch (e) { }
+  };
+
+  useEffect(() => {
+    if (!adminShop) return undefined;
+
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      prevAdminShopStrRef.current = JSON.stringify(adminShop);
+      return undefined;
+    }
+
+    const currentStr = JSON.stringify(adminShop);
+    if (currentStr === prevAdminShopStrRef.current) {
+      return undefined;
+    }
+
+    setAutoSaveStatus("saving");
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        setUndoData(JSON.parse(prevAdminShopStrRef.current));
+        const res = await fetch(`${API_BASE}/admin/shop`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: currentStr
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const updatedShop = data.shop || data;
+          const preSaveState = JSON.parse(prevAdminShopStrRef.current);
+          prevAdminShopStrRef.current = JSON.stringify(updatedShop);
+          setAdminShop(updatedShop);
+          setAutoSaveStatus("saved");
+          fetchShops();
+          
+          addToast(
+            "Settings Auto-Saved",
+            "Shop configurations saved automatically. Undo if wrong within 30 seconds.",
+            "success",
+            30000,
+            {
+              label: "Undo",
+              onClick: () => {
+                isInitialLoadRef.current = false;
+                setAdminShop(preSaveState);
+                setUndoData(null);
+                addToast("Reverted Changes", "Settings reverted to previous state.", "info");
+              }
+            }
+          );
+
+          setTimeout(() => {
+            setAutoSaveStatus(prev => prev === 'saved' ? 'idle' : prev);
+          }, 30000); // Keep it visible slightly longer to allow clicking Undo (30 seconds)
+        } else {
+          setAutoSaveStatus("error");
+          addToast("Auto-Save Failed", "Could not save your changes automatically.", "danger");
+        }
+      } catch (e) {
+        setAutoSaveStatus("error");
+      }
+    }, 1000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
+  }, [adminShop]);
+
+  const handleUndo = () => {
+    if (!undoData) return;
+    isInitialLoadRef.current = false;
+    setAdminShop(undoData);
+    setUndoData(null);
   };
 
   const loadBillingHeartbeat = async () => {
@@ -3771,16 +3863,24 @@ export default function App() {
   };
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderStatus(prev => ({ ...prev, [orderId]: newStatus }));
     try {
       const payload = { status: newStatus };
       if (newStatus === 'Dispatched') {
         const courierName = window.prompt("Enter Courier Name:", "Delhivery");
-        if (courierName === null) return; // User cancelled
+        if (courierName === null) {
+          setUpdatingOrderStatus(prev => ({ ...prev, [orderId]: null }));
+          return; // User cancelled
+        }
         const trackingNum = window.prompt("Enter Tracking / AWB Number:");
-        if (trackingNum === null) return; // User cancelled
+        if (trackingNum === null) {
+          setUpdatingOrderStatus(prev => ({ ...prev, [orderId]: null }));
+          return; // User cancelled
+        }
 
         if (!courierName.trim() || !trackingNum.trim()) {
           addToast("Input Error", "Courier name and tracking number are required to dispatch manually.", "warning");
+          setUpdatingOrderStatus(prev => ({ ...prev, [orderId]: null }));
           return;
         }
 
@@ -3793,9 +3893,13 @@ export default function App() {
       });
       if (res.ok) {
         addToast("Status Transition", `Order status set to '${newStatus}'.`, "success");
-        loadAdminOrders();
+        await loadAdminOrders();
       }
-    } catch (e) { }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdatingOrderStatus(prev => ({ ...prev, [orderId]: null }));
+    }
   };
 
   const handleBookDtdcShipping = async (orderId, weight = 0.5) => {
@@ -4261,8 +4365,93 @@ export default function App() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
       addToast("Export Successful", "GST Tax Report downloaded as Excel workbook", "success");
+    } catch (err) {
+      addToast("Export Failed", err.message, "danger");
+    }
+  };
+
+  const loadShippingReport = async (
+    dateVal = shippingFilterDate,
+    monthVal = shippingFilterMonth,
+    yearVal = shippingFilterYear,
+    statusVal = shippingFilterStatus,
+    searchVal = shippingSearch
+  ) => {
+    try {
+      const queryParams = [];
+      if (dateVal) queryParams.push(`date=${encodeURIComponent(dateVal)}`);
+      if (monthVal) queryParams.push(`month=${encodeURIComponent(monthVal)}`);
+      if (yearVal) queryParams.push(`year=${encodeURIComponent(yearVal)}`);
+      if (statusVal) queryParams.push(`status=${encodeURIComponent(statusVal)}`);
+      if (searchVal) queryParams.push(`search=${encodeURIComponent(searchVal)}`);
+      const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+      const res = await fetch(`${API_BASE}/admin/shipping-report${queryString}`, { headers: getHeaders() });
+      const data = await res.json();
+      if (res.ok) setShippingReport(data);
+    } catch (e) { }
+  };
+
+  const clearShippingFilters = () => {
+    setShippingFilterDate("");
+    setShippingFilterMonth("");
+    setShippingFilterYear("");
+    setShippingFilterStatus("");
+    setShippingSearch("");
+    loadShippingReport("", "", "", "", "");
+  };
+
+  const exportShippingReport = async (format = 'csv') => {
+    try {
+      const queryParams = [`format=${format}`];
+      if (shippingFilterDate) queryParams.push(`date=${encodeURIComponent(shippingFilterDate)}`);
+      if (shippingFilterMonth) queryParams.push(`month=${encodeURIComponent(shippingFilterMonth)}`);
+      if (shippingFilterYear) queryParams.push(`year=${encodeURIComponent(shippingFilterYear)}`);
+      if (shippingFilterStatus) queryParams.push(`status=${encodeURIComponent(shippingFilterStatus)}`);
+      if (shippingSearch) queryParams.push(`search=${encodeURIComponent(shippingSearch)}`);
+      const queryString = `?${queryParams.join('&')}`;
+
+      const res = await fetch(`${API_BASE}/admin/shipping-report/export${queryString}`, {
+        headers: getHeaders()
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to generate export file');
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      let filename = 'Shipping_Report';
+      if (shippingFilterDate) {
+        filename += `_${shippingFilterDate}`;
+      } else if (shippingFilterMonth || shippingFilterYear) {
+        if (shippingFilterMonth) {
+          const months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          const mName = months[parseInt(shippingFilterMonth)] || `Month_${shippingFilterMonth}`;
+          filename += `_${mName}`;
+        }
+        if (shippingFilterYear) filename += `_${shippingFilterYear}`;
+      } else {
+        filename += '_AllTime';
+      }
+
+      if (format === 'excel' || format === 'xlsx') {
+        filename += '.xlsx';
+      } else if (format === 'pdf') {
+        filename += '.pdf';
+      } else {
+        filename += '.csv';
+      }
+
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      addToast("Export Successful", `Shipping Report downloaded as ${format.toUpperCase()}`, "success");
     } catch (err) {
       addToast("Export Failed", err.message, "danger");
     }
@@ -4705,6 +4894,30 @@ export default function App() {
               <h5 style={{ fontWeight: 800, fontSize: '0.9rem', color: '#2b0b57', margin: '0 0 2px 0' }}>{t.title}</h5>
               <p style={{ fontSize: '0.78rem', color: '#555555', margin: 0, lineHeight: 1.3 }}>{t.message}</p>
             </div>
+            {t.action && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  t.action.onClick();
+                  setToasts(prev => prev.filter(x => x.id !== t.id));
+                }}
+                style={{
+                  background: '#7a4ea5',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  borderRadius: '12px',
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(122, 78, 165, 0.2)'
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
             <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} style={{ background: '#f5edff', border: 'none', color: '#7a4ea5', cursor: 'pointer', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
               <X size={14} />
             </button>
@@ -7525,84 +7738,86 @@ export default function App() {
         {/* Right Side: Interactive Icons Row */}
         <div className="desktop-nav-icons" style={{ display: 'flex', alignItems: 'center', gap: '24px', color: '#222222' }}>
           {/* Activity / Stats Hover Indicator */}
-          <div 
-            className="navbar-stats-container"
-            style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '8px 0' }}
-          >
-            {/* Green pulsing dot and stats icon */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <TrendingUp size={20} style={{ color: '#7a4ea5' }} />
-              <span style={{
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                background: '#22c55e',
-                borderRadius: '50%',
-                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
-                animation: 'live-pulse 2s infinite ease-in-out'
-              }}></span>
-            </div>
-
-            {/* Hover Popover Dropdown Card */}
+          {(role === 'admin' || role === 'super_admin' || currentShop?.show_live_activity === true) && (
             <div 
-              className="navbar-stats-popover"
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: '-40px',
-                width: '240px',
-                background: 'rgba(255, 255, 255, 0.96)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(122, 78, 165, 0.25)',
-                borderRadius: '12px',
-                padding: '16px',
-                boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
-                display: 'none', // Managed by CSS hover rule
-                flexDirection: 'column',
-                gap: '12px',
-                zIndex: 1000,
-                marginTop: '8px',
-                boxSizing: 'border-box',
-                animation: 'fadeIn 0.3s ease-out forwards'
-              }}
+              className="navbar-stats-container"
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '8px 0' }}
             >
-              {/* Pointer Arrow */}
-              <div style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '48px',
-                width: '10px',
-                height: '10px',
-                background: '#ffffff',
-                borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
-                borderTop: '1px solid rgba(122, 78, 165, 0.25)',
-                transform: 'rotate(45deg)',
-                zIndex: 1001
-              }}></div>
-
-              <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
-                Live Site Activity
-              </div>
-
-              {/* Total Visits row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
-                <Eye size={16} style={{ color: '#7a4ea5' }} />
-                <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
-              </div>
-
-              {/* Active Users row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
+              {/* Green pulsing dot and stats icon */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <TrendingUp size={20} style={{ color: '#7a4ea5' }} />
                 <span style={{
                   display: 'inline-block',
                   width: '8px',
                   height: '8px',
                   background: '#22c55e',
-                  borderRadius: '50%'
+                  borderRadius: '50%',
+                  boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                  animation: 'live-pulse 2s infinite ease-in-out'
                 }}></span>
-                <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+              </div>
+
+              {/* Hover Popover Dropdown Card */}
+              <div 
+                className="navbar-stats-popover"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: '-40px',
+                  width: '240px',
+                  background: 'rgba(255, 255, 255, 0.96)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(122, 78, 165, 0.25)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
+                  display: 'none', // Managed by CSS hover rule
+                  flexDirection: 'column',
+                  gap: '12px',
+                  zIndex: 1000,
+                  marginTop: '8px',
+                  boxSizing: 'border-box',
+                  animation: 'fadeIn 0.3s ease-out forwards'
+                }}
+              >
+                {/* Pointer Arrow */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '48px',
+                  width: '10px',
+                  height: '10px',
+                  background: '#ffffff',
+                  borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
+                  borderTop: '1px solid rgba(122, 78, 165, 0.25)',
+                  transform: 'rotate(45deg)',
+                  zIndex: 1001
+                }}></div>
+
+                <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
+                  Live Site Activity
+                </div>
+
+                {/* Total Visits row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
+                  <Eye size={16} style={{ color: '#7a4ea5' }} />
+                  <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+                </div>
+
+                {/* Active Users row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '8px',
+                    height: '8px',
+                    background: '#22c55e',
+                    borderRadius: '50%'
+                  }}></span>
+                  <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Search Icon */}
           <div
@@ -7864,99 +8079,92 @@ export default function App() {
           style={{ display: 'none', alignItems: 'center', gap: '16px' }}
         >
           {/* Mobile Live Activity Stats Trigger */}
-          <div 
-            className="mobile-stats-trigger"
-            style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '6px' }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setMobileStatsOpen(!mobileStatsOpen);
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <TrendingUp size={22} style={{ color: '#7a4ea5' }} />
-              <span style={{
-                display: 'inline-block',
-                width: '8px',
-                height: '8px',
-                background: '#22c55e',
-                borderRadius: '50%',
-                boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
-                animation: 'live-pulse 2s infinite ease-in-out'
-              }}></span>
-            </div>
-
-            {/* Popover Dropdown Card for Mobile (Toggled on click) */}
-            {mobileStatsOpen && (
-              <div 
-                className="mobile-stats-popover"
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: '-10px',
-                  width: '240px',
-                  background: 'rgba(255, 255, 255, 0.98)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(122, 78, 165, 0.25)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                  boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  zIndex: 10001,
-                  marginTop: '12px',
-                  boxSizing: 'border-box',
-                  animation: 'fadeIn 0.3s ease-out forwards'
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Pointer Arrow */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-6px',
-                  right: '18px',
-                  width: '10px',
-                  height: '10px',
-                  background: '#ffffff',
-                  borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
-                  borderTop: '1px solid rgba(122, 78, 165, 0.25)',
-                  transform: 'rotate(45deg)',
-                  zIndex: 10002
-                }}></div>
-
-                <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
-                  Live Site Activity
-                </div>
-
-                {/* Total Visits row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
-                  <Eye size={16} style={{ color: '#7a4ea5' }} />
-                  <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
-                </div>
-
-                {/* Active Users row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
-                  <span style={{
-                    display: 'inline-block',
-                    width: '8px',
-                    height: '8px',
-                    background: '#22c55e',
-                    borderRadius: '50%'
-                  }}></span>
-                  <span><strong>{liveActiveViewers}</strong> shoppers online</span>
-                </div>
+          {(role === 'admin' || role === 'super_admin' || currentShop?.show_live_activity === true) && (
+            <div 
+              className="mobile-stats-trigger"
+              style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '6px' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMobileStatsOpen(!mobileStatsOpen);
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <TrendingUp size={22} style={{ color: '#7a4ea5' }} />
+                <span style={{
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  background: '#22c55e',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                  animation: 'live-pulse 2s infinite ease-in-out'
+                }}></span>
               </div>
-            )}
-          </div>
 
-          {/* MOBILE HAMBURGER MENU BUTTON */}
-          <div
-            className="mobile-menu-btn"
-            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#222222' }}
-            onClick={() => setMobileMenuOpen(true)}
-          >
-            <Menu size={28} />
-          </div>
+              {/* Popover Dropdown Card for Mobile (Toggled on click) */}
+              {mobileStatsOpen && (
+                <div 
+                  className="mobile-stats-popover"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: '-10px',
+                    width: '240px',
+                    background: 'rgba(255, 255, 255, 0.98)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(122, 78, 165, 0.25)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    boxShadow: '0 10px 30px rgba(122, 78, 165, 0.15)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    zIndex: 10001,
+                    marginTop: '12px',
+                    boxSizing: 'border-box',
+                    animation: 'fadeIn 0.3s ease-out forwards'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Pointer Arrow */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '18px',
+                    width: '10px',
+                    height: '10px',
+                    background: '#ffffff',
+                    borderLeft: '1px solid rgba(122, 78, 165, 0.25)',
+                    borderTop: '1px solid rgba(122, 78, 165, 0.25)',
+                    transform: 'rotate(45deg)',
+                    zIndex: 10002
+                  }}></div>
+
+                  <div style={{ fontSize: '0.75rem', color: '#777777', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', borderBottom: '1px solid #f3effa', paddingBottom: '6px', textAlign: 'left' }}>
+                    Live Site Activity
+                  </div>
+
+                  {/* Total Visits row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#222222', fontWeight: 500, textAlign: 'left' }}>
+                    <Eye size={16} style={{ color: '#7a4ea5' }} />
+                    <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+                  </div>
+
+                  {/* Active Users row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.85rem', color: '#16a34a', fontWeight: 600, textAlign: 'left' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      width: '8px',
+                      height: '8px',
+                      background: '#22c55e',
+                      borderRadius: '50%'
+                    }}></span>
+                    <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -8038,51 +8246,53 @@ export default function App() {
             </div>
 
             {/* Live activity card inside drawer */}
-            <div style={{
-              margin: '0 24px 20px',
-              padding: '16px',
-              background: 'linear-gradient(135deg, rgba(122, 78, 165, 0.05) 0%, rgba(122, 78, 165, 0.02) 100%)',
-              border: '1px solid rgba(122, 78, 165, 0.15)',
-              borderRadius: '12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              boxShadow: '0 4px 20px rgba(122, 78, 165, 0.03)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(122, 78, 165, 0.1)', paddingBottom: '6px' }}>
-                <TrendingUp size={16} style={{ color: '#7a4ea5' }} />
-                <span style={{ fontSize: '0.75rem', color: '#7a4ea5', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
-                  Live Store Stats
-                </span>
-                <span style={{
-                  display: 'inline-block',
-                  width: '6px',
-                  height: '6px',
-                  background: '#22c55e',
-                  borderRadius: '50%',
-                  boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
-                  animation: 'live-pulse 2s infinite ease-in-out'
-                }}></span>
-              </div>
+            {(role === 'admin' || role === 'super_admin' || currentShop?.show_live_activity === true) && (
+              <div style={{
+                margin: '0 24px 20px',
+                padding: '16px',
+                background: 'linear-gradient(135deg, rgba(122, 78, 165, 0.05) 0%, rgba(122, 78, 165, 0.02) 100%)',
+                border: '1px solid rgba(122, 78, 165, 0.15)',
+                borderRadius: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                boxShadow: '0 4px 20px rgba(122, 78, 165, 0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(122, 78, 165, 0.1)', paddingBottom: '6px' }}>
+                  <TrendingUp size={16} style={{ color: '#7a4ea5' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#7a4ea5', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    Live Store Stats
+                  </span>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '6px',
+                    height: '6px',
+                    background: '#22c55e',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 0 2px rgba(34, 197, 94, 0.25)',
+                    animation: 'live-pulse 2s infinite ease-in-out'
+                  }}></span>
+                </div>
 
-              {/* Total Visits row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#444444' }}>
-                <Eye size={14} style={{ color: '#7a4ea5' }} />
-                <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
-              </div>
+                {/* Total Visits row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#444444' }}>
+                  <Eye size={14} style={{ color: '#7a4ea5' }} />
+                  <span><strong>{(currentShop?.views_count || 0).toLocaleString()}</strong> total visits</span>
+                </div>
 
-              {/* Active Users row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#16a34a', fontWeight: 600 }}>
-                <span style={{
-                  display: 'inline-block',
-                  width: '6px',
-                  height: '6px',
-                  background: '#22c55e',
-                  borderRadius: '50%'
-                }}></span>
-                <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+                {/* Active Users row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: '#16a34a', fontWeight: 600 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '6px',
+                    height: '6px',
+                    background: '#22c55e',
+                    borderRadius: '50%'
+                  }}></span>
+                  <span><strong>{liveActiveViewers}</strong> shoppers online</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Bottom Icons Stack */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '28px', paddingBottom: '20px' }}>
@@ -12402,6 +12612,9 @@ export default function App() {
             <span className={`sidebar-link ${activePanel === 'gst_report' ? 'active' : ''}`} onClick={() => setActivePanel("gst_report")}>
               <FileText size={18} /> GST Accounting
             </span>
+            <span className={`sidebar-link ${activePanel === 'shipping_report' ? 'active' : ''}`} onClick={() => setActivePanel("shipping_report")}>
+              <Truck size={18} /> Shipping Reports
+            </span>
             <span className={`sidebar-link ${activePanel === 'customers' ? 'active' : ''}`} onClick={() => setActivePanel("customers")}>
               <User size={18} /> Customer List
             </span>
@@ -12424,7 +12637,41 @@ export default function App() {
             {/* Shop Config panel */}
             {activePanel === 'shop_config' && adminShop && (
               <form onSubmit={handleUpdateAdminShop} className="glass-panel animate-fade-in admin-config-form">
-                <h2 style={{ fontWeight: 800, fontSize: '1.8rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px' }}>Shop Branding & API Configurations</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '12px', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0, border: 'none', padding: 0 }}>Shop Branding & API Configurations</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {autoSaveStatus === 'saving' && (
+                      <span style={{ color: '#7a4ea5', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="animate-spin" style={{ display: 'inline-block', width: '12px', height: '12px', border: '2px solid #7a4ea5', borderTopColor: 'transparent', borderRadius: '50%' }}></span>
+                        Saving changes...
+                      </span>
+                    )}
+                    {autoSaveStatus === 'saved' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#16a34a', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Check size={16} /> Changes saved
+                        </span>
+                        {undoData && (
+                          <>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>|</span>
+                            <button
+                              type="button"
+                              onClick={handleUndo}
+                              style={{ background: 'none', border: 'none', color: '#7a4ea5', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'underline', padding: 0 }}
+                            >
+                              Undo
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {autoSaveStatus === 'error' && (
+                      <span style={{ color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <AlertCircle size={16} /> Error saving
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 <div className="admin-grid-2col">
                   <div>
@@ -12668,6 +12915,22 @@ export default function App() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', paddingBottom: '10px' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '12px', color: '#7a4ea5' }}>Live Site Activity Settings</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="checkbox"
+                      id="show_live_activity"
+                      checked={!!adminShop.show_live_activity}
+                      onChange={e => setAdminShop(prev => ({ ...prev, show_live_activity: e.target.checked }))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="show_live_activity" style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                      Show Live Site Activity and Visitors Count to all users (Guests and Customers)
+                    </label>
                   </div>
                 </div>
 
@@ -13710,9 +13973,14 @@ export default function App() {
                   </div>
                 </div>
 
-                <button type="submit" className="btn-primary" style={{ width: 'fit-content' }}>
-                  Save Shop System Configurations <Check size={18} />
-                </button>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '20px', flexWrap: 'wrap' }}>
+                  <button type="submit" className="btn-primary" style={{ width: 'fit-content' }}>
+                    Save Configurations Now <Check size={18} />
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    (Your changes are also saved automatically as you type)
+                  </span>
+                </div>
               </form>
             )}
 
@@ -14443,14 +14711,70 @@ export default function App() {
                             <input
                               type="file"
                               accept="image/*"
+                              multiple
                               style={{ border: 'none', padding: '4px 0', cursor: 'pointer', flex: 1 }}
-                              onChange={e => {
-                                const file = e.target.files[0];
-                                if (file) {
-                                  handleUploadFile(file, (url) => {
-                                    const updated = [...productForm.images];
-                                    updated[i] = url;
-                                    setProductForm(prev => ({ ...prev, images: updated }));
+                              onChange={async (e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length === 0) return;
+                                
+                                const currentFilledCount = productForm.images.filter(x => x).length;
+                                const maxAllowed = 10 - currentFilledCount + (productForm.images[i] ? 1 : 0);
+                                const filesToUpload = files.slice(0, maxAllowed);
+                                
+                                if (filesToUpload.length === 0) {
+                                  addToast("Limit Exceeded", "Maximum 10 images allowed per product.", "warning");
+                                  return;
+                                }
+                                
+                                if (files.length > maxAllowed) {
+                                  addToast("Limit Exceeded", `Only uploading first ${maxAllowed} images to stay within the 10-image limit.`, "warning");
+                                }
+                                
+                                addToast("Uploading...", `Uploading ${filesToUpload.length} image(s)...`, "info");
+                                
+                                const uploadPromises = filesToUpload.map((file, idx) => {
+                                  return new Promise((resolve) => {
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    fetch(`${API_BASE}/upload`, {
+                                      method: 'POST',
+                                      body: formData
+                                    })
+                                      .then(res => {
+                                        if (!res.ok) throw new Error("Upload failed");
+                                        return res.json();
+                                      })
+                                      .then(data => {
+                                        addToast("Upload Successful", `Uploaded ${file.name}`, "success");
+                                        resolve(data.url);
+                                      })
+                                      .catch(err => {
+                                        addToast("Upload Failed", `Failed to upload ${file.name}: ${err.message}`, "danger");
+                                        resolve(null);
+                                      });
+                                  });
+                                });
+                                
+                                const urls = await Promise.all(uploadPromises);
+                                const validUrls = urls.filter(url => url);
+                                
+                                if (validUrls.length > 0) {
+                                  setProductForm(prev => {
+                                    const updated = [...prev.images];
+                                    updated[i] = validUrls[0];
+                                    const additional = validUrls.slice(1);
+                                    let result = [];
+                                    for (let j = 0; j < updated.length; j++) {
+                                      if (j === i) {
+                                        result.push(validUrls[0]);
+                                        result.push(...additional);
+                                      } else {
+                                        result.push(updated[j]);
+                                      }
+                                    }
+                                    result = result.filter((x, index) => x || index === 0).slice(0, 10);
+                                    if (result.length === 0) result = [""];
+                                    return { ...prev, images: result };
                                   });
                                 }
                               }}
@@ -14481,16 +14805,100 @@ export default function App() {
                           />
                         </div>
                       ))}
-                      {productForm.images.length < 10 && (
-                        <button
-                          type="button"
-                          onClick={() => setProductForm(prev => ({ ...prev, images: [...prev.images, ""] }))}
-                          className="btn-secondary"
-                          style={{ padding: '8px 16px', fontSize: '0.8rem', width: 'fit-content' }}
-                        >
-                          <Plus size={14} /> Add Another Image Bullet
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {productForm.images.length < 10 && (
+                          <button
+                            type="button"
+                            onClick={() => setProductForm(prev => ({ ...prev, images: [...prev.images, ""] }))}
+                            className="btn-secondary"
+                            style={{ padding: '8px 16px', fontSize: '0.8rem', width: 'fit-content' }}
+                          >
+                            <Plus size={14} /> Add Another Image Bullet
+                          </button>
+                        )}
+                        {productForm.images.length < 10 && (
+                          <label
+                            className="btn-secondary"
+                            style={{
+                              padding: '8px 16px',
+                              fontSize: '0.8rem',
+                              width: 'fit-content',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              cursor: 'pointer',
+                              background: 'linear-gradient(180deg, #fbf7ff 0%, #f3e8ff 100%)',
+                              border: '1px solid #d8b4fe',
+                              color: '#6b21a8',
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              margin: 0
+                            }}
+                          >
+                            <Upload size={14} /> Bulk Upload (Select Multiple)
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              style={{ display: 'none' }}
+                              onChange={async (e) => {
+                                const files = Array.from(e.target.files || []);
+                                if (files.length === 0) return;
+
+                                const currentFilledCount = productForm.images.filter(x => x).length;
+                                const maxAllowed = 10 - currentFilledCount;
+                                const filesToUpload = files.slice(0, maxAllowed);
+
+                                if (filesToUpload.length === 0) {
+                                  addToast("Limit Exceeded", "Maximum 10 images allowed per product.", "warning");
+                                  return;
+                                }
+
+                                if (files.length > maxAllowed) {
+                                  addToast("Limit Exceeded", `Only uploading first ${maxAllowed} images to stay within the 10-image limit.`, "warning");
+                                }
+
+                                addToast("Uploading...", `Uploading ${filesToUpload.length} image(s)...`, "info");
+
+                                const uploadPromises = filesToUpload.map(file => {
+                                  return new Promise((resolve) => {
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    fetch(`${API_BASE}/upload`, {
+                                      method: 'POST',
+                                      body: formData
+                                    })
+                                      .then(res => {
+                                        if (!res.ok) throw new Error("Upload failed");
+                                        return res.json();
+                                      })
+                                      .then(data => {
+                                        addToast("Upload Successful", `Uploaded ${file.name}`, "success");
+                                        resolve(data.url);
+                                      })
+                                      .catch(err => {
+                                        addToast("Upload Failed", `Failed to upload ${file.name}: ${err.message}`, "danger");
+                                        resolve(null);
+                                      });
+                                  });
+                                });
+
+                                const urls = await Promise.all(uploadPromises);
+                                const validUrls = urls.filter(url => url);
+
+                                if (validUrls.length > 0) {
+                                  setProductForm(prev => {
+                                    const activeImages = prev.images.filter(x => x);
+                                    const combined = [...activeImages, ...validUrls].slice(0, 10);
+                                    if (combined.length === 0) combined.push("");
+                                    return { ...prev, images: combined };
+                                  });
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -15102,16 +15510,56 @@ export default function App() {
                                           <button
                                             onClick={() => handleUpdateOrderStatus(o.id, 'Accepted')}
                                             className="btn-primary"
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem', background: '#10b981', borderColor: '#10b981' }}
+                                            disabled={!!updatingOrderStatus[o.id]}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '0.75rem',
+                                              background: '#10b981',
+                                              borderColor: '#10b981',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '6px',
+                                              opacity: !!updatingOrderStatus[o.id] ? 0.7 : 1,
+                                              cursor: !!updatingOrderStatus[o.id] ? 'not-allowed' : 'pointer'
+                                            }}
                                           >
-                                            Accept
+                                            {updatingOrderStatus[o.id] === 'Accepted' ? (
+                                              <>
+                                                <svg style={{ animation: 'spin 1s linear infinite', width: '12px', height: '12px' }} viewBox="0 0 24 24" fill="none">
+                                                  <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                  <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                                Accepting...
+                                              </>
+                                            ) : (
+                                              'Accept'
+                                            )}
                                           </button>
                                           <button
                                             onClick={() => handleUpdateOrderStatus(o.id, 'Rejected')}
                                             className="btn-danger"
-                                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                            disabled={!!updatingOrderStatus[o.id]}
+                                            style={{
+                                              padding: '6px 12px',
+                                              fontSize: '0.75rem',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              gap: '6px',
+                                              opacity: !!updatingOrderStatus[o.id] ? 0.7 : 1,
+                                              cursor: !!updatingOrderStatus[o.id] ? 'not-allowed' : 'pointer'
+                                            }}
                                           >
-                                            Reject
+                                            {updatingOrderStatus[o.id] === 'Rejected' ? (
+                                              <>
+                                                <svg style={{ animation: 'spin 1s linear infinite', width: '12px', height: '12px' }} viewBox="0 0 24 24" fill="none">
+                                                  <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                  <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                                Rejecting...
+                                              </>
+                                            ) : (
+                                              'Reject'
+                                            )}
                                           </button>
                                         </div>
                                       ) : (
@@ -17471,6 +17919,335 @@ export default function App() {
                   <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Active reporting schedule: <strong>{gstReport.reporting_period}</strong></p>
                   <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Aggregate GST tariff: <strong>{gstReport.gst_rate_applied}</strong></p>
                   <p style={{ color: 'var(--text-muted)' }}>Invoice sales count: <strong>{gstReport.total_orders_count} successful orders</strong></p>
+                </div>
+              </div>
+            )}
+
+            {/* Shipping Reports panel */}
+            {activePanel === 'shipping_report' && shippingReport && (
+              <div className="glass-panel animate-fade-in shipping-report-panel">
+                <div className="shipping-report-header">
+                  <h2 style={{ fontWeight: 800, fontSize: '1.8rem', margin: 0 }}>Shipping & Logistics Reports</h2>
+                  <div className="shipping-report-actions">
+                    <button
+                      onClick={() => exportShippingReport('csv')}
+                      className="btn-primary"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 16px',
+                        fontSize: '0.8rem',
+                        height: '36px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Download size={14} /> Export CSV
+                    </button>
+                    <button
+                      onClick={() => exportShippingReport('excel')}
+                      className="btn-primary"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 16px',
+                        fontSize: '0.8rem',
+                        height: '36px',
+                        cursor: 'pointer',
+                        background: '#10b981',
+                        borderColor: '#10b981'
+                      }}
+                    >
+                      <Download size={14} /> Export Excel
+                    </button>
+                    <button
+                      onClick={() => exportShippingReport('pdf')}
+                      className="btn-primary"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 16px',
+                        fontSize: '0.8rem',
+                        height: '36px',
+                        cursor: 'pointer',
+                        background: '#ef4444',
+                        borderColor: '#ef4444'
+                      }}
+                    >
+                      <Download size={14} /> Export PDF
+                    </button>
+                    <span className="badge badge-info" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
+                      {shippingReport.reporting_period}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter Bar */}
+                <div className="glass-panel" style={{ padding: '20px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-main)' }}>
+                    <Search size={16} style={{ color: 'var(--accent-secondary)' }} /> Search & Filter Shipping Report
+                  </h4>
+                  <div className="shipping-filters-grid">
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Date</label>
+                      <input
+                        type="date"
+                        value={shippingFilterDate}
+                        onChange={e => {
+                          setShippingFilterDate(e.target.value);
+                          if (e.target.value) {
+                            setShippingFilterMonth("");
+                            setShippingFilterYear("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Month</label>
+                      <select
+                        value={shippingFilterMonth}
+                        onChange={e => {
+                          setShippingFilterMonth(e.target.value);
+                          if (e.target.value) {
+                            setShippingFilterDate("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">All Months</option>
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Year</label>
+                      <select
+                        value={shippingFilterYear}
+                        onChange={e => {
+                          setShippingFilterYear(e.target.value);
+                          if (e.target.value) {
+                            setShippingFilterDate("");
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">All Years</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Filter by Status</label>
+                      <select
+                        value={shippingFilterStatus}
+                        onChange={e => setShippingFilterStatus(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      >
+                        <option value="">All Statuses</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="RTO">RTO / Returned</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Search Shipments</label>
+                      <input
+                        type="text"
+                        placeholder="ID, AWB, name, phone..."
+                        value={shippingSearch}
+                        onChange={e => setShippingSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(154, 132, 200, 0.3)',
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          color: 'var(--text-main)',
+                          fontSize: '0.8rem',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <button
+                        onClick={clearShippingFilters}
+                        className="btn-secondary"
+                        style={{
+                          width: '100%',
+                          height: '36px',
+                          padding: '0 12px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metrics Cards Grid */}
+                <div className="shipping-metrics-grid">
+                  <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Total Shipments</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#7a4ea5' }}>{shippingReport.summary.total_shipments}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>AWB shipments booked on Shiprocket</span>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Shipped Order Value</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#7a4ea5' }}>₹{shippingReport.summary.total_order_value.toFixed(2)}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total gross amount of shipped orders</span>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Shipping Collected</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#7a4ea5' }}>₹{shippingReport.summary.total_shipping_costs.toFixed(2)}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Shipping charges billed to customers</span>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Delivered Count</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#10b981' }}>{shippingReport.summary.delivered_count}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Orders successfully received by customers</span>
+                  </div>
+
+                  <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>RTO / Returned Count</span>
+                    <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ef4444' }}>{shippingReport.summary.rto_count}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Failed/returned shipments (Return to Origin)</span>
+                  </div>
+                </div>
+
+                {/* Shipments List Table */}
+                <div className="responsive-table-container glass-panel">
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                        <th style={{ textAlign: 'center', padding: '12px' }}>Order ID</th>
+                        <th style={{ textAlign: 'center', padding: '12px' }}>Type</th>
+                        <th style={{ textAlign: 'left', padding: '12px' }}>Customer Details</th>
+                        <th style={{ textAlign: 'left', padding: '12px' }}>Courier / AWB</th>
+                        <th style={{ textAlign: 'right', padding: '12px' }}>Order Value</th>
+                        <th style={{ textAlign: 'right', padding: '12px' }}>Shipping Cost</th>
+                        <th style={{ textAlign: 'center', padding: '12px' }}>Status</th>
+                        <th style={{ textAlign: 'center', padding: '12px' }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shippingReport.shipments && shippingReport.shipments.map(s => {
+                        let badgeClass = 'badge-secondary';
+                        if (s.status.toLowerCase() === 'delivered') badgeClass = 'badge-success';
+                        else if (s.status.toLowerCase() === 'shipped') badgeClass = 'badge-info';
+                        else if (s.status.toLowerCase() === 'rto/returned') badgeClass = 'badge-warning';
+                        else if (s.status.toLowerCase() === 'cancelled') badgeClass = 'badge-danger';
+                        
+                        return (
+                          <tr key={s.order_id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                            <td style={{ textAlign: 'center', padding: '12px', fontWeight: 700 }}>{s.order_id}</td>
+                            <td style={{ textAlign: 'center', padding: '12px' }}>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                padding: '3px 6px',
+                                borderRadius: '4px',
+                                background: s.type === 'Order' ? 'rgba(122, 78, 165, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: s.type === 'Order' ? '#7a4ea5' : '#3b82f6',
+                                fontWeight: 'bold'
+                              }}>{s.type}</span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 600 }}>{s.customer_name}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.customer_phone}</div>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 600 }}>{s.courier}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{s.awb || 'No AWB assigned'}</div>
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '12px', fontWeight: 600 }}>₹{s.order_value.toFixed(2)}</td>
+                            <td style={{ textAlign: 'right', padding: '12px' }}>₹{s.shipping_cost.toFixed(2)}</td>
+                            <td style={{ textAlign: 'center', padding: '12px' }}>
+                              <span className={`badge ${badgeClass}`}>{s.status}</span>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              {s.date ? s.date.substring(0, 10) : 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {(!shippingReport.shipments || shippingReport.shipments.length === 0) && (
+                        <tr>
+                          <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                            No Shiprocket shipments found for the selected reporting period.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px', fontSize: '0.85rem' }}>
+                  <h4 style={{ fontWeight: 800, marginBottom: '8px' }}>Logistics Integration Metadata</h4>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Reporting Period: <strong>{shippingReport.reporting_period}</strong></p>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '8px' }}>Couriers Integrated: <strong>Shiprocket (Delhivery, BlueDart, DTDC, Xpressbees, Shadowfax)</strong></p>
+                  <p style={{ color: 'var(--text-muted)' }}>Calculated aggregates represent actual synced transactions in database matching active filters.</p>
                 </div>
               </div>
             )}

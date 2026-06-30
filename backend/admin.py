@@ -215,6 +215,8 @@ def manage_shop():
         shop.signature_url = data['signature_url']
     if 'store_locator_link' in data:
         shop.store_locator_link = data['store_locator_link']
+    if 'show_live_activity' in data:
+        shop.show_live_activity = bool(data['show_live_activity'])
 
     db.session.commit()
     log_admin_action(request.user['user_id'], request.user['username'], shop.id, "Updated shop details & payment integrations")
@@ -2774,6 +2776,580 @@ def export_gst_report():
         download_name=filename,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
+
+# SHIPPING REPORTS
+def fetch_shipping_report_data(shop_id, date_val, month_val, year_val, status_val, search_val):
+    from datetime import datetime
+    import re
+    
+    # Query regular orders with Shiprocket shipments
+    orders = Order.query.filter(Order.shop_id == shop_id, Order.shiprocket_shipment_id != None).all()
+    # Query customization orders with Shiprocket shipments
+    cust_orders = CustomizationOrder.query.filter(CustomizationOrder.shop_id == shop_id, CustomizationOrder.shiprocket_shipment_id != None).all()
+    
+    shipment_list = []
+    
+    # Process orders
+    for o in orders:
+        if not o.created_at:
+            continue
+        if date_val and o.created_at.strftime('%Y-%m-%d') != date_val:
+            continue
+        if month_val and o.created_at.month != int(month_val):
+            continue
+        if year_val and o.created_at.year != int(year_val):
+            continue
+            
+        awb = ""
+        courier = "Shiprocket Partner"
+        if o.tracking_info:
+            awb_match = re.search(r'AWB:\s*([a-zA-Z0-9]+)', o.tracking_info, re.IGNORECASE)
+            if awb_match:
+                awb = awb_match.group(1)
+            courier_match = re.search(r'via\s+([a-zA-Z0-9\s]+)\)', o.tracking_info, re.IGNORECASE)
+            if courier_match:
+                courier = courier_match.group(1).strip()
+                
+        local_status = o.status
+        mapped_status = local_status
+        if local_status == 'Customer Received':
+            mapped_status = 'Delivered'
+        elif local_status == 'Returned':
+            mapped_status = 'RTO/Returned'
+        elif local_status == 'Dispatched':
+            mapped_status = 'Shipped'
+            
+        if o.tracking_info and 'cancelled' in o.tracking_info.lower():
+            mapped_status = 'Cancelled'
+            
+        shipment_list.append({
+            "order_id": f"EC-{o.online_order_number or o.id}",
+            "type": "Order",
+            "customer_name": o.user.name if o.user else "Customer",
+            "customer_phone": o.billing_phone or (o.user.contact_phone if o.user else "N/A"),
+            "shiprocket_order_id": o.shiprocket_order_id,
+            "shiprocket_shipment_id": o.shiprocket_shipment_id,
+            "awb": awb,
+            "courier": courier,
+            "order_value": o.final_amount,
+            "shipping_cost": o.shipping_charge if o.shipping_charge is not None else 0.0,
+            "status": mapped_status,
+            "date": o.created_at.isoformat() if o.created_at else None,
+            "raw_created_at": o.created_at
+        })
+        
+    # Process customizations
+    for c in cust_orders:
+        if not c.created_at:
+            continue
+        if date_val and c.created_at.strftime('%Y-%m-%d') != date_val:
+            continue
+        if month_val and c.created_at.month != int(month_val):
+            continue
+        if year_val and c.created_at.year != int(year_val):
+            continue
+            
+        awb = ""
+        courier = "Shiprocket Partner"
+        if c.tracking_info:
+            awb_match = re.search(r'AWB:\s*([a-zA-Z0-9]+)', c.tracking_info, re.IGNORECASE)
+            if awb_match:
+                awb = awb_match.group(1)
+            courier_match = re.search(r'via\s+([a-zA-Z0-9\s]+)\)', c.tracking_info, re.IGNORECASE)
+            if courier_match:
+                courier = courier_match.group(1).strip()
+                
+        local_status = c.status
+        mapped_status = local_status
+        if local_status == 'Customer Received':
+            mapped_status = 'Delivered'
+        elif local_status == 'Returned':
+            mapped_status = 'RTO/Returned'
+        elif local_status == 'Dispatched':
+            mapped_status = 'Shipped'
+            
+        if c.tracking_info and 'cancelled' in c.tracking_info.lower():
+            mapped_status = 'Cancelled'
+            
+        shipment_list.append({
+            "order_id": f"CUST-{c.id}",
+            "type": "Customization",
+            "customer_name": c.user.name if c.user else "Customer",
+            "customer_phone": c.billing_phone or (c.user.contact_phone if c.user else "N/A"),
+            "shiprocket_order_id": c.shiprocket_order_id,
+            "shiprocket_shipment_id": c.shiprocket_shipment_id,
+            "awb": awb,
+            "courier": courier,
+            "order_value": c.quoted_price if c.quoted_price is not None else 0.0,
+            "shipping_cost": 0.0,
+            "status": mapped_status,
+            "date": c.created_at.isoformat() if c.created_at else None,
+            "raw_created_at": c.created_at
+        })
+        
+    # Sort by date desc
+    shipment_list.sort(key=lambda x: x['raw_created_at'] or datetime.min, reverse=True)
+    
+    # Filter by status if provided
+    if status_val:
+        status_query = status_val.lower()
+        if status_query == 'shipped':
+            shipment_list = [s for s in shipment_list if s['status'].lower() in ['shipped', 'dispatched']]
+        elif status_query == 'delivered':
+            shipment_list = [s for s in shipment_list if s['status'].lower() in ['delivered', 'customer received']]
+        elif status_query in ['rto', 'returned', 'rto/returned']:
+            shipment_list = [s for s in shipment_list if s['status'].lower() in ['rto/returned', 'returned', 'rto']]
+        elif status_query == 'cancelled':
+            shipment_list = [s for s in shipment_list if s['status'].lower() in ['cancelled', 'cancel']]
+        else:
+            shipment_list = [s for s in shipment_list if status_query in s['status'].lower()]
+            
+    # Filter by search term if provided
+    if search_val:
+        search_query = search_val.lower()
+        shipment_list = [
+            s for s in shipment_list if (
+                search_query in s['order_id'].lower() or
+                search_query in s['customer_name'].lower() or
+                search_query in s['customer_phone'].lower() or
+                (s['awb'] and search_query in s['awb'].lower()) or
+                (s['courier'] and search_query in s['courier'].lower()) or
+                (s['shiprocket_order_id'] and search_query in s['shiprocket_order_id'].lower()) or
+                (s['shiprocket_shipment_id'] and search_query in s['shiprocket_shipment_id'].lower())
+            )
+        ]
+        
+    return shipment_list
+
+
+@admin_bp.route('/shipping-report', methods=['GET'])
+@role_required(['admin'])
+def shipping_report():
+    shop_id = request.user['shop_id']
+    
+    date_val = request.args.get('date') # YYYY-MM-DD
+    month_val = request.args.get('month') # 1-12
+    year_val = request.args.get('year') # YYYY
+    status_val = request.args.get('status')
+    search_val = request.args.get('search')
+    
+    shipments = fetch_shipping_report_data(shop_id, date_val, month_val, year_val, status_val, search_val)
+    
+    total_shipments = len(shipments)
+    delivered_count = sum(1 for s in shipments if s['status'].lower() in ['delivered', 'customer received'])
+    rto_count = sum(1 for s in shipments if s['status'].lower() in ['rto/returned', 'returned', 'rto'])
+    dispatched_count = sum(1 for s in shipments if s['status'].lower() in ['shipped', 'dispatched'])
+    total_shipping_costs = sum(s['shipping_cost'] for s in shipments)
+    total_order_value = sum(s['order_value'] for s in shipments)
+    
+    reporting_period = "All Time"
+    months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    
+    if date_val:
+        reporting_period = f"Date: {date_val}"
+    elif month_val and year_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"{m_name} {year_val}"
+    elif month_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"Month: {m_name}"
+    elif year_val:
+        reporting_period = f"Year: {year_val}"
+        
+    summary = {
+        "total_shipments": total_shipments,
+        "delivered_count": delivered_count,
+        "rto_count": rto_count,
+        "dispatched_count": dispatched_count,
+        "total_shipping_costs": round(total_shipping_costs, 2),
+        "total_order_value": round(total_order_value, 2)
+    }
+    
+    # Strip raw_created_at from serialized objects before returning json
+    for s in shipments:
+        s.pop('raw_created_at', None)
+        
+    return jsonify({
+        "shop_id": shop_id,
+        "reporting_period": reporting_period,
+        "summary": summary,
+        "shipments": shipments
+    }), 200
+
+
+@admin_bp.route('/shipping-report/export', methods=['GET'])
+@role_required(['admin'])
+def export_shipping_report():
+    import io
+    import csv
+    
+    shop_id = request.user['shop_id']
+    
+    date_val = request.args.get('date') # YYYY-MM-DD
+    month_val = request.args.get('month') # 1-12
+    year_val = request.args.get('year') # YYYY
+    status_val = request.args.get('status')
+    search_val = request.args.get('search')
+    format_val = request.args.get('format', 'csv').strip().lower()
+    
+    shipments = fetch_shipping_report_data(shop_id, date_val, month_val, year_val, status_val, search_val)
+    
+    total_shipments = len(shipments)
+    delivered_count = sum(1 for s in shipments if s['status'].lower() in ['delivered', 'customer received'])
+    rto_count = sum(1 for s in shipments if s['status'].lower() in ['rto/returned', 'returned', 'rto'])
+    dispatched_count = sum(1 for s in shipments if s['status'].lower() in ['shipped', 'dispatched'])
+    total_shipping_costs = sum(s['shipping_cost'] for s in shipments)
+    total_order_value = sum(s['order_value'] for s in shipments)
+    
+    reporting_period = "All Time"
+    months = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    
+    if date_val:
+        reporting_period = f"Date: {date_val}"
+    elif month_val and year_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"{m_name} {year_val}"
+    elif month_val:
+        m_idx = int(month_val)
+        m_name = months[m_idx] if 0 < m_idx < 13 else f"Month {month_val}"
+        reporting_period = f"Month: {m_name}"
+    elif year_val:
+        reporting_period = f"Year: {year_val}"
+        
+    summary = {
+        "total_shipments": total_shipments,
+        "delivered_count": delivered_count,
+        "rto_count": rto_count,
+        "dispatched_count": dispatched_count,
+        "total_shipping_costs": round(total_shipping_costs, 2),
+        "total_order_value": round(total_order_value, 2)
+    }
+    
+    filename_period = reporting_period.replace(' ', '_').replace(':', '')
+    
+    if format_val == 'csv':
+        si = io.StringIO()
+        cw = csv.writer(si)
+        cw.writerow(['Order ID', 'Type', 'Customer Name', 'Customer Phone', 'Shiprocket Order ID', 'Shiprocket Shipment ID', 'AWB Code', 'Courier', 'Order Value (INR)', 'Shipping Cost (INR)', 'Status', 'Date'])
+        for s in shipments:
+            cw.writerow([
+                s['order_id'],
+                s['type'],
+                s['customer_name'],
+                s['customer_phone'],
+                s['shiprocket_order_id'],
+                s['shiprocket_shipment_id'],
+                s['awb'],
+                s['courier'],
+                s['order_value'],
+                s['shipping_cost'],
+                s['status'],
+                s['date']
+            ])
+        response = make_response(si.getvalue().encode('utf-8'))
+        response.headers['Content-Disposition'] = f'attachment; filename=shipping_report_{filename_period}.csv'
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        return response
+        
+    elif format_val in ['excel', 'xlsx']:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+        
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Shipping Report"
+        ws.views.sheetView[0].showGridLines = True
+        
+        font_title = Font(name='Segoe UI', size=16, bold=True, color='2B0B57')
+        font_bold = Font(name='Segoe UI', size=11, bold=True)
+        font_header = Font(name='Segoe UI', size=11, bold=True, color='FFFFFF')
+        font_regular = Font(name='Segoe UI', size=11)
+        fill_header = PatternFill(start_color='2B0B57', end_color='2B0B57', fill_type='solid')
+        
+        thin_side = Side(border_style="thin", color="CCCCCC")
+        border_all = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+        
+        ws.merge_cells('A1:L1')
+        ws['A1'] = "Shiprocket Shipping Report"
+        ws['A1'].font = font_title
+        ws['A1'].alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[1].height = 40
+        
+        ws.merge_cells('A2:L2')
+        ws['A2'] = f"Reporting Period: {reporting_period}"
+        ws['A2'].font = Font(name='Segoe UI', size=11, italic=True)
+        ws['A2'].alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[2].height = 20
+        
+        ws['A4'] = "Total Shipments:"
+        ws['A4'].font = font_bold
+        ws['B4'] = summary['total_shipments']
+        ws['B4'].font = font_regular
+        
+        ws['C4'] = "Shipped Order Value:"
+        ws['C4'].font = font_bold
+        ws['D4'] = summary['total_order_value']
+        ws['D4'].font = font_regular
+        ws['D4'].number_format = '₹#,##0.00'
+        
+        ws['E4'] = "Total Shipping Collected:"
+        ws['E4'].font = font_bold
+        ws['F4'] = summary['total_shipping_costs']
+        ws['F4'].font = font_regular
+        ws['F4'].number_format = '₹#,##0.00'
+        
+        ws.row_dimensions[4].height = 22
+        
+        headers = ['Order ID', 'Type', 'Customer Name', 'Customer Phone', 'Shiprocket Order ID', 'Shiprocket Shipment ID', 'AWB Code', 'Courier', 'Order Value', 'Shipping Cost', 'Status', 'Date']
+        start_row = 6
+        for col_idx, text in enumerate(headers, 1):
+            cell = ws.cell(row=start_row, column=col_idx, value=text)
+            cell.font = font_header
+            cell.fill = fill_header
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = border_all
+        ws.row_dimensions[start_row].height = 28
+        
+        for r_idx, s in enumerate(shipments, start_row + 1):
+            row_data = [
+                s['order_id'],
+                s['type'],
+                s['customer_name'],
+                s['customer_phone'],
+                s['shiprocket_order_id'],
+                s['shiprocket_shipment_id'],
+                s['awb'],
+                s['courier'],
+                s['order_value'],
+                s['shipping_cost'],
+                s['status'],
+                s['date'][:10] if s['date'] else ''
+            ]
+            for col_idx, val in enumerate(row_data, 1):
+                cell = ws.cell(row=r_idx, column=col_idx, value=val)
+                cell.font = font_regular
+                cell.border = border_all
+                if col_idx in [9, 10]:
+                    cell.number_format = '₹#,##0.00'
+                    cell.alignment = Alignment(horizontal="right")
+                elif col_idx in [1, 2, 7, 8, 11, 12]:
+                    cell.alignment = Alignment(horizontal="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left")
+            ws.row_dimensions[r_idx].height = 20
+            
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                if cell.row in [1, 2]:
+                    continue
+                val_str = str(cell.value or '')
+                if cell.number_format and '₹' in cell.number_format and isinstance(cell.value, (int, float)):
+                    val_str = f"Rs. {cell.value:,.2f}"
+                max_len = max(max_len, len(val_str))
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+            
+        buffer_excel = io.BytesIO()
+        wb.save(buffer_excel)
+        buffer_excel.seek(0)
+        
+        return send_file(
+            buffer_excel,
+            as_attachment=True,
+            download_name=f"Shipping_Report_{filename_period}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    elif format_val == 'pdf':
+        from reportlab.lib.pagesizes import letter, landscape
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib import colors
+        
+        buffer_pdf = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer_pdf, 
+            pagesize=landscape(letter),
+            rightMargin=30, 
+            leftMargin=30, 
+            topMargin=30, 
+            bottomMargin=30
+        )
+        
+        story = []
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'TitleStyle',
+            parent=styles['Heading1'],
+            fontName='Helvetica-Bold',
+            fontSize=20,
+            leading=24,
+            textColor=colors.HexColor('#2B0B57'),
+            alignment=1
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'SubtitleStyle',
+            parent=styles['Normal'],
+            fontName='Helvetica-Oblique',
+            fontSize=11,
+            leading=14,
+            textColor=colors.HexColor('#555555'),
+            alignment=1
+        )
+        
+        meta_label_style = ParagraphStyle(
+            'MetaLabel',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=10,
+            leading=12,
+            textColor=colors.HexColor('#2B0B57')
+        )
+        
+        meta_val_style = ParagraphStyle(
+            'MetaValue',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=10,
+            leading=12
+        )
+        
+        table_hdr_style = ParagraphStyle(
+            'TableHdr',
+            parent=styles['Normal'],
+            fontName='Helvetica-Bold',
+            fontSize=9,
+            leading=11,
+            textColor=colors.white,
+            alignment=1
+        )
+        
+        table_cell_style = ParagraphStyle(
+            'TableCell',
+            parent=styles['Normal'],
+            fontName='Helvetica',
+            fontSize=8,
+            leading=10,
+            textColor=colors.HexColor('#222222')
+        )
+        
+        table_cell_center = ParagraphStyle(
+            'TableCellCenter',
+            parent=table_cell_style,
+            alignment=1
+        )
+        
+        table_cell_right = ParagraphStyle(
+            'TableCellRight',
+            parent=table_cell_style,
+            alignment=2
+        )
+        
+        story.append(Paragraph("Shiprocket Shipping Report", title_style))
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(f"Reporting Period: {reporting_period}", subtitle_style))
+        story.append(Spacer(1, 15))
+        
+        summary_data = [
+            [
+                Paragraph("Total Shipments:", meta_label_style),
+                Paragraph(str(summary['total_shipments']), meta_val_style),
+                Paragraph("Shipped Order Value:", meta_label_style),
+                Paragraph(f"INR {summary['total_order_value']:,.2f}", meta_val_style),
+                Paragraph("Total Shipping Collected:", meta_label_style),
+                Paragraph(f"INR {summary['total_shipping_costs']:,.2f}", meta_val_style)
+            ],
+            [
+                Paragraph("Delivered Count:", meta_label_style),
+                Paragraph(str(summary['delivered_count']), meta_val_style),
+                Paragraph("RTO/Returned Count:", meta_label_style),
+                Paragraph(str(summary['rto_count']), meta_val_style),
+                Paragraph("Shipped/Dispatched:", meta_label_style),
+                Paragraph(str(summary['dispatched_count']), meta_val_style)
+            ]
+        ]
+        
+        summary_table = Table(summary_data, colWidths=[120, 80, 140, 100, 150, 142])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F6F4FA')),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('PADDING', (0,0), (-1,-1), 6),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+            ('TOPPADDING', (0,0), (-1,-1), 8),
+            ('LEFTPADDING', (0,0), (-1,-1), 8),
+            ('RIGHTPADDING', (0,0), (-1,-1), 8),
+            ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.HexColor('#E1DBEC')),
+            ('LINEABOVE', (0,0), (-1,-1), 0.5, colors.HexColor('#E1DBEC')),
+            ('LINELEFT', (0,0), (-1,-1), 0.5, colors.HexColor('#E1DBEC')),
+            ('LINERIGHT', (0,0), (-1,-1), 0.5, colors.HexColor('#E1DBEC')),
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 20))
+        
+        headers_row = [
+            Paragraph("Order ID", table_hdr_style),
+            Paragraph("Type", table_hdr_style),
+            Paragraph("Customer Details", table_hdr_style),
+            Paragraph("Courier / AWB", table_hdr_style),
+            Paragraph("Order Value", table_hdr_style),
+            Paragraph("Shipping Cost", table_hdr_style),
+            Paragraph("Status", table_hdr_style),
+            Paragraph("Date", table_hdr_style)
+        ]
+        
+        table_rows = [headers_row]
+        for s in shipments:
+            cust_text = f"<b>{s['customer_name']}</b><br/>{s['customer_phone']}"
+            courier_text = f"<b>{s['courier']}</b><br/>{s['awb'] if s['awb'] else 'No AWB'}"
+            date_text = s['date'][:10] if s['date'] else 'N/A'
+            
+            table_rows.append([
+                Paragraph(s['order_id'], table_cell_center),
+                Paragraph(s['type'], table_cell_center),
+                Paragraph(cust_text, table_cell_style),
+                Paragraph(courier_text, table_cell_style),
+                Paragraph(f"INR {s['order_value']:,.2f}", table_cell_right),
+                Paragraph(f"INR {s['shipping_cost']:,.2f}", table_cell_right),
+                Paragraph(s['status'], table_cell_center),
+                Paragraph(date_text, table_cell_center)
+            ])
+            
+        shipment_table = Table(table_rows, colWidths=[70, 70, 160, 150, 82, 75, 65, 60])
+        ts = [
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2B0B57')),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('PADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E1DBEC')),
+        ]
+        for i in range(1, len(table_rows)):
+            if i % 2 == 0:
+                ts.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#F6F4FA')))
+        shipment_table.setStyle(TableStyle(ts))
+        story.append(shipment_table)
+        
+        doc.build(story)
+        buffer_pdf.seek(0)
+        
+        return send_file(
+            buffer_pdf,
+            as_attachment=True,
+            download_name=f"Shipping_Report_{filename_period}.pdf",
+            mimetype='application/pdf'
+        )
+        
+    return jsonify({"error": "Unsupported export format"}), 400
+
 
 # IN-APP NOTIFICATION BROADCASTS
 @admin_bp.route('/notifications', methods=['GET', 'POST'])

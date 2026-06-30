@@ -102,6 +102,7 @@ class Shop(db.Model):
     cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     customization_cod_enabled = db.Column(db.Boolean, default=True, nullable=False)
     views_count = db.Column(db.Integer, default=0, nullable=False)
+    show_live_activity = db.Column(db.Boolean, default=False, nullable=False)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
@@ -288,6 +289,7 @@ class Shop(db.Model):
             "smtp_sender_name": self.smtp_sender_name,
             "email_templates": self.email_templates,
             "views_count": self.views_count or 0,
+            "show_live_activity": self.show_live_activity or False,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
